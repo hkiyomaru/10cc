@@ -1,8 +1,5 @@
 #include "9cc.h"
 
-Token *token;
-Node *code[128];
-
 int main(int argc, char **argv) {
     if(argc != 2) {
         fprintf(stderr, "%s: invalid number of arguments\n", argv[0]);

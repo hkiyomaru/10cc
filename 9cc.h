@@ -55,6 +55,15 @@ struct Node {
     int offset;
 };
 
+typedef struct LVar LVar;
+
+struct LVar {
+    LVar *next;
+    char *name;
+    int len;
+    int offset;
+};
+
 Token *tokenize(char *p);
 
 void program();
@@ -82,3 +91,4 @@ void gen(Node *node);
  */
 extern Token *token;
 extern Node *code[];
+extern LVar *locals;
