@@ -15,7 +15,8 @@ bool startswith(char *p, char *q);
  * parse.c
  */
 typedef enum {
-    TK_RESERVED,  // indicates '+' or '-'
+    TK_RESERVED,  // indicates '+', '-', and so on
+    TK_IDENT,     // indicates an identifier
     TK_NUM,       // indicates a number
     TK_EOF,       // indicates EOF
 } TokenKind;
@@ -31,15 +32,17 @@ struct Token {
 };
 
 typedef enum {
-    ND_ADD,  // indicates +
-    ND_SUB,  // indicates -
-    ND_MUL,  // indicates *
-    ND_DIV,  // indicates /
-    ND_NUM,  // indicates a number
-    ND_EQ,   // indicates ==
-    ND_NE,   // indicates ==
-    ND_LE,   // indicates <=
-    ND_LT,   // indicates <
+    ND_ADD,     // indicates +
+    ND_SUB,     // indicates -
+    ND_MUL,     // indicates *
+    ND_DIV,     // indicates 
+    ND_EQ,      // indicates ==
+    ND_NE,      // indicates ==
+    ND_LE,      // indicates <=
+    ND_LT,      // indicates <
+    ND_ASSIGN,  // indicates =
+    ND_NUM,     // indicates a number
+    ND_LVAR,    // indicates a local variable
 } NodeKind;
 
 typedef struct Node Node;
@@ -49,11 +52,15 @@ struct Node {
     Node *lhs;
     Node *rhs;
     int val;
+    int offset;
 };
 
 Token *tokenize(char *p);
 
+void program();
+Node *stmt();
 Node *expr();
+Node *assign();
 Node *equality();
 Node *relational();
 Node *add();
@@ -74,3 +81,4 @@ void gen(Node *node);
  * Global variables
  */
 extern Token *token;
+extern Node *code[];
