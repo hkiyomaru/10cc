@@ -10,6 +10,7 @@
  */
 void error(char *fmt, ...);
 bool startswith(char *p, char *q);
+bool is_alnum(char c);
 
 /**
  * parse.c
@@ -19,6 +20,7 @@ typedef enum {
     TK_IDENT,     // indicates an identifier
     TK_NUM,       // indicates a number
     TK_EOF,       // indicates EOF
+    TK_RETURN,    // indicates 'return'
 } TokenKind;
 
 typedef struct Token Token;
@@ -43,6 +45,7 @@ typedef enum {
     ND_ASSIGN,  // indicates =
     ND_NUM,     // indicates a number
     ND_LVAR,    // indicates a local variable
+    ND_RETURN,  // indicates 'return'
 } NodeKind;
 
 typedef struct Node Node;

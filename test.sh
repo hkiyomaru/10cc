@@ -29,5 +29,6 @@ assert 42 "a = 0; b = 42;"
 assert 42 "a = 0; b = 21 + 21;"
 assert 42 "a = 21; a = a + 21;"
 assert 42 "foo = 21; foo = foo + 21;"
+assert 42 "return 42; return 420;"
 
 echo OK

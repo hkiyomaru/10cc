@@ -9,5 +9,9 @@ void error(char *fmt, ...) {
 }
 
 bool startswith(char *p, char *q) {
-    return memcmp(p, q, strlen(q)) == 0;
+  return memcmp(p, q, strlen(q)) == 0;
+}
+
+bool is_alnum(char c) {
+  return isalpha(c) || isdigit(c) || c == '_';
 }

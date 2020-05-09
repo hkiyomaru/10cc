@@ -14,6 +14,14 @@ bool consume(char *op) {
     return true;
 }
 
+bool consume_stmt(int kind) {
+    if (token->kind != kind) {
+        return false;
+    }
+    token = token->next;
+    return true;
+}
+
 Token *consume_ident() {
     if (token->kind != TK_IDENT) {
         return NULL;
@@ -74,9 +82,15 @@ Token *tokenize(char *p) {
             continue;
         }
 
+        if (strncmp(p, "return", 6) == 0 && !is_alnum(p[6])) {
+            cur = new_token(TK_RETURN, cur, "return", 6);
+            p += 6;
+            continue;
+        }
+
         if (isalpha(*p)) {
             int len = 0;
-            while(isalpha(p[len]) || isdigit(p[len]) || p[len] == '_') {
+            while(is_alnum(p[len])) {
                 len++;
             }
             cur = new_token(TK_IDENT, cur, p, len);
@@ -132,7 +146,14 @@ void program() {
 }
 
 Node *stmt() {
-    Node *node = expr();
+    Node *node;
+    if (consume_stmt(TK_RETURN)) {
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_RETURN;
+        node->lhs = expr();
+    } else {
+        node = expr();
+    }
     expect(";");
     return node;
 }
