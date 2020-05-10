@@ -1,9 +1,8 @@
 #include "9cc.h"
 
 void gen_lval(Node *node) {
-    if (node->kind != ND_LVAR) {
+    if (node->kind != ND_LVAR)
         error("Assignment error: Left side value must be a variable");
-    }
     printf("  mov rax, rbp\n");
     printf("  sub rax, %d\n", node->offset);
     printf("  push rax\n");

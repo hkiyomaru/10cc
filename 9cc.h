@@ -13,7 +13,7 @@ bool startswith(char *p, char *q);
 bool is_alnum(char c);
 
 /**
- * parse.c
+ * tokenize.c
  */
 typedef enum {
     TK_RESERVED,  // indicates '+', '-', and so on
@@ -33,6 +33,16 @@ struct Token {
     int len;
 };
 
+Token *tokenize(char *p);
+bool consume_op(char *op);
+bool consume_stmt(int kind);
+Token *consume_ident();
+int expect_number();
+bool at_eof();
+
+/**
+ * parse.c
+ */
 typedef enum {
     ND_ADD,     // indicates +
     ND_SUB,     // indicates -
@@ -67,8 +77,6 @@ struct LVar {
     int offset;
 };
 
-Token *tokenize(char *p);
-
 void program();
 Node *stmt();
 Node *expr();
@@ -79,6 +87,8 @@ Node *add();
 Node *mul();
 Node *unary();
 Node *primary();
+
+LVar *find_lvar(Token *tok);
 
 /**
  * codegen.c
