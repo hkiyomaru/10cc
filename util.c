@@ -15,7 +15,7 @@ void error_at(char *loc, char *fmt, ...) {
   va_start(ap, fmt);
   int pos = loc - user_input;
   fprintf(stderr, "%s\n", user_input);
-  fprintf(stderr, "%*s", pos, ""); // pos個の空白を出力
+  fprintf(stderr, "%*s", pos, "");
   fprintf(stderr, "^ ");
   vfprintf(stderr, fmt, ap);
   fprintf(stderr, "\n");
@@ -26,6 +26,6 @@ bool startswith(char *p, char *q) {
   return memcmp(p, q, strlen(q)) == 0;
 }
 
-bool is_alnum(char c) {
-  return isalpha(c) || isdigit(c) || c == '_';
+bool isalnumus(char c) {
+  return isalnum(c) || c == '_';
 }

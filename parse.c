@@ -19,23 +19,62 @@ Node *new_node_num(int val) {
 }
 
 void parse() {
-    LVar dummy = {NULL, "", 0, 0};
-    locals = &dummy;
-    
+    locals = calloc(1, sizeof(LVar));
     int i = 0;
-    while (!at_eof()) {
-        code[i] = stmt();
-        i++;
-    }
+    while (!at_eof())
+        code[i++] = stmt();
     code[i] = NULL;
 }
 
 Node *stmt() {
     Node *node;
-    if (consume_stmt(TK_RETURN)) {
+    if (consume_op("{")) {
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_BLOCK;
+        node->stmts = create_vector();
+        while(!consume_op("}"))
+            push(node->stmts, (void *) stmt());
+        return node;
+    } else if (consume_stmt(TK_RETURN)) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_RETURN;
         node->lhs = expr();
+    } else if (consume_stmt(TK_IF)) {
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_IF;
+        expect_op("(");
+        node->cond = expr();
+        expect_op(")");
+        node->then = stmt();
+        if (consume_stmt(TK_ELSE))
+            node->els = stmt();
+        return node;
+    } else if (consume_stmt(TK_WHILE)) {
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_WHILE;
+        expect_op("(");
+        node->cond = expr();
+        expect_op(")");
+        node->then = stmt();
+        return node;
+    } else if (consume_stmt(TK_FOR)) {
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_FOR;
+        expect_op("(");
+        if (!consume_op(";")) {
+            node->init = expr();
+            expect_op(";");
+        }
+        if (!consume_op(";")) {
+            node->cond = expr();
+            expect_op(";");
+        }
+        if (!consume_op(";")) {
+            node->upd = expr();
+        }
+        expect_op(")");
+        node->then = stmt();
+        return node;
     } else {
         node = expr();
     }

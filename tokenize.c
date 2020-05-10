@@ -16,22 +16,45 @@ void tokenize() {
     head.next = NULL;
     Token *cur = &head;
     char *p = user_input;
-
     while (*p) {
         if (isspace(*p)) {
             p++;
             continue;
         }
 
-        if (strncmp(p, "return", 6) == 0 && !is_alnum(p[6])) {
+        if (strncmp(p, "return", 6) == 0 && !isalnumus(p[6])) {
             cur = new_token(TK_RETURN, cur, p, 6);
             p += 6;
             continue;
         }
 
+        if(strncmp(p, "if", 2) == 0 && !isalnumus(p[2])) {
+            cur = new_token(TK_IF, cur, p, 2);
+            p += 2;
+            continue;
+        }
+
+        if(strncmp(p, "else", 4) == 0 && !isalnumus(p[4])) {
+            cur = new_token(TK_ELSE, cur, p, 4);
+            p += 4;
+            continue;
+        }
+
+        if(strncmp(p, "while", 5) == 0 && !isalnumus(p[5])) {
+            cur = new_token(TK_WHILE, cur, p, 5);
+            p += 5;
+            continue;
+        }
+
+        if(strncmp(p, "for", 3) == 0 && !isalnumus(p[3])) {
+            cur = new_token(TK_FOR, cur, p, 3);
+            p += 3;
+            continue;
+        }
+
         if (isalpha(*p) || *p == '_') {
             int len = 1;
-            while(is_alnum(p[len]))
+            while(isalnumus(p[len]))
                 len++;
             cur = new_token(TK_IDENT, cur, p, len);
             p += len;
@@ -47,7 +70,7 @@ void tokenize() {
             continue;
         }
 
-        if (strchr("+-*/()<>=;", *p)) {
+        if (strchr("+-*/()<>=;{}", *p)) {
             cur = new_token(TK_RESERVED, cur, p, 1);
             p++;
             continue;

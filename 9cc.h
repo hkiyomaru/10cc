@@ -11,9 +11,21 @@
 void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);
 bool startswith(char *p, char *q);
-bool is_alnum(char c);
+bool isalnumus(char c);
 
 extern char *user_input;
+
+/**
+ * container.c
+ */
+typedef struct {
+    void **data;
+    int capacity;
+    int len;
+} Vector;
+
+Vector *create_vector();
+void push(Vector *vec, void *elem);
 
 /**
  * tokenize.c
@@ -22,8 +34,12 @@ typedef enum {
     TK_RESERVED,  // indicates '+', '-', and so on
     TK_IDENT,     // indicates an identifier
     TK_NUM,       // indicates a number
-    TK_EOF,       // indicates EOF
     TK_RETURN,    // indicates 'return'
+    TK_IF,        // indicates if'
+    TK_ELSE,      // indicates 'else'
+    TK_WHILE,     // indicates 'while'
+    TK_FOR,       // indicates 'for'
+    TK_EOF,       // indicates EOF
 } TokenKind;
 
 typedef struct Token Token;
@@ -62,15 +78,31 @@ typedef enum {
     ND_NUM,     // indicates a number
     ND_LVAR,    // indicates a local variable
     ND_RETURN,  // indicates 'return'
+    ND_IF,      // indicates 'if'
+    ND_ELSE,    // indicates 'else'
+    ND_WHILE,   // indicates 'while'
+    ND_FOR,     // indicates 'for'
+    ND_BLOCK,   // indicates a block
 } NodeKind;
 
 typedef struct Node Node;
 
 struct Node {
     NodeKind kind;
+    
     Node *lhs;
     Node *rhs;
+
+    Node *cond;
+    Node *then;
+    Node *els;
+    Node *init;
+    Node *upd;
+
+    Vector *stmts;
+
     int val;
+
     int offset;
 };
 
@@ -103,7 +135,3 @@ extern LVar *locals;
  * codegen.c
  */
 void gen();
-
-/**
- * container.c
- */

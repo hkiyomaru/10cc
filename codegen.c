@@ -1,5 +1,7 @@
 #include "9cc.h"
 
+int label_id = 0;
+
 void gen_lval(Node *node) {
     if (node->kind != ND_LVAR)
         error("Assignment error: Left side value must be a variable");
@@ -9,6 +11,7 @@ void gen_lval(Node *node) {
 }
 
 void gen_stmt(Node *node) {
+    int cur_label_id;
     switch (node->kind) {
     case ND_NUM:
         printf("  push %d\n", node->val);
@@ -33,6 +36,51 @@ void gen_stmt(Node *node) {
         printf("  mov rsp, rbp\n");
         printf("  pop rbp\n");
         printf("  ret\n");
+        return;
+    case ND_IF:
+        cur_label_id = label_id++;
+        gen_stmt(node->cond);
+        printf("  pop rax\n");
+        printf("  cmp rax, 0\n");
+        if (node->els) {
+            printf("  je .Lelse%03d\n", cur_label_id);
+            gen_stmt(node->then);
+            printf("  jmp .Lend%03d\n", cur_label_id);
+            printf(".Lelse%03d:\n", cur_label_id);
+            gen_stmt(node->els);
+        } else {
+            printf("  je .Lend%03d\n", cur_label_id);
+            gen_stmt(node->then);
+        }
+        printf(".Lend%03d:\n", cur_label_id);
+        return;
+    case ND_WHILE:
+        cur_label_id = label_id++;
+        printf(".Lbegin%03d:\n", cur_label_id);
+        gen_stmt(node->cond);
+        printf("  pop rax\n");
+        printf("  cmp rax, 0\n");
+        printf("  je .Lend%03d\n", cur_label_id);
+        gen_stmt(node->then);
+        printf("  jmp .Lbegin%03d\n", cur_label_id);
+        printf(".Lend%03d:\n", cur_label_id);
+        return;
+    case ND_FOR:
+        cur_label_id = label_id++;
+        gen_stmt(node->init);
+        printf(".Lbegin%03d:\n", cur_label_id);
+        gen_stmt(node->cond);
+        printf("  pop rax\n");
+        printf("  cmp rax, 0\n");
+        printf("  je .Lend%03d\n", cur_label_id);
+        gen_stmt(node->then);
+        gen_stmt(node->upd);
+        printf("  jmp .Lbegin%03d\n", cur_label_id);
+        printf(".Lend%03d:\n", cur_label_id);
+        return;
+    case ND_BLOCK:
+        for (int i = 0; i < node->stmts->len; i++)
+            gen_stmt(node->stmts->data[i]);
         return;
     }
     gen_stmt(node->lhs);
