@@ -9,8 +9,11 @@
  * util.c
  */
 void error(char *fmt, ...);
+void error_at(char *loc, char *fmt, ...);
 bool startswith(char *p, char *q);
 bool is_alnum(char c);
+
+extern char *user_input;
 
 /**
  * tokenize.c
@@ -33,12 +36,15 @@ struct Token {
     int len;
 };
 
-Token *tokenize(char *p);
+void tokenize();
 bool consume_op(char *op);
 bool consume_stmt(TokenKind kind);
 Token *consume_ident();
+void expect_op(char *op);
 int expect_number();
 bool at_eof();
+
+extern Token *token;
 
 /**
  * parse.c
@@ -77,7 +83,7 @@ struct LVar {
     int offset;
 };
 
-void program();
+void parse();
 Node *stmt();
 Node *expr();
 Node *assign();
@@ -90,18 +96,14 @@ Node *primary();
 
 LVar *find_lvar(Token *tok);
 
+extern Node *code[];
+extern LVar *locals;
+
 /**
  * codegen.c
  */
-void gen(Node *node);
+void gen();
 
 /**
  * container.c
  */
-
-/**
- * Global variables
- */
-extern Token *token;
-extern Node *code[];
-extern LVar *locals;

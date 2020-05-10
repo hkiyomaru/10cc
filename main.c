@@ -6,19 +6,29 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    token = tokenize(argv[1]);
-    program();
+    // make user input accessible
+    user_input = argv[1];
 
+    // tokenize user input
+    tokenize();
+
+    // construct an abstract syntax tree
+    parse();
+
+    // header
     printf(".intel_syntax noprefix\n");
     printf(".global main\n");
     printf("main:\n");
+    
+    // prologue
     printf("  push rbp\n");
     printf("  mov rbp, rsp\n");
     printf("  sub rsp, %d\n", locals->offset);
-    for (int i = 0; code[i]; i++) {
-        gen(code[i]);
-        printf("  pop rax\n");
-    }
+    
+    // generated program code
+    gen();
+
+    // epilogue
     printf("  mov rsp, rbp\n");
     printf("  pop rbp\n");
     printf("  ret\n");

@@ -8,7 +8,7 @@ void gen_lval(Node *node) {
     printf("  push rax\n");
 }
 
-void gen(Node *node) {
+void gen_stmt(Node *node) {
     switch (node->kind) {
     case ND_NUM:
         printf("  push %d\n", node->val);
@@ -21,22 +21,22 @@ void gen(Node *node) {
         return;
     case ND_ASSIGN:
         gen_lval(node->lhs);
-        gen(node->rhs);
+        gen_stmt(node->rhs);
         printf("  pop rdi\n");
         printf("  pop rax\n");
         printf("  mov [rax], rdi\n");
         printf("  push rdi\n");
         return;
     case ND_RETURN:
-        gen(node->lhs);
+        gen_stmt(node->lhs);
         printf("  pop rax\n");
         printf("  mov rsp, rbp\n");
         printf("  pop rbp\n");
         printf("  ret\n");
         return;
     }
-    gen(node->lhs);
-    gen(node->rhs);
+    gen_stmt(node->lhs);
+    gen_stmt(node->rhs);
     printf("  pop rdi\n");
     printf("  pop rax\n");
     switch (node->kind) {
@@ -75,4 +75,11 @@ void gen(Node *node) {
         break;
     }
     printf("  push rax\n");
+}
+
+void gen() {
+    for (int i = 0; code[i]; i++) {
+        gen_stmt(code[i]);
+        printf("  pop rax\n");
+    }
 }

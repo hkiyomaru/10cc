@@ -18,7 +18,7 @@ Node *new_node_num(int val) {
     return node;
 }
 
-void program() {
+void parse() {
     LVar dummy = {NULL, "", 0, 0};
     locals = &dummy;
     
@@ -39,8 +39,7 @@ Node *stmt() {
     } else {
         node = expr();
     }
-    if (!consume_op(";"))
-        error("Expected ';', but got '%s'", token->str);
+    expect_op(";");
     return node;
 }
 
@@ -139,8 +138,7 @@ Node *primary() {
     }
     if (consume_op("(")) {
         Node *node = expr();
-        if (!consume_op(")"))
-            error("Expected ';', but got '%s'", token->str);
+        expect_op(")");
         return node;
     }
     return new_node_num(expect_number());

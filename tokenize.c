@@ -11,10 +11,11 @@ Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
     return tok;
 }
 
-Token *tokenize(char *p) {
+void tokenize() {
     Token head;
     head.next = NULL;
     Token *cur = &head;
+    char *p = user_input;
 
     while (*p) {
         if (isspace(*p)) {
@@ -37,7 +38,10 @@ Token *tokenize(char *p) {
             continue;
         }
 
-        if (startswith(p, "==") || startswith(p, "!=") || startswith(p, "<=") || startswith(p, ">=")) {
+        if (startswith(p, "==") ||
+            startswith(p, "!=") ||
+            startswith(p, "<=") ||
+            startswith(p, ">=")) {
             cur = new_token(TK_RESERVED, cur, p, 2);
             p += 2;
             continue;
@@ -54,10 +58,10 @@ Token *tokenize(char *p) {
             cur->val = strtol(p, &p, 10);
             continue;
         }
-        error("Tokenization failed");
+        error_at(p, "Failed to tokenize user input");
     }
     new_token(TK_EOF, cur, p, 0);
-    return head.next;
+    token = head.next;
 }
 
 bool consume_op(char *op) {
@@ -71,25 +75,32 @@ bool consume_op(char *op) {
 }
 
 bool consume_stmt(TokenKind kind) {
-    if (token->kind != kind) {
+    if (token->kind != kind)
         return false;
-    }
     token = token->next;
     return true;
 }
 
 Token *consume_ident() {
-    if (token->kind != TK_IDENT) {
+    if (token->kind != TK_IDENT)
         return NULL;
-    }
     Token *current_token = token;
     token = token->next;
     return current_token;
 }
 
+void expect_op(char *op) {
+    if(token->kind != TK_RESERVED ||
+       strlen(op) != token->len ||
+       memcmp(token->str, op, token->len) != 0) {
+        error_at(token->str, "Expected '%s'");
+    }
+    token = token->next;
+}
+
 int expect_number() {
     if (token->kind !=TK_NUM)
-        error("Expected a number, but got %s", token->str);
+        error_at(token->str, "Expected a number");
     int val = token->val;
     token = token->next;
     return val;
