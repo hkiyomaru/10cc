@@ -35,7 +35,7 @@ struct Token {
 
 Token *tokenize(char *p);
 bool consume_op(char *op);
-bool consume_stmt(int kind);
+bool consume_stmt(TokenKind kind);
 Token *consume_ident();
 int expect_number();
 bool at_eof();

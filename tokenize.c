@@ -23,17 +23,17 @@ Token *tokenize(char *p) {
         }
 
         if (strncmp(p, "return", 6) == 0 && !is_alnum(p[6])) {
-            cur = new_token(TK_RETURN, cur, "return", 6);
+            cur = new_token(TK_RETURN, cur, p, 6);
             p += 6;
             continue;
         }
 
-        if (isalpha(*p)) {
-            int len = 0;
+        if (isalpha(*p) || *p == '_') {
+            int len = 1;
             while(is_alnum(p[len]))
                 len++;
             cur = new_token(TK_IDENT, cur, p, len);
-            p+=len;
+            p += len;
             continue;
         }
 
@@ -56,7 +56,7 @@ Token *tokenize(char *p) {
         }
         error("Tokenization failed");
     }
-    new_token(TK_EOF, cur, "EOF", 0);
+    new_token(TK_EOF, cur, p, 0);
     return head.next;
 }
 
@@ -70,7 +70,7 @@ bool consume_op(char *op) {
     return true;
 }
 
-bool consume_stmt(int kind) {
+bool consume_stmt(TokenKind kind) {
     if (token->kind != kind) {
         return false;
     }

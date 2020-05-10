@@ -16,7 +16,6 @@ assert() {
 }
 
 assert 0 "0;"
-assert 42 "0;"
 assert 42 "21+63-42;"
 assert 42 "21 + 63 - 42;"
 assert 42 "2 * 20 + 2;"
