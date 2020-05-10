@@ -19,6 +19,9 @@ Node *new_node_num(int val) {
 }
 
 void program() {
+    LVar dummy = {NULL, "", 0, 0};
+    locals = &dummy;
+    
     int i = 0;
     while (!at_eof()) {
         code[i] = stmt();
@@ -128,7 +131,7 @@ Node *primary() {
             lvar->next = locals;
             lvar->name = tok->str;
             lvar->len = tok->len;
-            lvar->offset = locals ? locals->offset + 8 : 8;
+            lvar->offset = locals->offset + 8;
             node->offset = lvar->offset;
             locals = lvar;
         }

@@ -14,7 +14,7 @@ int main(int argc, char **argv) {
     printf("main:\n");
     printf("  push rbp\n");
     printf("  mov rbp, rsp\n");
-    printf("  sub rsp, 208\n");
+    printf("  sub rsp, %d\n", locals->offset);
     for (int i = 0; code[i]; i++) {
         gen(code[i]);
         printf("  pop rax\n");
