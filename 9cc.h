@@ -66,23 +66,24 @@ extern Token *token;
  * parse.c
  */
 typedef enum {
-    ND_ADD,     // indicates +
-    ND_SUB,     // indicates -
-    ND_MUL,     // indicates *
-    ND_DIV,     // indicates 
-    ND_EQ,      // indicates ==
-    ND_NE,      // indicates ==
-    ND_LE,      // indicates <=
-    ND_LT,      // indicates <
-    ND_ASSIGN,  // indicates =
-    ND_NUM,     // indicates a number
-    ND_LVAR,    // indicates a local variable
-    ND_RETURN,  // indicates 'return'
-    ND_IF,      // indicates 'if'
-    ND_ELSE,    // indicates 'else'
-    ND_WHILE,   // indicates 'while'
-    ND_FOR,     // indicates 'for'
-    ND_BLOCK,   // indicates a block
+    ND_ADD,        // indicates +
+    ND_SUB,        // indicates -
+    ND_MUL,        // indicates *
+    ND_DIV,        // indicates 
+    ND_EQ,         // indicates ==
+    ND_NE,         // indicates ==
+    ND_LE,         // indicates <=
+    ND_LT,         // indicates <
+    ND_ASSIGN,     // indicates =
+    ND_NUM,        // indicates a number
+    ND_LVAR,       // indicates a local variable
+    ND_RETURN,     // indicates 'return'
+    ND_IF,         // indicates 'if'
+    ND_ELSE,       // indicates 'else'
+    ND_WHILE,      // indicates 'while'
+    ND_FOR,        // indicates 'for'
+    ND_FUNC_CALL,  // indicates a function call
+    ND_BLOCK,      // indicates a block
 } NodeKind;
 
 typedef struct Node Node;
@@ -90,6 +91,8 @@ typedef struct Node Node;
 struct Node {
     NodeKind kind;
     
+    int val;
+
     Node *lhs;
     Node *rhs;
 
@@ -100,8 +103,7 @@ struct Node {
     Node *upd;
 
     Vector *stmts;
-
-    int val;
+    Vector *args;
 
     int offset;
 };

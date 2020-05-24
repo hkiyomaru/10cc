@@ -1,5 +1,8 @@
 #include "9cc.h"
 
+int num_argregs = 6;
+char *argregs[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+
 int label_id = 0;
 
 void gen_lval(Node *node) {
@@ -15,6 +18,16 @@ void gen_stmt(Node *node) {
     switch (node->kind) {
     case ND_NUM:
         printf("  push %d\n", node->val);
+        return;
+    case ND_FUNC_CALL:
+        for (int i = 0; i < node->args->len; i++) {
+            gen_stmt(node->args->data[i]);
+        }
+        for (int i = node->args->len - 1; 0 <= i; i--) {
+            printf("  pop %s\n", argregs[i]);  // 0 origin
+        }
+        printf("  call foo\n");  // TODO: fix hard coding
+        printf("  ret\n");
         return;
     case ND_LVAR:
         gen_lval(node);
