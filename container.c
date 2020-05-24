@@ -2,7 +2,7 @@
 
 int INITIAL_VECTOR_SIZE = 32;
 
-Vector *create_vector() {
+Vector *create_vec() {
     Vector *vec = malloc(sizeof(Vector));
     vec->data = malloc(sizeof(void *) * INITIAL_VECTOR_SIZE);
     vec->capacity = INITIAL_VECTOR_SIZE;
@@ -20,8 +20,8 @@ void add_elem_to_vec(Vector *vec, void *elem) {
 
 Map *create_map() {
     Map *map = malloc(sizeof(Map));
-    map->keys = create_vector();
-    map->vals = create_vector();
+    map->keys = create_vec();
+    map->vals = create_vec();
     map->len = 0;
     return map;
 }

@@ -24,7 +24,7 @@ typedef struct {
     int len;
 } Vector;
 
-Vector *create_vector();
+Vector *create_vec();
 void add_elem_to_vec(Vector *vec, void *elem);
 
 typedef struct {
@@ -56,21 +56,12 @@ typedef struct Token Token;
 
 struct Token {
     TokenKind kind;
-    Token *next;
     int val;
     char *str;
     char *loc;
 };
 
-void tokenize();
-bool consume(char *op);
-bool consume_stmt(TokenKind kind);
-Token *consume_ident();
-void expect(char *op);
-int expect_number();
-bool at_eof();
-
-extern Token *token;
+Vector *tokenize();
 
 /**
  * parse.c

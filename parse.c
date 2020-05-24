@@ -1,6 +1,56 @@
 #include "9cc.h"
 
+Vector *tokens;
+int pos;
 Map *locals;
+
+bool consume(char *op) {
+    Token *token = tokens->data[pos];
+    if (token->kind != TK_RESERVED || strcmp(token->str, op) != 0) {
+        return false;
+    }
+    pos++;
+    return true;
+}
+
+bool consume_stmt(TokenKind kind) {
+    Token *token = tokens->data[pos];
+    if (token->kind != kind)
+        return false;
+    pos++;
+    return true;
+}
+
+Token *consume_ident() {
+    Token *token = tokens->data[pos];
+    if (token->kind != TK_IDENT)
+        return NULL;
+    Token *current_token = token;
+    pos++;
+    return current_token;
+}
+
+void expect(char *op) {
+    Token *token = tokens->data[pos];
+    if(token->kind != TK_RESERVED || strcmp(token->str, op) != 0) {
+        error_at(token->str, "Expected '%s'");
+    }
+    pos++;
+}
+
+int expect_number() {
+    Token *token = tokens->data[pos];
+    if (token->kind !=TK_NUM)
+        error_at(token->str, "Expected a number");
+    int val = token->val;
+    pos++;
+    return val;
+}
+
+bool at_eof() {
+    Token *token = tokens->data[pos];
+    return token->kind == TK_EOF;
+}
 
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
     Node *node = calloc(1, sizeof(Node));
@@ -17,22 +67,12 @@ Node *new_node_num(int val) {
     return node;
 }
 
-Vector *parse() {
-    Vector *code = create_vector();
-    locals = create_map();
-    int i = 0;
-    while (!at_eof()) {
-        add_elem_to_vec(code, stmt());
-    }
-    return code;
-}
-
 Node *stmt() {
     Node *node;
     if (consume("{")) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_BLOCK;
-        node->stmts = create_vector();
+        node->stmts = create_vec();
         while(!consume("}"))
             add_elem_to_vec(node->stmts, (void *) stmt());
         return node;
@@ -162,7 +202,7 @@ Node *primary() {
         Node *node = calloc(1, sizeof(Node));
         if (consume("(")) {
             node->kind = ND_FUNC_CALL;
-            node->args = create_vector();
+            node->args = create_vec();
             for(;;) {
                 if (consume(")")) {
                     break;
@@ -191,4 +231,17 @@ Node *primary() {
         return node;
     }
     return new_node_num(expect_number());
+}
+
+Vector *parse(Vector *tokens_) {
+    tokens = tokens_;
+    pos = 0;
+    
+    Vector *code = create_vec();
+    locals = create_map();
+    int i = 0;
+    while (!at_eof()) {
+        add_elem_to_vec(code, stmt());
+    }
+    return code;
 }

@@ -13,10 +13,10 @@ int main(int argc, char **argv) {
     user_input = argv[1];
 
     // tokenize user input
-    tokenize();
+    Vector *tokens = tokenize();
 
     // construct an abstract syntax tree
-    Vector *code = parse();
+    Vector *code = parse(tokens);
 
     // header
     printf(".intel_syntax noprefix\n");
