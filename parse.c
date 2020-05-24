@@ -33,7 +33,7 @@ Node *stmt() {
         node->kind = ND_BLOCK;
         node->stmts = create_vector();
         while(!consume("}"))
-            push(node->stmts, (void *) stmt());
+            add_elem_to_vec(node->stmts, (void *) stmt());
         return node;
     } else if (consume_stmt(TK_RETURN)) {
         node = calloc(1, sizeof(Node));
@@ -167,7 +167,7 @@ Node *primary() {
                     break;
                 }
                 Node *arg = expr();
-                push(node->args, arg);
+                add_elem_to_vec(node->args, arg);
                 consume(",");
             }
         } else {

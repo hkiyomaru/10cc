@@ -25,7 +25,17 @@ typedef struct {
 } Vector;
 
 Vector *create_vector();
-void push(Vector *vec, void *elem);
+void add_elem_to_vec(Vector *vec, void *elem);
+
+typedef struct {
+    Vector *keys;
+    Vector *vals;
+    int len;
+} Map;
+
+Map *create_map();
+void add_elem_to_map(Map *map, char *key, void *val);
+void *get_elem_from_map(Map *map, char *key);
 
 /**
  * tokenize.c
