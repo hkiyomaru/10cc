@@ -16,7 +16,7 @@ int main(int argc, char **argv) {
     tokenize();
 
     // construct an abstract syntax tree
-    parse();
+    Vector *code = parse();
 
     // header
     printf(".intel_syntax noprefix\n");
@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
     printf("  sub rsp, %d\n", (locals->len) * 8);  // offset
     
     // generated program code
-    translate();
+    translate(code);
 
     // epilogue
     printf("  mov rsp, rbp\n");

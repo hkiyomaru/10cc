@@ -124,7 +124,7 @@ struct LVar {
     int offset;
 };
 
-void parse();
+Vector *parse();
 Node *stmt();
 Node *expr();
 Node *assign();
@@ -135,7 +135,6 @@ Node *mul();
 Node *unary();
 Node *primary();
 
-extern Node *code[];
 extern Map *locals;
 
 /**

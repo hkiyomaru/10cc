@@ -138,9 +138,9 @@ void gen(Node *node) {
     printf("  push rax\n");
 }
 
-void translate() {
-    for (int i = 0; code[i]; i++) {
-        gen(code[i]);
+void translate(Vector *code) {
+    for (int i = 0; i < code->len; i++) {
+        gen(code->data[i]);
         printf("  pop rax\n");
     }
 }

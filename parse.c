@@ -1,6 +1,5 @@
 #include "9cc.h"
 
-Node *code[128];
 Map *locals;
 
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
@@ -18,12 +17,14 @@ Node *new_node_num(int val) {
     return node;
 }
 
-void parse() {
+Vector *parse() {
+    Vector *code = create_vector();
     locals = create_map();
     int i = 0;
-    while (!at_eof())
-        code[i++] = stmt();
-    code[i] = NULL;
+    while (!at_eof()) {
+        add_elem_to_vec(code, stmt());
+    }
+    return code;
 }
 
 Node *stmt() {
