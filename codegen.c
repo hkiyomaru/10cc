@@ -139,8 +139,24 @@ void gen(Node *node) {
 }
 
 void translate(Vector *code) {
+    // header
+    printf(".intel_syntax noprefix\n");
+    printf(".global main\n");
+    printf("main:\n");
+    
+    // prologue
+    printf("  push rbp\n");
+    printf("  mov rbp, rsp\n");
+    printf("  sub rsp, %d\n", (locals->len) * 8);  // offset
+    
+    // generate code
     for (int i = 0; i < code->len; i++) {
         gen(code->data[i]);
         printf("  pop rax\n");
     }
+
+    // epilogue
+    printf("  mov rsp, rbp\n");
+    printf("  pop rbp\n");
+    printf("  ret\n");
 }

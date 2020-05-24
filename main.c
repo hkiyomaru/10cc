@@ -17,23 +17,8 @@ int main(int argc, char **argv) {
 
     // construct an abstract syntax tree
     Vector *code = parse(tokens);
-
-    // header
-    printf(".intel_syntax noprefix\n");
-    printf(".global main\n");
-    printf("main:\n");
     
-    // prologue
-    printf("  push rbp\n");
-    printf("  mov rbp, rsp\n");
-    printf("  sub rsp, %d\n", (locals->len) * 8);  // offset
-    
-    // generated program code
+    // generate code
     translate(code);
-
-    // epilogue
-    printf("  mov rsp, rbp\n");
-    printf("  pop rbp\n");
-    printf("  ret\n");
     return 0;
 }
