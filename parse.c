@@ -28,11 +28,11 @@ void parse() {
 
 Node *stmt() {
     Node *node;
-    if (consume_op("{")) {
+    if (consume("{")) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_BLOCK;
         node->stmts = create_vector();
-        while(!consume_op("}"))
+        while(!consume("}"))
             push(node->stmts, (void *) stmt());
         return node;
     } else if (consume_stmt(TK_RETURN)) {
@@ -42,9 +42,9 @@ Node *stmt() {
     } else if (consume_stmt(TK_IF)) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_IF;
-        expect_op("(");
+        expect("(");
         node->cond = expr();
-        expect_op(")");
+        expect(")");
         node->then = stmt();
         if (consume_stmt(TK_ELSE))
             node->els = stmt();
@@ -52,33 +52,33 @@ Node *stmt() {
     } else if (consume_stmt(TK_WHILE)) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_WHILE;
-        expect_op("(");
+        expect("(");
         node->cond = expr();
-        expect_op(")");
+        expect(")");
         node->then = stmt();
         return node;
     } else if (consume_stmt(TK_FOR)) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_FOR;
-        expect_op("(");
-        if (!consume_op(";")) {
+        expect("(");
+        if (!consume(";")) {
             node->init = expr();
-            expect_op(";");
+            expect(";");
         }
-        if (!consume_op(";")) {
+        if (!consume(";")) {
             node->cond = expr();
-            expect_op(";");
+            expect(";");
         }
-        if (!consume_op(";")) {
+        if (!consume(";")) {
             node->upd = expr();
         }
-        expect_op(")");
+        expect(")");
         node->then = stmt();
         return node;
     } else {
         node = expr();
     }
-    expect_op(";");
+    expect(";");
     return node;
 }
 
@@ -88,16 +88,16 @@ Node *expr() {
 
 Node *assign() {
     Node *node = equality();
-    if (consume_op("="))
+    if (consume("="))
         node = new_node(ND_ASSIGN, node, assign());
     return node;
 }
 
 Node *equality() {
     Node *node = relational();
-    if (consume_op("==")) {
+    if (consume("==")) {
         node = new_node(ND_EQ, node, relational());
-    } else if (consume_op("!=")) {
+    } else if (consume("!=")) {
         node = new_node(ND_NE, node, relational());
     } else {
         return node;
@@ -106,13 +106,13 @@ Node *equality() {
 
 Node *relational() {
     Node *node = add();
-    if (consume_op("<=")) {
+    if (consume("<=")) {
         return new_node(ND_LE, node, add());
-    } else if (consume_op(">=")) {
+    } else if (consume(">=")) {
         return new_node(ND_LE, add(), node);
-    } else if (consume_op("<")) {
+    } else if (consume("<")) {
         return new_node(ND_LT, node, add());
-    } else if (consume_op(">")) {
+    } else if (consume(">")) {
         return new_node(ND_LT, add(), node);
     } else {
         return node;
@@ -122,9 +122,9 @@ Node *relational() {
 Node *add() {
     Node *node = mul();
     for (;;) {
-        if (consume_op("+")) {
+        if (consume("+")) {
             node = new_node(ND_ADD, node, mul());
-        } else if (consume_op("-")) {
+        } else if (consume("-")) {
             node = new_node(ND_SUB, node, mul());
         } else {
             return node;
@@ -135,9 +135,9 @@ Node *add() {
 Node *mul() {
     Node *node = unary();
     for (;;) {
-        if (consume_op("*")) {
+        if (consume("*")) {
             node = new_node(ND_MUL, node, unary());
-        } else if (consume_op("/")) {
+        } else if (consume("/")) {
             node = new_node(ND_DIV, node, unary());
         } else {
             return node;
@@ -146,9 +146,9 @@ Node *mul() {
 }
 
 Node *unary() {
-    if (consume_op("+")) {
+    if (consume("+")) {
         return primary();
-    } else if (consume_op("-")) {
+    } else if (consume("-")) {
         return new_node(ND_SUB, new_node_num(0), primary());
     } else {
         return primary();
@@ -159,16 +159,16 @@ Node *primary() {
     Token *tok = consume_ident();
     if (tok) {
         Node *node = calloc(1, sizeof(Node));
-        if (consume_op("(")) {
+        if (consume("(")) {
             node->kind = ND_FUNC_CALL;
             node->args = create_vector();
             for(;;) {
-                if (consume_op(")")) {
+                if (consume(")")) {
                     break;
                 }
                 Node *arg = expr();
                 push(node->args, arg);
-                consume_op(",");
+                consume(",");
             }
         } else {
             node->kind = ND_LVAR;
@@ -187,9 +187,9 @@ Node *primary() {
         }
         return node;
     }
-    if (consume_op("(")) {
+    if (consume("(")) {
         Node *node = expr();
-        expect_op(")");
+        expect(")");
         return node;
     }
     return new_node_num(expect_number());

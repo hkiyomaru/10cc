@@ -53,10 +53,10 @@ struct Token {
 };
 
 void tokenize();
-bool consume_op(char *op);
+bool consume(char *op);
 bool consume_stmt(TokenKind kind);
 Token *consume_ident();
-void expect_op(char *op);
+void expect(char *op);
 int expect_number();
 bool at_eof();
 
@@ -136,4 +136,4 @@ extern LVar *locals;
 /**
  * codegen.c
  */
-void gen();
+void translate();

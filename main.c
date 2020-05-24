@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
     printf("  sub rsp, %d\n", locals->offset);
     
     // generated program code
-    gen();
+    translate();
 
     // epilogue
     printf("  mov rsp, rbp\n");

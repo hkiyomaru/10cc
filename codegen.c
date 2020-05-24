@@ -13,7 +13,7 @@ void gen_lval(Node *node) {
     printf("  push rax\n");
 }
 
-void gen_stmt(Node *node) {
+void gen(Node *node) {
     int cur_label_id;
     switch (node->kind) {
     case ND_NUM:
@@ -21,7 +21,7 @@ void gen_stmt(Node *node) {
         return;
     case ND_FUNC_CALL:
         for (int i = 0; i < node->args->len; i++) {
-            gen_stmt(node->args->data[i]);
+            gen(node->args->data[i]);
         }
         for (int i = node->args->len - 1; 0 <= i; i--) {
             printf("  pop %s\n", argregs[i]);  // 0 origin
@@ -37,14 +37,14 @@ void gen_stmt(Node *node) {
         return;
     case ND_ASSIGN:
         gen_lval(node->lhs);
-        gen_stmt(node->rhs);
+        gen(node->rhs);
         printf("  pop rdi\n");
         printf("  pop rax\n");
         printf("  mov [rax], rdi\n");
         printf("  push rdi\n");
         return;
     case ND_RETURN:
-        gen_stmt(node->lhs);
+        gen(node->lhs);
         printf("  pop rax\n");
         printf("  mov rsp, rbp\n");
         printf("  pop rbp\n");
@@ -52,52 +52,52 @@ void gen_stmt(Node *node) {
         return;
     case ND_IF:
         cur_label_id = label_id++;
-        gen_stmt(node->cond);
+        gen(node->cond);
         printf("  pop rax\n");
         printf("  cmp rax, 0\n");
         if (node->els) {
             printf("  je .Lelse%03d\n", cur_label_id);
-            gen_stmt(node->then);
+            gen(node->then);
             printf("  jmp .Lend%03d\n", cur_label_id);
             printf(".Lelse%03d:\n", cur_label_id);
-            gen_stmt(node->els);
+            gen(node->els);
         } else {
             printf("  je .Lend%03d\n", cur_label_id);
-            gen_stmt(node->then);
+            gen(node->then);
         }
         printf(".Lend%03d:\n", cur_label_id);
         return;
     case ND_WHILE:
         cur_label_id = label_id++;
         printf(".Lbegin%03d:\n", cur_label_id);
-        gen_stmt(node->cond);
+        gen(node->cond);
         printf("  pop rax\n");
         printf("  cmp rax, 0\n");
         printf("  je .Lend%03d\n", cur_label_id);
-        gen_stmt(node->then);
+        gen(node->then);
         printf("  jmp .Lbegin%03d\n", cur_label_id);
         printf(".Lend%03d:\n", cur_label_id);
         return;
     case ND_FOR:
         cur_label_id = label_id++;
-        gen_stmt(node->init);
+        gen(node->init);
         printf(".Lbegin%03d:\n", cur_label_id);
-        gen_stmt(node->cond);
+        gen(node->cond);
         printf("  pop rax\n");
         printf("  cmp rax, 0\n");
         printf("  je .Lend%03d\n", cur_label_id);
-        gen_stmt(node->then);
-        gen_stmt(node->upd);
+        gen(node->then);
+        gen(node->upd);
         printf("  jmp .Lbegin%03d\n", cur_label_id);
         printf(".Lend%03d:\n", cur_label_id);
         return;
     case ND_BLOCK:
         for (int i = 0; i < node->stmts->len; i++)
-            gen_stmt(node->stmts->data[i]);
+            gen(node->stmts->data[i]);
         return;
     }
-    gen_stmt(node->lhs);
-    gen_stmt(node->rhs);
+    gen(node->lhs);
+    gen(node->rhs);
     printf("  pop rdi\n");
     printf("  pop rax\n");
     switch (node->kind) {
@@ -138,9 +138,9 @@ void gen_stmt(Node *node) {
     printf("  push rax\n");
 }
 
-void gen() {
+void translate() {
     for (int i = 0; code[i]; i++) {
-        gen_stmt(code[i]);
+        gen(code[i]);
         printf("  pop rax\n");
     }
 }

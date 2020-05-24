@@ -87,7 +87,7 @@ void tokenize() {
     token = head.next;
 }
 
-bool consume_op(char *op) {
+bool consume(char *op) {
     if (token->kind != TK_RESERVED || 
         strlen(op) != token->len ||
         memcmp(token->str, op, token->len) != 0) {
@@ -112,7 +112,7 @@ Token *consume_ident() {
     return current_token;
 }
 
-void expect_op(char *op) {
+void expect(char *op) {
     if(token->kind != TK_RESERVED ||
        strlen(op) != token->len ||
        memcmp(token->str, op, token->len) != 0) {
