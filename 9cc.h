@@ -59,7 +59,7 @@ struct Token {
     Token *next;
     int val;
     char *str;
-    int len;
+    char *loc;
 };
 
 void tokenize();
@@ -121,9 +121,6 @@ struct Node {
 typedef struct LVar LVar;
 
 struct LVar {
-    LVar *next;
-    char *name;
-    int len;
     int offset;
 };
 
@@ -138,10 +135,8 @@ Node *mul();
 Node *unary();
 Node *primary();
 
-LVar *find_lvar(Token *tok);
-
 extern Node *code[];
-extern LVar *locals;
+extern Map *locals;
 
 /**
  * codegen.c

@@ -4,9 +4,14 @@ Token *token;
 
 Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
     Token *tok = calloc(1, sizeof(Token));
+    
+    char *str_sliced = calloc(len + 1, sizeof(char));
+    strncpy(str_sliced, str, len);
+    str_sliced[len] = '\0';
+    
     tok->kind = kind;
-    tok->str = str;
-    tok->len = len;
+    tok->str = str_sliced;
+    tok->loc = str;
     cur->next = tok;
     return tok;
 }
@@ -88,9 +93,7 @@ void tokenize() {
 }
 
 bool consume(char *op) {
-    if (token->kind != TK_RESERVED || 
-        strlen(op) != token->len ||
-        memcmp(token->str, op, token->len) != 0) {
+    if (token->kind != TK_RESERVED || strcmp(token->str, op) != 0) {
         return false;
     }
     token = token->next;
@@ -113,9 +116,7 @@ Token *consume_ident() {
 }
 
 void expect(char *op) {
-    if(token->kind != TK_RESERVED ||
-       strlen(op) != token->len ||
-       memcmp(token->str, op, token->len) != 0) {
+    if(token->kind != TK_RESERVED || strcmp(token->str, op) != 0) {
         error_at(token->str, "Expected '%s'");
     }
     token = token->next;
