@@ -1,9 +1,12 @@
 #include "9cc.h"
 
+void usage() {
+    error("Usage: ./9cc <program>");
+}
+
 int main(int argc, char **argv) {
-    if(argc != 2) {
-        fprintf(stderr, "%s: invalid number of arguments\n", argv[0]);
-        return 1;
+    if(argc == 1) {
+        usage();
     }
 
     // make user input accessible
