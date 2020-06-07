@@ -1,14 +1,13 @@
 #include "9cc.h"
 
 Vector *tokens;
+Function *fn;
 int pos;
-Map *locals;
 
 bool consume(char *op) {
     Token *token = tokens->data[pos];
-    if (token->kind != TK_RESERVED || strcmp(token->str, op) != 0) {
+    if (token->kind != TK_RESERVED || strcmp(token->str, op) != 0)
         return false;
-    }
     pos++;
     return true;
 }
@@ -32,9 +31,8 @@ Token *consume_ident() {
 
 void expect(char *op) {
     Token *token = tokens->data[pos];
-    if(token->kind != TK_RESERVED || strcmp(token->str, op) != 0) {
+    if(token->kind != TK_RESERVED || strcmp(token->str, op) != 0)
         error_at(token->str, "Expected '%s'");
-    }
     pos++;
 }
 
@@ -65,6 +63,39 @@ Node *new_node_num(int val) {
     node->kind = ND_NUM;
     node->val = val;
     return node;
+}
+
+Function *func() {
+    fn = calloc(1, sizeof(Function));
+    Token *tok = consume_ident();
+    if (!tok) {
+        Token *tok = tokens->data[pos];
+        error_at(tok->loc, "Invalid function identifier");
+    }
+    fn->name = tok->str;
+    fn->args = create_vec();
+    fn->lvars = create_map();
+    expect("(");
+    while (!consume(")")) {
+        Token *tok = consume_ident();
+        if (!tok) {
+            Token *tok = tokens->data[pos];
+            error_at(tok->loc, "Invalid function identifier");
+        }
+        LVar *arg = get_elem_from_map(fn->lvars, tok->str);
+        if (arg)
+            error_at(tok->loc, "Invalid function identifier");
+        arg = calloc(1, sizeof(LVar));
+        arg->offset = (fn->lvars->len + 1) * 8;
+        add_elem_to_vec(fn->args, arg);
+        add_elem_to_map(fn->lvars, tok->str, arg);
+        consume(",");
+    }
+    expect("{");
+    fn->body = create_vec();
+    while (!consume("}"))
+        add_elem_to_vec(fn->body, stmt());
+    return fn;
 }
 
 Node *stmt() {
@@ -202,25 +233,23 @@ Node *primary() {
         Node *node = calloc(1, sizeof(Node));
         if (consume("(")) {
             node->kind = ND_FUNC_CALL;
+            node->name = tok->str;
             node->args = create_vec();
-            for(;;) {
-                if (consume(")")) {
-                    break;
-                }
+            while (!consume(")")) {
                 Node *arg = expr();
                 add_elem_to_vec(node->args, arg);
                 consume(",");
             }
         } else {
             node->kind = ND_LVAR;
-            LVar *lvar = get_elem_from_map(locals, tok->str);
+            LVar *lvar = get_elem_from_map(fn->lvars, tok->str);
             if (lvar) {
                 node->offset = lvar->offset;
             } else {
                 lvar = calloc(1, sizeof(LVar));
-                lvar->offset = (locals->len + 1) * 8;
+                lvar->offset = (fn->lvars->len + 1) * 8;
                 node->offset = lvar->offset;
-                add_elem_to_map(locals, tok->str, lvar);
+                add_elem_to_map(fn->lvars, tok->str, lvar);
             }
         }
         return node;
@@ -236,12 +265,8 @@ Node *primary() {
 Vector *parse(Vector *tokens_) {
     tokens = tokens_;
     pos = 0;
-    
     Vector *code = create_vec();
-    locals = create_map();
-    int i = 0;
-    while (!at_eof()) {
-        add_elem_to_vec(code, stmt());
-    }
+    while (!at_eof())
+        add_elem_to_vec(code, func());
     return code;
 }

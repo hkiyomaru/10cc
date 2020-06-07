@@ -90,6 +90,7 @@ typedef enum {
 typedef struct Node Node;
 
 struct Node {
+    char *name;
     NodeKind kind;
     
     int val;
@@ -114,6 +115,13 @@ typedef struct LVar LVar;
 struct LVar {
     int offset;
 };
+
+typedef struct {
+    char *name;
+    Map *lvars;
+    Vector *args;
+    Vector *body;
+} Function;
 
 Vector *parse();
 Node *stmt();

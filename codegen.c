@@ -26,8 +26,8 @@ void gen(Node *node) {
         for (int i = node->args->len - 1; 0 <= i; i--) {
             printf("  pop %s\n", argregs[i]);  // 0 origin
         }
-        printf("  call foo\n");  // TODO: fix hard coding
-        printf("  ret\n");
+        printf("  call %s\n", node->name);
+        printf("  push rax\n");
         return;
     case ND_LVAR:
         gen_lval(node);
@@ -138,25 +138,33 @@ void gen(Node *node) {
     printf("  push rax\n");
 }
 
-void translate(Vector *code) {
+void gen_func(Function *fn) {
     // header
-    printf(".intel_syntax noprefix\n");
-    printf(".global main\n");
-    printf("main:\n");
-    
+    printf(".global %s\n", fn->name);
+    printf("\n%s:\n", fn->name);
+
     // prologue
     printf("  push rbp\n");
     printf("  mov rbp, rsp\n");
-    printf("  sub rsp, %d\n", (locals->len) * 8);  // offset
-    
-    // generate code
-    for (int i = 0; i < code->len; i++) {
-        gen(code->data[i]);
-        printf("  pop rax\n");
+    printf("  sub rsp, %d\n", fn->lvars->len * 8);
+
+    // load argument values
+    for (int i = 0; i < fn->args->len; i++) {
+        printf("  mov rax, rbp\n");
+        LVar *arg = fn->args->data[i];
+        printf("  sub rax, %d\n", arg->offset);
+        printf("  mov [rax], %s\n", argregs[i]);
     }
 
-    // epilogue
-    printf("  mov rsp, rbp\n");
-    printf("  pop rbp\n");
-    printf("  ret\n");
+    // emit codes
+    for (int i = 0; i < fn->body->len; i++) {
+        gen(fn->body->data[i]);
+        printf("  pop rax\n");
+    }
+}
+
+void translate(Vector *code) {
+    printf(".intel_syntax noprefix\n");
+    for (int i = 0; i < code->len; i++)
+        gen_func(code->data[i]);
 }
