@@ -24,15 +24,15 @@ typedef struct {
     int len;
 } Vector;
 
-Vector *create_vec();
-void add_elem_to_vec(Vector *vec, void *elem);
-
 typedef struct {
     Vector *keys;
     Vector *vals;
     int len;
 } Map;
 
+Vector *create_vec();
+void add_elem_to_vec(Vector *vec, void *elem);
+void *get_elem_from_vec(Vector *vec, int key);
 Map *create_map();
 void add_elem_to_map(Map *map, char *key, void *val);
 void *get_elem_from_map(Map *map, char *key);
@@ -52,14 +52,12 @@ typedef enum {
     TK_EOF,       // indicates EOF
 } TokenKind;
 
-typedef struct Token Token;
-
-struct Token {
+typedef struct {
     TokenKind kind;
     int val;
     char *str;
     char *loc;
-};
+} Token;
 
 Vector *tokenize();
 
@@ -110,11 +108,9 @@ struct Node {
     int offset;
 };
 
-typedef struct LVar LVar;
-
-struct LVar {
+typedef struct {
     int offset;
-};
+} LVar;
 
 typedef struct {
     char *name;
@@ -124,17 +120,6 @@ typedef struct {
 } Function;
 
 Vector *parse();
-Node *stmt();
-Node *expr();
-Node *assign();
-Node *equality();
-Node *relational();
-Node *add();
-Node *mul();
-Node *unary();
-Node *primary();
-
-extern Map *locals;
 
 /**
  * codegen.c

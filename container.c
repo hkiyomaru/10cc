@@ -18,6 +18,12 @@ void add_elem_to_vec(Vector *vec, void *elem) {
     vec->data[vec->len++] = elem;
 }
 
+void *get_elem_from_vec(Vector *vec, int key) {
+    if (vec->len <= key)
+        error("IndexError: vector index out of range");
+    return vec->data[key];
+}
+
 Map *create_map() {
     Map *map = malloc(sizeof(Map));
     map->keys = create_vec();
@@ -28,8 +34,9 @@ Map *create_map() {
 
 void add_elem_to_map(Map *map, char *key, void *val) {
     for (int i=0; i<map->len; i++) {
-        if (strcmp(map->keys->data[i], key) == 0) {
-            map->vals->data[i] = val;
+        if (strcmp(get_elem_from_vec(map->keys, i), key) == 0) {
+            void *old_val = get_elem_from_vec(map->vals, i);
+            old_val = val;
             return;
         }
     }
@@ -40,9 +47,8 @@ void add_elem_to_map(Map *map, char *key, void *val) {
 
 void *get_elem_from_map(Map *map, char *key) {
     for (int i=0; i<map->len; i++) {
-        if (strcmp(map->keys->data[i], key) == 0) {
-            return map->vals->data[i];
-        }
+        if (strcmp(get_elem_from_vec(map->keys, i), key) == 0)
+            return get_elem_from_vec(map->vals, i);
     }
     return NULL;
 }

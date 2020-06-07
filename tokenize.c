@@ -56,9 +56,8 @@ Vector *tokenize() {
 
         if (isalpha(*p) || *p == '_') {
             int len = 1;
-            while(isalnumus(p[len])) {
+            while(isalnumus(p[len]))
                 len++;
-            }
             add_elem_to_vec(tokens, new_token(TK_IDENT, p, len));
             p += len;
             continue;

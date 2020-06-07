@@ -4,8 +4,18 @@ Vector *tokens;
 Function *fn;
 int pos;
 
+Node *stmt();
+Node *expr();
+Node *assign();
+Node *equality();
+Node *relational();
+Node *add();
+Node *mul();
+Node *unary();
+Node *primary();
+
 bool consume(char *op) {
-    Token *token = tokens->data[pos];
+    Token *token = get_elem_from_vec(tokens, pos);
     if (token->kind != TK_RESERVED || strcmp(token->str, op) != 0)
         return false;
     pos++;
@@ -13,7 +23,7 @@ bool consume(char *op) {
 }
 
 bool consume_stmt(TokenKind kind) {
-    Token *token = tokens->data[pos];
+    Token *token = get_elem_from_vec(tokens, pos);
     if (token->kind != kind)
         return false;
     pos++;
@@ -21,7 +31,7 @@ bool consume_stmt(TokenKind kind) {
 }
 
 Token *consume_ident() {
-    Token *token = tokens->data[pos];
+    Token *token = get_elem_from_vec(tokens, pos);
     if (token->kind != TK_IDENT)
         return NULL;
     Token *current_token = token;
@@ -30,14 +40,14 @@ Token *consume_ident() {
 }
 
 void expect(char *op) {
-    Token *token = tokens->data[pos];
+    Token *token = get_elem_from_vec(tokens, pos);
     if(token->kind != TK_RESERVED || strcmp(token->str, op) != 0)
         error_at(token->str, "Expected '%s'");
     pos++;
 }
 
 int expect_number() {
-    Token *token = tokens->data[pos];
+    Token *token = get_elem_from_vec(tokens, pos);
     if (token->kind !=TK_NUM)
         error_at(token->str, "Expected a number");
     int val = token->val;
@@ -46,7 +56,7 @@ int expect_number() {
 }
 
 bool at_eof() {
-    Token *token = tokens->data[pos];
+    Token *token = get_elem_from_vec(tokens, pos);
     return token->kind == TK_EOF;
 }
 
@@ -69,7 +79,7 @@ Function *func() {
     fn = calloc(1, sizeof(Function));
     Token *tok = consume_ident();
     if (!tok) {
-        Token *tok = tokens->data[pos];
+        Token *tok = get_elem_from_vec(tokens, pos);
         error_at(tok->loc, "Invalid function identifier");
     }
     fn->name = tok->str;
@@ -79,7 +89,7 @@ Function *func() {
     while (!consume(")")) {
         Token *tok = consume_ident();
         if (!tok) {
-            Token *tok = tokens->data[pos];
+            Token *tok = get_elem_from_vec(tokens, pos);
             error_at(tok->loc, "Invalid function identifier");
         }
         LVar *arg = get_elem_from_map(fn->lvars, tok->str);
