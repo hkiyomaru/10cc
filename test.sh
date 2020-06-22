@@ -1,4 +1,7 @@
 #!/bin/bash
+
+set -u
+
 assert() {
     expected="$1"
     input="$2"
@@ -9,9 +12,9 @@ assert() {
     actual="$?"
 
     if [[ "$actual" = "$expected" ]]; then
-        echo "[PASSED] $input => $actual"
+        echo -e "\033[32m[PASSED]\033[m $input => $actual"
     else
-        echo "[FAILED] $input => $expected expected, but got $actual"
+        echo -e "\033[31m[FAILED]\033[m $input => $expected expected, but got $actual"
     fi
 }
 
