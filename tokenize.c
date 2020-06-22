@@ -54,6 +54,18 @@ Vector *tokenize() {
             continue;
         }
 
+        if (strncmp(p, "int", 3) == 0 && !isalnumus(p[3])) {
+            add_elem_to_vec(tokens, new_token(TK_INT, p, 3));
+            p += 3;
+            continue;
+        }
+
+        if (strncmp(p, "sizeof", 6) == 0 && !isalnumus(p[6])) {
+            add_elem_to_vec(tokens, new_token(TK_SIZEOF, p, 6));
+            p += 6;
+            continue;
+        }
+
         if (isalpha(*p) || *p == '_') {
             int len = 1;
             while(isalnumus(p[len]))
@@ -72,7 +84,7 @@ Vector *tokenize() {
             continue;
         }
 
-        if (strchr("+-*/()<>=;{},", *p)) {
+        if (strchr("+-*/()<>=;{},&", *p)) {
             add_elem_to_vec(tokens, new_token(TK_RESERVED, p, 1));
             p++;
             continue;

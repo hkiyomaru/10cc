@@ -93,6 +93,15 @@ void gen(Node *node) {
         for (int i = 0; i < node->stmts->len; i++)
             gen(get_elem_from_vec(node->stmts, i));
         return;
+    case ND_ADDR:
+        gen_lval(node->lhs);
+        return;
+    case ND_DEREF:
+        gen(node->lhs);
+        printf("  pop rax\n");
+        printf("  mov rax, [rax]\n");
+        printf("  push rax\n");
+        return;
     }
     gen(node->lhs);
     gen(node->rhs);
@@ -149,7 +158,7 @@ void gen_func(Function *fn) {
     // load argument values
     for (int i = 0; i < fn->args->len; i++) {
         printf("  mov rax, rbp\n");
-        LVar *arg = get_elem_from_vec(fn->args, i);
+        Node *arg = get_elem_from_vec(fn->args, i);
         printf("  sub rax, %d\n", arg->offset);
         printf("  mov [rax], %s\n", argregs[i]);
     }

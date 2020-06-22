@@ -41,15 +41,17 @@ void *get_elem_from_map(Map *map, char *key);
  * tokenize.c
  */
 typedef enum {
-    TK_RESERVED,  // indicates '+', '-', and so on
-    TK_IDENT,     // indicates an identifier
-    TK_NUM,       // indicates a number
-    TK_RETURN,    // indicates 'return'
-    TK_IF,        // indicates if'
-    TK_ELSE,      // indicates 'else'
-    TK_WHILE,     // indicates 'while'
-    TK_FOR,       // indicates 'for'
-    TK_EOF,       // indicates EOF
+    TK_RESERVED,  // '+', '-', and so on
+    TK_IDENT,     // identifier
+    TK_NUM,       // number
+    TK_RETURN,    // return
+    TK_IF,        // if
+    TK_ELSE,      // else
+    TK_WHILE,     // while
+    TK_FOR,       // for
+    TK_EOF,       // EOF
+    TK_INT,       // int
+    TK_SIZEOF     // sizeof
 } TokenKind;
 
 typedef struct {
@@ -59,30 +61,40 @@ typedef struct {
     char *loc;
 } Token;
 
+struct Type {
+    enum {INT, PTR} ty;
+    int size;  // INT: 4, PTR: 8
+    struct Type *ptr_to;
+};
+
+typedef struct Type Type;
+
 Vector *tokenize();
 
 /**
  * parse.c
  */
 typedef enum {
-    ND_ADD,        // indicates +
-    ND_SUB,        // indicates -
-    ND_MUL,        // indicates *
-    ND_DIV,        // indicates 
-    ND_EQ,         // indicates ==
-    ND_NE,         // indicates ==
-    ND_LE,         // indicates <=
-    ND_LT,         // indicates <
-    ND_ASSIGN,     // indicates =
-    ND_NUM,        // indicates a number
-    ND_LVAR,       // indicates a local variable
-    ND_RETURN,     // indicates 'return'
-    ND_IF,         // indicates 'if'
-    ND_ELSE,       // indicates 'else'
-    ND_WHILE,      // indicates 'while'
-    ND_FOR,        // indicates 'for'
-    ND_FUNC_CALL,  // indicates a function call
-    ND_BLOCK,      // indicates a block
+    ND_ADD,        // +
+    ND_SUB,        // -
+    ND_MUL,        // *
+    ND_DIV,        // /
+    ND_EQ,         // ==
+    ND_NE,         // ==
+    ND_LE,         // <=
+    ND_LT,         // <
+    ND_ASSIGN,     // =
+    ND_NUM,        // number
+    ND_LVAR,       // local variable
+    ND_RETURN,     // return
+    ND_IF,         // if
+    ND_ELSE,       // else
+    ND_WHILE,      // while
+    ND_FOR,        // for
+    ND_FUNC_CALL,  // function call
+    ND_BLOCK,      // block
+    ND_ADDR,       // &
+    ND_DEREF,      // *
 } NodeKind;
 
 typedef struct Node Node;
@@ -91,6 +103,7 @@ struct Node {
     char *name;
     NodeKind kind;
     
+    Type *ty;
     int val;
 
     Node *lhs;
@@ -109,14 +122,11 @@ struct Node {
 };
 
 typedef struct {
-    int offset;
-} LVar;
-
-typedef struct {
     char *name;
     Map *lvars;
     Vector *args;
     Vector *body;
+    Type *rty;
 } Function;
 
 Vector *parse();
