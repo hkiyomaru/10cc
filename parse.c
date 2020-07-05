@@ -85,6 +85,7 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
         case ND_ADDR:
             node->ty = calloc(1, sizeof(Type));
             node->ty->ty = PTR;
+            node->ty->size = 8;
             node->ty->ptr_to = lhs->ty;
             break;
         default:
