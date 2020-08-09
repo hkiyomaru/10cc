@@ -15,6 +15,14 @@ Node *mul();
 Node *unary();
 Node *primary();
 
+Type *ptr_to(Type *base) {
+    Type *ty = calloc(1, sizeof(Type));
+    ty->ty = PTR;
+    ty->size = 8;
+    ty->ptr_to = base;
+    return ty;
+}
+
 bool consume(char *op) {
     Token *token = get_elem_from_vec(tokens, pos);
     if (token->kind != TK_RESERVED || strcmp(token->str, op) != 0) {
@@ -83,10 +91,7 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
             node->ty = lhs->ty;
             break;
         case ND_ADDR:
-            node->ty = calloc(1, sizeof(Type));
-            node->ty->ty = PTR;
-            node->ty->size = 8;
-            node->ty->ptr_to = lhs->ty;
+            node->ty = ptr_to(lhs->ty);
             break;
         default:
             break;
@@ -139,11 +144,7 @@ Function *func() {
         if (!consume("*")) {
             break;
         }
-        Type *rty = calloc(1, sizeof(Type));
-        rty->ty = PTR;
-        rty->size = 8;
-        rty->ptr_to = fn->rty;
-        fn->rty = rty;
+        fn->rty = ptr_to(fn->rty);
     }
 
     // parse the function name
@@ -169,11 +170,7 @@ Function *func() {
             if (!consume("*")) {
                 break;
             }
-            Type *ty_ = calloc(1, sizeof(Type));
-            ty_->ty = PTR;
-            ty_->size = 8;
-            ty_->ptr_to = ty;
-            ty = ty_;
+            ty = ptr_to(ty);
         }
         
         // parse the argument name
@@ -402,11 +399,7 @@ Node *primary() {
             if (!consume("*")) {
                 break;
             }
-            Type *ty_ = calloc(1, sizeof(Type));
-            ty_->ty = PTR;
-            ty_->size = 8;
-            ty_->ptr_to = ty;
-            ty = ty_;
+            ty = ptr_to(ty);
         }
 
         // parse the argument name
