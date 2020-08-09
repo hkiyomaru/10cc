@@ -172,6 +172,7 @@ void gen_func(Function *fn) {
 
 void translate(Vector *code) {
     printf(".intel_syntax noprefix\n");
-    for (int i = 0; i < code->len; i++)
+    for (int i = 0; i < code->len; i++) {
         gen_func(get_elem_from_vec(code, i));
+    }
 }
