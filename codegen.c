@@ -5,6 +5,10 @@ char *argregs[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
 int label_id = 0;
 
+int roundup(int x, int align) {
+  return (x + align - 1) & ~(align - 1);
+}
+
 void gen_lval(Node *node) {
     if (node->kind != ND_LVAR)
         error("Assignment error: Left side value must be a variable");
@@ -146,6 +150,16 @@ void gen(Node *node) {
 }
 
 void gen_func(Function *fn) {
+    // assign offsets
+    int offset = 0;
+    for (int i = 0; i < fn->lvars->len; i++) {
+        Node *var = fn->lvars->vals->data[i];
+        offset += var->ty->size;
+        offset = roundup(offset, var->ty->align);
+        var->offset = offset;
+        fprintf(stderr, "%d\n", var->offset);
+    }
+    
     // header
     printf(".global %s\n", fn->name);
     printf("\n%s:\n", fn->name);
@@ -153,7 +167,7 @@ void gen_func(Function *fn) {
     // prologue
     printf("  push rbp\n");
     printf("  mov rbp, rsp\n");
-    printf("  sub rsp, %d\n", fn->lvars->len * 8);
+    printf("  sub rsp, %d\n", roundup(offset, 16));
 
     // load argument values
     for (int i = 0; i < fn->args->len; i++) {

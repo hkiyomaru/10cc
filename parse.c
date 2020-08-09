@@ -16,19 +16,32 @@ Node *unary();
 Node *primary();
 
 Type *new_ty(int ty, int size) {
-  Type *ret = calloc(1, sizeof(Type));
-  ret->ty = ty;
-  ret->size = size;
-  return ret;
+    Type *ret = calloc(1, sizeof(Type));
+    ret->ty = ty;
+    ret->size = size;
+    ret->align = size;
+    return ret;
 }
 
 Type *int_ty() {
-    return new_ty(INT, 4);
+    Type *ty = new_ty(INT, 4);
+    ty->align = 8;  // TODO
+    return ty;
 }
 
 Type *ptr_to(Type *base) {
     Type *ty = new_ty(PTR, 8);
     ty->ptr_to = base;
+    return ty;
+}
+
+Type *ary_of(Type *base, int size) {
+    Type *ty = calloc(1, sizeof(Type));
+    ty->ty = ARY;
+    ty->size = base->size * size;
+    ty->align = base->align;
+    ty->ary_of = base;
+    ty->array_size = size;
     return ty;
 }
 
@@ -116,11 +129,10 @@ Node *new_node_num(int val) {
     return node;
 }
 
-Node *new_node_lvar(Type *ty, int offset) {
+Node *new_node_lvar(Type *ty) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_LVAR;
     node->ty = ty;
-    node->offset = offset;
     return node;
 }
 
@@ -168,8 +180,8 @@ Function *func() {
         Type *ty = int_ty();
         while (consume("*")) {
             ty = ptr_to(ty);
-        } 
-               
+        }
+
         // parse the argument name
         Token *tok = consume_ident();
         if (!tok) {
@@ -181,11 +193,8 @@ Function *func() {
             error_at(tok->loc, "Invalid argument name");
         }
 
-        // get the offset
-        int offset = (fn->lvars->len + 1) * 8;
-        
         // create a node
-        Node *node = new_node_lvar(ty, offset);
+        Node *node = new_node_lvar(ty);
         add_elem_to_vec(fn->args, node);
         add_elem_to_map(fn->lvars, tok->str, node);
         consume(",");
@@ -382,8 +391,8 @@ Node *unary() {
 
 /**
  * primary = num
- *         | ident ("(" ")")
- *         | "int" ident
+ *         | ident ("(" ")")?
+ *         | T ident
  *         | "(" expr ")"
  */
 Node *primary() {
@@ -405,11 +414,13 @@ Node *primary() {
             error_at(tok->loc, "Invalid variable identifier");
         }
 
-        // get the offset
-        int offset = (fn->lvars->len + 1) * 8;
-        
+        if (consume("[")) {
+            ty = ary_of(ty, expect_number());
+            expect("]");
+        }
+
         // create a node
-        Node *node = new_node_lvar(ty, offset);
+        Node *node = new_node_lvar(ty);
         add_elem_to_map(fn->lvars, tok->str, node);
         return node;
     }
@@ -429,11 +440,11 @@ Node *primary() {
             }
             return new_node_func_call(fn_->rty, tok->str, args);
         } else {
-            Node *lvar_ = get_elem_from_map(fn->lvars, tok->str);
-            if (!lvar_) {
+            Node *lvar = get_elem_from_map(fn->lvars, tok->str);
+            if (!lvar) {
                 error_at(tok->loc, "Undefined variable");
             }
-            return new_node_lvar(lvar_->ty, lvar_->offset);
+            return lvar;
         }
     }
 

@@ -84,7 +84,7 @@ Vector *tokenize() {
             continue;
         }
 
-        if (strchr("+-*/()<>=;{},&", *p)) {
+        if (strchr("+-*/()<>=;{}[],&", *p)) {
             add_elem_to_vec(tokens, new_token(TK_RESERVED, p, 1));
             p++;
             continue;

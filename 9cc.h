@@ -62,9 +62,12 @@ typedef struct {
 } Token;
 
 struct Type {
-    enum {INT, PTR} ty;
-    int size;  // INT: 4, PTR: 8
+    enum {INT, PTR, ARY} ty;
+    int size;
+    int align;
+    int array_size;
     struct Type *ptr_to;
+    struct Type *ary_of;
 };
 
 typedef struct Type Type;
@@ -95,6 +98,7 @@ typedef enum {
     ND_BLOCK,      // block
     ND_ADDR,       // &
     ND_DEREF,      // *
+    ND_VARREF      // reference to variable
 } NodeKind;
 
 typedef struct Node Node;
@@ -119,6 +123,8 @@ struct Node {
     Vector *args;
 
     int offset;
+
+    Node *ref;
 };
 
 typedef struct {

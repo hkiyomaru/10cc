@@ -42,5 +42,4 @@ assert 42 "int ***ptr() {int foo; int *var; return 42;} int main() {int *****a; 
 assert 1 "int main() {int a; int b; a = 1; b = 2; int *p; p = &b; int *q; q = p + 2; return *q;}"
 assert 4 "int main() {int a; return sizeof(a);}"
 assert 8 "int main() {int *a; return sizeof(a);}"
-
-echo OK
+assert 0 "int main() {int a[3]; return 0;}"
