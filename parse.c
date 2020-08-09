@@ -145,10 +145,7 @@ Function *func() {
         error_at(tok->loc, "Invalid type");
     }
     fn->rty = int_ty();
-    for (;;) {
-        if (!consume("*")) {
-            break;
-        }
+    while ((consume("*"))) {
         fn->rty = ptr_to(fn->rty);
     }
 
@@ -169,13 +166,10 @@ Function *func() {
             break;
         }
         Type *ty = int_ty();
-        for (;;) {
-            if (!consume("*")) {
-                break;
-            }
+        while (consume("*")) {
             ty = ptr_to(ty);
-        }
-        
+        } 
+               
         // parse the argument name
         Token *tok = consume_ident();
         if (!tok) {
@@ -396,10 +390,7 @@ Node *primary() {
     // variable declaration
     if (consume_stmt(TK_INT)) {
         Type *ty = int_ty();
-        for (;;) {
-            if (!consume("*")) {
-                break;
-            }
+        while (consume("*")) {
             ty = ptr_to(ty);
         }
 
