@@ -15,10 +15,19 @@ Node *mul();
 Node *unary();
 Node *primary();
 
+Type *new_ty(int ty, int size) {
+  Type *ret = calloc(1, sizeof(Type));
+  ret->ty = ty;
+  ret->size = size;
+  return ret;
+}
+
+Type *int_ty() {
+    return new_ty(INT, 4);
+}
+
 Type *ptr_to(Type *base) {
-    Type *ty = calloc(1, sizeof(Type));
-    ty->ty = PTR;
-    ty->size = 8;
+    Type *ty = new_ty(PTR, 8);
     ty->ptr_to = base;
     return ty;
 }
@@ -103,9 +112,7 @@ Node *new_node_num(int val) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_NUM;
     node->val = val;
-    node->ty = calloc(1, sizeof(Type));
-    node->ty->ty = INT;
-    node->ty->size = 4;
+    node->ty = int_ty();
     return node;
 }
 
@@ -137,9 +144,7 @@ Function *func() {
         Token *tok = get_elem_from_vec(tokens, pos);
         error_at(tok->loc, "Invalid type");
     }
-    fn->rty = calloc(1, sizeof(Type));
-    fn->rty->ty = INT;
-    fn->rty->size = 4;
+    fn->rty = int_ty();
     for (;;) {
         if (!consume("*")) {
             break;
@@ -163,9 +168,7 @@ Function *func() {
         if (!consume_stmt(TK_INT)) {
             break;
         }
-        Type *ty = calloc(1, sizeof(Type));
-        ty->ty = INT;
-        ty->size = 4;
+        Type *ty = int_ty();
         for (;;) {
             if (!consume("*")) {
                 break;
@@ -392,9 +395,7 @@ Node *unary() {
 Node *primary() {
     // variable declaration
     if (consume_stmt(TK_INT)) {
-        Type *ty = calloc(1, sizeof(Type));
-        ty->ty = INT;
-        ty->size = 4;
+        Type *ty = int_ty();
         for (;;) {
             if (!consume("*")) {
                 break;
