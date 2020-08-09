@@ -43,3 +43,4 @@ assert 1 "int main() {int a; int b; a = 1; b = 2; int *p; p = &b; int *q; q = p 
 assert 4 "int main() {int a; return sizeof(a);}"
 assert 8 "int main() {int *a; return sizeof(a);}"
 assert 0 "int main() {int a[3]; return 0;}"
+assert 12 "int main() {int a[3]; return sizeof(a);}"
