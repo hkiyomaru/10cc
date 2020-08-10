@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define LOGLEVEL 6
+
 /**
  * util.c
  */
@@ -97,8 +99,7 @@ typedef enum {
     ND_FUNC_CALL,  // function call
     ND_BLOCK,      // block
     ND_ADDR,       // &
-    ND_DEREF,      // *
-    ND_VARREF      // reference to variable
+    ND_DEREF       // *
 } NodeKind;
 
 typedef struct Node Node;

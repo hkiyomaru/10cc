@@ -15,6 +15,12 @@ Node *mul();
 Node *unary();
 Node *primary();
 
+Node *new_node(NodeKind kind, Node *lhs, Node *rhs);
+Node *new_node_num(int val);
+Node *new_node_lvar(Type *ty);
+Node *new_node_func_call(Type *ty, char *name, Vector *args);
+Node *ary_to_ptr(Node *ary);
+
 Type *new_ty(int ty, int size) {
     Type *ret = calloc(1, sizeof(Type));
     ret->ty = ty;
@@ -99,6 +105,14 @@ bool at_eof() {
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = kind;
+    
+    if (lhs && lhs->kind == ND_LVAR && lhs->ty->ty == ARY) {
+        lhs = ary_to_ptr(lhs);
+    }
+    if (rhs && rhs->kind == ND_LVAR && rhs->ty->ty == ARY) {
+        rhs = ary_to_ptr(rhs);
+    }
+    
     node->lhs = lhs;
     node->rhs = rhs;
     switch (kind) {
@@ -110,10 +124,14 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
         case ND_NE:
         case ND_LE:
         case ND_LT:
+        case ND_ASSIGN:
             node->ty = lhs->ty;
             break;
         case ND_ADDR:
             node->ty = ptr_to(lhs->ty);
+            break;
+        case ND_DEREF:
+            node->ty = node->lhs->ty->ptr_to;
             break;
         default:
             break;
@@ -143,6 +161,18 @@ Node *new_node_func_call(Type *ty, char *name, Vector *args) {
     node->name = name;
     node->args = args;
     return node;
+}
+
+Node *ary_to_ptr(Node *ary) {
+    if (ary->ty->ty != ARY) {
+        error("Not an array");
+    }
+    Node *ptr = new_node_lvar(ptr_to(ary->ty->ary_of));
+    Node *addr = calloc(1, sizeof(Node));
+    addr->kind = ND_ADDR;
+    addr->lhs = ary;
+    addr->ty = ptr_to(ary->ty->ary_of);
+    return new_node(ND_ASSIGN, ptr, addr);
 }
 
 /**
@@ -336,6 +366,8 @@ Node *add() {
         if (consume("+")) {
             if (node->ty->ty == PTR) {
                 rhs = new_node(ND_MUL, mul(), new_node_num(node->ty->ptr_to->size));
+            } else if (node->ty->ty == ARY) {
+                rhs = new_node(ND_MUL, mul(), new_node_num(node->ty->ary_of->size));
             } else {
                 rhs = mul();
             }
@@ -343,6 +375,8 @@ Node *add() {
         } else if (consume("-")) {
             if (node->ty->ty == PTR) {
                 rhs = new_node(ND_MUL, mul(), new_node_num(node->ty->ptr_to->size));
+            } else if (node->ty->ty == ARY) {
+                rhs = new_node(ND_MUL, mul(), new_node_num(node->ty->ary_of->size));
             } else {
                 rhs = mul();
             }
@@ -379,9 +413,9 @@ Node *unary() {
     } else if (consume("-")) {
         return new_node(ND_SUB, new_node_num(0), primary());
     } else if (consume("&")) {
-        return new_node(ND_ADDR, unary(), NULL);
+        return new_node(ND_ADDR, primary(), NULL);
     } else if (consume("*")) {
-        return new_node(ND_DEREF, unary(), NULL);
+        return new_node(ND_DEREF, primary(), NULL);
     } else if (consume_stmt(TK_SIZEOF)) {
         return new_node_num(unary()->ty->size);
     } else {
@@ -439,6 +473,15 @@ Node *primary() {
                 error_at(tok->loc, "Undefined function");   
             }
             return new_node_func_call(fn_->rty, tok->str, args);
+        } else if (consume("[")) {
+            Node *lvar = get_elem_from_map(fn->lvars, tok->str);
+            if (!lvar) {
+                error_at(tok->loc, "Undefined variable");
+            }
+            Node *offset = new_node(ND_MUL, expr(), new_node_num(lvar->ty->ary_of->size));
+            Node *addr = new_node(ND_ADD, lvar, offset);
+            expect("]");
+            return new_node(ND_DEREF, addr, NULL);
         } else {
             Node *lvar = get_elem_from_map(fn->lvars, tok->str);
             if (!lvar) {
@@ -453,7 +496,30 @@ Node *primary() {
         expect(")");
         return node;
     }
-    return new_node_num(expect_number());
+
+    Node *node = new_node_num(expect_number());
+    if (consume("[")) {
+        Node *lvar, *offset;
+        tok = consume_ident();
+        if (!tok) {
+            error_at(tok->loc, "Expected a variable");
+        }
+        lvar = get_elem_from_map(fn->lvars, tok->str);
+        if (!lvar) {
+            error_at(tok->loc, "Undefined variable");
+        }
+        if (lvar->ty->ty == PTR) {
+            offset = new_node(ND_MUL, node, new_node_num(lvar->ty->ptr_to->size));
+        } else if (lvar->ty->ty == ARY) {
+            offset = new_node(ND_MUL, node, new_node_num(lvar->ty->ary_of->size));
+        } else {
+            offset = node;
+        }
+        Node *addr = new_node(ND_ADD, lvar, offset);
+        expect("]");
+        return new_node(ND_DEREF, addr, NULL);
+    }
+    return node;
 }
 
 Vector *parse(Vector *tokens_) {

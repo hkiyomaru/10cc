@@ -10,8 +10,9 @@ int roundup(int x, int align) {
 }
 
 void gen_lval(Node *node) {
-    if (node->kind != ND_LVAR)
-        error("Assignment error: Left side value must be a variable");
+    if (node->kind != ND_LVAR) {
+        error("Assignment error: Left side value must be a variable (%d)", node->kind);
+    }
     printf("  mov rax, rbp\n");
     printf("  sub rax, %d\n", node->offset);
     printf("  push rax\n");
@@ -38,7 +39,11 @@ void gen(Node *node) {
         printf("  push rax\n");
         return;
     case ND_ASSIGN:
-        gen_lval(node->lhs);
+        if (node->lhs->kind == ND_DEREF) {
+            gen(node->lhs->lhs);
+        } else {
+            gen_lval(node->lhs);
+        }
         gen(node->rhs);
         printf("  pop rdi\n");
         printf("  pop rax\n");
@@ -157,7 +162,6 @@ void gen_func(Function *fn) {
         offset += var->ty->size;
         offset = roundup(offset, var->ty->align);
         var->offset = offset;
-        fprintf(stderr, "%d\n", var->offset);
     }
     
     // header
