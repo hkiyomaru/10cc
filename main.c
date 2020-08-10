@@ -17,7 +17,12 @@ int main(int argc, char **argv) {
 
     // construct an abstract syntax tree
     Vector *code = parse(tokens);
-    
+
+#if LOGLEVEL <= 2
+    // draw the abstract syntax tree
+    draw_ast(code);
+#endif
+
     // generate code
     translate(code);
     return 0;
