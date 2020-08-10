@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <ctype.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -64,7 +65,7 @@ typedef struct {
 } Token;
 
 struct Type {
-    enum {INT, PTR, ARY} ty;
+    enum { INT, PTR, ARY } ty;
     int size;
     int align;
     int array_size;
@@ -107,7 +108,7 @@ typedef struct Node Node;
 struct Node {
     char *name;
     NodeKind kind;
-    
+
     Type *ty;
     int val;
 
@@ -141,4 +142,4 @@ Vector *parse();
 /**
  * codegen.c
  */
-void translate();
+void gen_x86();

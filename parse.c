@@ -21,36 +21,6 @@ Node *new_node_lvar(Type *ty);
 Node *new_node_func_call(Type *ty, char *name, Vector *args);
 Node *ary_to_ptr(Node *ary);
 
-Type *new_ty(int ty, int size) {
-    Type *ret = calloc(1, sizeof(Type));
-    ret->ty = ty;
-    ret->size = size;
-    ret->align = size;
-    return ret;
-}
-
-Type *int_ty() {
-    Type *ty = new_ty(INT, 4);
-    ty->align = 8;  // TODO
-    return ty;
-}
-
-Type *ptr_to(Type *base) {
-    Type *ty = new_ty(PTR, 8);
-    ty->ptr_to = base;
-    return ty;
-}
-
-Type *ary_of(Type *base, int size) {
-    Type *ty = calloc(1, sizeof(Type));
-    ty->ty = ARY;
-    ty->size = base->size * size;
-    ty->align = base->align;
-    ty->ary_of = base;
-    ty->array_size = size;
-    return ty;
-}
-
 bool consume(char *op) {
     Token *token = get_elem_from_vec(tokens, pos);
     if (token->kind != TK_RESERVED || strcmp(token->str, op) != 0) {
@@ -89,7 +59,7 @@ void expect(char *op) {
 
 int expect_number() {
     Token *token = get_elem_from_vec(tokens, pos);
-    if (token->kind !=TK_NUM) {
+    if (token->kind != TK_NUM) {
         error_at(token->loc, "Expected a number");
     }
     int val = token->val;
@@ -102,17 +72,47 @@ bool at_eof() {
     return token->kind == TK_EOF;
 }
 
+Type *new_ty(int ty, int size) {
+    Type *ret = calloc(1, sizeof(Type));
+    ret->ty = ty;
+    ret->size = size;
+    ret->align = size;
+    return ret;
+}
+
+Type *int_ty() {
+    Type *ty = new_ty(INT, 4);
+    ty->align = 8;  // TODO
+    return ty;
+}
+
+Type *ptr_to(Type *base) {
+    Type *ty = new_ty(PTR, 8);
+    ty->ptr_to = base;
+    return ty;
+}
+
+Type *ary_of(Type *base, int size) {
+    Type *ty = calloc(1, sizeof(Type));
+    ty->ty = ARY;
+    ty->size = base->size * size;
+    ty->align = base->align;
+    ty->ary_of = base;
+    ty->array_size = size;
+    return ty;
+}
+
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = kind;
-    
+
     if (lhs && lhs->kind == ND_LVAR && lhs->ty->ty == ARY) {
         lhs = ary_to_ptr(lhs);
     }
     if (rhs && rhs->kind == ND_LVAR && rhs->ty->ty == ARY) {
         rhs = ary_to_ptr(rhs);
     }
-    
+
     node->lhs = lhs;
     node->rhs = rhs;
     switch (kind) {
@@ -180,7 +180,7 @@ Node *ary_to_ptr(Node *ary) {
  */
 Function *func() {
     fn = calloc(1, sizeof(Function));
-    
+
     // parse the return type
     if (!consume_stmt(TK_INT)) {
         Token *tok = get_elem_from_vec(tokens, pos);
@@ -240,21 +240,21 @@ Function *func() {
 }
 
 /**
-* stmt = expr ";"
-*      | "{" stmt* "}"
-*      | "if" "(" expr ")" stmt ("else" stmt)?
-*      | "while" "(" expr ")" stmt
-*      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
-*      | "return" expr ";"
-*/
+ * stmt = expr ";"
+ *      | "{" stmt* "}"
+ *      | "if" "(" expr ")" stmt ("else" stmt)?
+ *      | "while" "(" expr ")" stmt
+ *      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
+ *      | "return" expr ";"
+ */
 Node *stmt() {
     Node *node;
     if (consume("{")) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_BLOCK;
         node->stmts = create_vec();
-        while(!consume("}")) {
-            add_elem_to_vec(node->stmts, (void *) stmt());
+        while (!consume("}")) {
+            add_elem_to_vec(node->stmts, (void *)stmt());
         }
         return node;
     } else if (consume_stmt(TK_RETURN)) {
@@ -309,9 +309,7 @@ Node *stmt() {
 /**
  * expr = assign
  */
-Node *expr() {
-    return assign();
-}
+Node *expr() { return assign(); }
 
 /**
  * assign = equality ("=" assign)?
@@ -470,7 +468,7 @@ Node *primary() {
             }
             Function *fn_ = get_elem_from_map(fns, tok->str);
             if (!fn_) {
-                error_at(tok->loc, "Undefined function");   
+                error_at(tok->loc, "Undefined function");
             }
             return new_node_func_call(fn_->rty, tok->str, args);
         } else if (consume("[")) {

@@ -1,29 +1,29 @@
 #include "9cc.h"
 
-void usage() {
-    error("Usage: ./9cc <program>");
-}
+void usage() { error("Usage: ./9cc <program>"); }
 
 int main(int argc, char **argv) {
-    if(argc == 1) {
+    // Show help when there is no argument.
+    if (argc == 1) {
         usage();
     }
 
-    // make user input accessible
+    // Make user input acceessible.
     user_input = argv[1];
 
-    // tokenize user input
+    // Tokenize user input.
     Vector *tokens = tokenize();
 
-    // construct an abstract syntax tree
+    // Construct an abstract syntax tree.
     Vector *code = parse(tokens);
 
 #if LOGLEVEL <= 2
-    // draw the abstract syntax tree
+    // Draw the abstract syntax tree.
     draw_ast(code);
 #endif
 
-    // generate code
-    translate(code);
+    // Generate code.
+    gen_x86(code);
+
     return 0;
 }
