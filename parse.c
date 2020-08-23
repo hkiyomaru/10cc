@@ -15,12 +15,6 @@ Node *mul();
 Node *unary();
 Node *primary();
 
-Node *new_node(NodeKind kind, Node *lhs, Node *rhs);
-Node *new_node_num(int val);
-Node *new_node_lvar(Type *ty);
-Node *new_node_func_call(Type *ty, char *name, Vector *args);
-Node *ary_to_ptr(Node *ary);
-
 bool consume(char *op) {
     Token *token = get_elem_from_vec(tokens, pos);
     if (token->kind != TK_RESERVED || strcmp(token->str, op) != 0) {
@@ -102,6 +96,17 @@ Type *ary_of(Type *base, int size) {
     return ty;
 }
 
+Node *ary_to_ptr(Node *ary) {
+    if (ary->ty->ty != ARY) {
+        error("Not an array");
+    }
+    Node *addr = calloc(1, sizeof(Node));
+    addr->kind = ND_ADDR;
+    addr->lhs = ary;
+    addr->ty = ptr_to(ary->ty->ary_of);
+    return addr;
+}
+
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = kind;
@@ -147,9 +152,18 @@ Node *new_node_num(int val) {
     return node;
 }
 
-Node *new_node_lvar(Type *ty) {
+Node *new_node_lvar(Type *ty, char *name) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_LVAR;
+    node->name = name;
+    node->ty = ty;
+    return node;
+}
+
+Node *new_node_gvar(Type *ty, char *name) {
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_GVAR;
+    node->name = name;
     node->ty = ty;
     return node;
 }
@@ -161,18 +175,6 @@ Node *new_node_func_call(Type *ty, char *name, Vector *args) {
     node->name = name;
     node->args = args;
     return node;
-}
-
-Node *ary_to_ptr(Node *ary) {
-    if (ary->ty->ty != ARY) {
-        error("Not an array");
-    }
-    Node *ptr = new_node_lvar(ptr_to(ary->ty->ary_of));
-    Node *addr = calloc(1, sizeof(Node));
-    addr->kind = ND_ADDR;
-    addr->lhs = ary;
-    addr->ty = ptr_to(ary->ty->ary_of);
-    return new_node(ND_ASSIGN, ptr, addr);
 }
 
 /**
@@ -224,7 +226,7 @@ Function *func() {
         }
 
         // create a node
-        Node *node = new_node_lvar(ty);
+        Node *node = new_node_lvar(ty, tok->str);
         add_elem_to_vec(fn->args, node);
         add_elem_to_map(fn->lvars, tok->str, node);
         consume(",");
@@ -452,7 +454,7 @@ Node *primary() {
         }
 
         // create a node
-        Node *node = new_node_lvar(ty);
+        Node *node = new_node_lvar(ty, tok->str);
         add_elem_to_map(fn->lvars, tok->str, node);
         return node;
     }

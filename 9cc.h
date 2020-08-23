@@ -92,6 +92,7 @@ typedef enum {
     ND_ASSIGN,     // =
     ND_NUM,        // number
     ND_LVAR,       // local variable
+    ND_GVAR,       // global variable
     ND_RETURN,     // return
     ND_IF,         // if
     ND_ELSE,       // else

@@ -109,7 +109,7 @@ void draw_node_tree(Node *node, int depth, char *prefix) {
                 }
                 break;
             case ND_FUNC_CALL:
-                fprintf(stderr, "FUNC_CALL(%s)\n", node->name);
+                fprintf(stderr, "FUNC_CALL(name: %s, ty: %d)\n", node->name, node->ty->ty);
                 for (int i = 0; i < node->args->len; i++) {
                     char prefix[16] = {'\0'};
                     sprintf(prefix, "arg%d", i);
@@ -117,7 +117,7 @@ void draw_node_tree(Node *node, int depth, char *prefix) {
                 }
                 break;
             case ND_LVAR:
-                fprintf(stderr, "LVAR(ty: %d)\n", node->ty->ty);
+                fprintf(stderr, "LVAR(name: %s, ty: %d)\n", node->name, node->ty->ty);
                 break;
             case ND_NUM:
                 fprintf(stderr, "NUM(%d)\n", node->val);
