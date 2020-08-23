@@ -6,6 +6,7 @@ Function *fn;
 Vector *tokens;
 int pos;
 
+Function *func();
 Node *stmt();
 Node *expr();
 Node *assign();
@@ -178,68 +179,74 @@ Node *new_node_func_call(Type *ty, char *name, Vector *args) {
     return node;
 }
 
-/**
- * func = stmt*
- */
-Function *func() {
-    fn = calloc(1, sizeof(Function));
-
-    // parse the return type
+void top_level() {
+    // Parse the type
     if (!consume_stmt(TK_INT)) {
         Token *tok = get_elem_from_vec(tokens, pos);
         error_at(tok->loc, "Invalid type");
     }
-    fn->rty = int_ty();
+    Type *ty = int_ty();
     while ((consume("*"))) {
-        fn->rty = ptr_to(fn->rty);
+        ty = ptr_to(ty);
     }
 
-    // parse the function name
+    // Parse the name
     Token *tok = consume_ident();
     if (!tok) {
         Token *tok = get_elem_from_vec(tokens, pos);
         error_at(tok->loc, "Invalid function name");
     }
-    fn->name = tok->str;
-    fn->args = create_vec();
-    fn->lvars = create_map();
-    // parse the arguments
-    expect("(");
-    for (;;) {
-        // parse the type
-        if (!consume_stmt(TK_INT)) {
-            break;
-        }
-        Type *ty = int_ty();
-        while (consume("*")) {
-            ty = ptr_to(ty);
+
+    if (consume("(")) {
+        // Function
+        fn = calloc(1, sizeof(Function));
+        fn->rty = ty;
+        fn->name = tok->str;
+        fn->args = create_vec();
+        fn->lvars = create_map();
+
+        // Parse the arguments
+        while (!consume(")")) {
+            if (0 < fn->args->len) {
+                expect(",");
+            }
+
+            // Parse the argument type
+            if (!consume_stmt(TK_INT)) {
+                break;
+            }
+            Type *ty = int_ty();
+            while (consume("*")) {
+                ty = ptr_to(ty);
+            }
+
+            // Parse the argument name
+            Token *tok = consume_ident();
+            if (!tok) {
+                Token *tok = get_elem_from_vec(tokens, pos);
+                error_at(tok->loc, "Invalid argument name");
+            }
+            if (get_elem_from_map(fn->lvars, tok->str)) {
+                error_at(tok->loc, "Invalid argument name");
+            }
+
+            // Create and register a node
+            Node *node = new_node_lvar(ty, tok->str);
+            add_elem_to_vec(fn->args, node);
+            add_elem_to_map(fn->lvars, tok->str, node);
         }
 
-        // parse the argument name
-        Token *tok = consume_ident();
-        if (!tok) {
-            Token *tok = get_elem_from_vec(tokens, pos);
-            error_at(tok->loc, "Invalid argument name");
-        }
-        Node *arg = get_elem_from_map(fn->lvars, tok->str);
-        if (arg) {
-            error_at(tok->loc, "Invalid argument name");
-        }
+        // Register the function.
+        add_elem_to_map(prog->fns, fn->name, fn);
 
-        // create a node
-        Node *node = new_node_lvar(ty, tok->str);
-        add_elem_to_vec(fn->args, node);
-        add_elem_to_map(fn->lvars, tok->str, node);
-        consume(",");
+        // Parse the body
+        expect("{");
+        fn->body = create_vec();
+        while (!consume("}")) {
+            add_elem_to_vec(fn->body, stmt());
+        }
+        return;
     }
-    expect(")");
-    add_elem_to_map(prog->fns, fn->name, fn);
-    expect("{");
-    fn->body = create_vec();
-    while (!consume("}")) {
-        add_elem_to_vec(fn->body, stmt());
-    }
-    return fn;
 }
 
 /**
@@ -531,8 +538,7 @@ Program *parse(Vector *tokens_) {
     prog->fns = create_map();
     prog->gvars = create_map();
     while (!at_eof()) {
-        Function *fn_ = func();
-        add_elem_to_map(prog->fns, fn->name, fn);
+        top_level();
     }
     return prog;
 }
