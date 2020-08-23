@@ -246,6 +246,20 @@ void top_level() {
             add_elem_to_vec(fn->body, stmt());
         }
         return;
+    } else {
+        // Global variable
+        if (get_elem_from_map(prog->gvars, tok->str)) {
+            error_at(tok->loc, "%s has been declared");
+        }
+
+        if (consume("[")) {
+            ty = ary_of(ty, expect_number());
+            expect("]");
+        }
+
+        Node *node = new_node_gvar(ty, tok->str);
+        add_elem_to_map(prog->gvars, node->name, node);
+        expect(";");
     }
 }
 
