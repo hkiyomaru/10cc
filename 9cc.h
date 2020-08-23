@@ -8,14 +8,6 @@
 
 #define LOGLEVEL 6
 
-/**
- * util.c
- */
-void error(char *fmt, ...);
-void error_at(char *loc, char *fmt, ...);
-bool startswith(char *p, char *q);
-bool isalnumus(char c);
-
 extern char *user_input;
 
 /**
@@ -131,16 +123,30 @@ struct Node {
 };
 
 typedef struct {
+    Type *rty;
     char *name;
     Map *lvars;
     Vector *args;
     Vector *body;
-    Type *rty;
 } Function;
 
-Vector *parse();
+typedef struct {
+    Map *fns;
+    Map *gvars;
+} Program;
+
+Program *parse(Vector *tokens_);
 
 /**
  * codegen.c
  */
 void gen_x86();
+
+/**
+ * util.c
+ */
+void error(char *fmt, ...);
+void error_at(char *loc, char *fmt, ...);
+bool startswith(char *p, char *q);
+bool isalnumus(char c);
+void draw_ast(Program *prog);

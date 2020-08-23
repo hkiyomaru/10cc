@@ -183,9 +183,9 @@ void gen_func(Function *fn) {
     }
 }
 
-void gen_x86(Vector *code) {
+void gen_x86(Program *prog) {
     printf(".intel_syntax noprefix\n");
-    for (int i = 0; i < code->len; i++) {
-        gen_func(get_elem_from_vec(code, i));
+    for (int i = 0; i < prog->fns->len; i++) {
+        gen_func(get_elem_from_vec(prog->fns->vals, i));
     }
 }

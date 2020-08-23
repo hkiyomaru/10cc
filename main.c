@@ -15,15 +15,15 @@ int main(int argc, char **argv) {
     Vector *tokens = tokenize();
 
     // Construct an abstract syntax tree.
-    Vector *code = parse(tokens);
+    Program *prog = parse(tokens);
 
 #if LOGLEVEL <= 2
     // Draw the abstract syntax tree.
-    draw_ast(code);
+    draw_ast(prog);
 #endif
 
     // Generate code.
-    gen_x86(code);
+    gen_x86(prog);
 
     return 0;
 }

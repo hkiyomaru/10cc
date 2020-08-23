@@ -1,8 +1,9 @@
 #include "9cc.h"
 
-Vector *tokens;
-Map *fns;
+Program *prog;
 Function *fn;
+
+Vector *tokens;
 int pos;
 
 Node *stmt();
@@ -232,7 +233,7 @@ Function *func() {
         consume(",");
     }
     expect(")");
-    add_elem_to_map(fns, fn->name, fn);
+    add_elem_to_map(prog->fns, fn->name, fn);
     expect("{");
     fn->body = create_vec();
     while (!consume("}")) {
@@ -468,7 +469,7 @@ Node *primary() {
                 add_elem_to_vec(args, expr());
                 consume(",");
             }
-            Function *fn_ = get_elem_from_map(fns, tok->str);
+            Function *fn_ = get_elem_from_map(prog->fns, tok->str);
             if (!fn_) {
                 error_at(tok->loc, "Undefined function");
             }
@@ -522,13 +523,16 @@ Node *primary() {
     return node;
 }
 
-Vector *parse(Vector *tokens_) {
+Program *parse(Vector *tokens_) {
     tokens = tokens_;
     pos = 0;
-    fns = create_map();
-    Vector *code = create_vec();
+
+    prog = calloc(1, sizeof(Program));
+    prog->fns = create_map();
+    prog->gvars = create_map();
     while (!at_eof()) {
-        add_elem_to_vec(code, func());
+        Function *fn_ = func();
+        add_elem_to_map(prog->fns, fn->name, fn);
     }
-    return code;
+    return prog;
 }
