@@ -113,10 +113,10 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = kind;
 
-    if (lhs && lhs->kind == ND_LVAR && lhs->ty->ty == ARY) {
+    if (lhs && (lhs->kind == ND_LVAR || lhs->kind == ND_GVAR) && lhs->ty->ty == ARY) {
         lhs = ary_to_ptr(lhs);
     }
-    if (rhs && rhs->kind == ND_LVAR && rhs->ty->ty == ARY) {
+    if (rhs && (lhs->kind == ND_LVAR || lhs->kind == ND_GVAR) && rhs->ty->ty == ARY) {
         rhs = ary_to_ptr(rhs);
     }
 
@@ -496,18 +496,25 @@ Node *primary() {
             }
             return new_node_func_call(fn_->rty, tok->str, args);
         } else if (consume("[")) {
-            Node *lvar = get_elem_from_map(fn->lvars, tok->str);
-            if (!lvar) {
-                error_at(tok->loc, "Undefined variable");
+            Node *var = get_elem_from_map(fn->lvars, tok->str);
+            if (!var) {
+                var = get_elem_from_map(prog->gvars, tok->str);
+                if (!var) {
+                    error_at(tok->loc, "Undefined variable");
+                }
             }
-            Node *offset = new_node(ND_MUL, expr(), new_node_num(lvar->ty->ary_of->size));
-            Node *addr = new_node(ND_ADD, lvar, offset);
+            Node *offset = new_node(ND_MUL, expr(), new_node_num(var->ty->ary_of->size));
+            Node *addr = new_node(ND_ADD, var, offset);
             expect("]");
             return new_node(ND_DEREF, addr, NULL);
         } else {
             Node *lvar = get_elem_from_map(fn->lvars, tok->str);
             if (!lvar) {
-                error_at(tok->loc, "Undefined variable");
+                Node *gvar = get_elem_from_map(prog->gvars, tok->str);
+                if (!gvar) {
+                    error_at(tok->loc, "Undefined variable");
+                }
+                return gvar;
             }
             return lvar;
         }

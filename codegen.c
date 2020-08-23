@@ -9,10 +9,17 @@ int roundup(int x, int align) { return (x + align - 1) & ~(align - 1); }
 
 void gen_lval(Node *node) {
     if (node->kind != ND_LVAR) {
-        error("Assignment error: Left side value must be a variable (%d)", node->kind);
+        error("Not a local variable");
     }
-    printf("  mov rax, rbp\n");
-    printf("  sub rax, %d\n", node->offset);
+    printf("  lea rax, [rbp-%d]\n", node->offset);
+    printf("  push rax\n");
+}
+
+void gen_gval(Node *node) {
+    if (node->kind != ND_GVAR) {
+        error("Not a global variable");
+    }
+    printf("  lea rax, %s\n", node->name);
     printf("  push rax\n");
 }
 
@@ -28,6 +35,12 @@ void gen(Node *node) {
             printf("  call %s\n", node->name);
             printf("  push rax\n");
             return;
+        case ND_GVAR:
+            gen_gval(node);
+            printf("  pop rax\n");
+            printf("  mov rax, [rax]\n");
+            printf("  push rax\n");
+            return;
         case ND_LVAR:
             gen_lval(node);
             printf("  pop rax\n");
@@ -37,8 +50,10 @@ void gen(Node *node) {
         case ND_ASSIGN:
             if (node->lhs->kind == ND_DEREF) {
                 gen(node->lhs->lhs);
-            } else {
+            } else if (node->lhs->kind == ND_LVAR) {
                 gen_lval(node->lhs);
+            } else if (node->lhs->kind == ND_GVAR) {
+                gen_gval(node->lhs);
             }
             gen(node->rhs);
             printf("  pop rdi\n");
@@ -98,7 +113,11 @@ void gen(Node *node) {
             for (int i = 0; i < node->stmts->len; i++) gen(get_elem_from_vec(node->stmts, i));
             return;
         case ND_ADDR:
-            gen_lval(node->lhs);
+            if (node->lhs->kind == ND_LVAR) {
+                gen_lval(node->lhs);
+            } else if (node->lhs->kind == ND_GVAR) {
+                gen_gval(node->lhs);
+            }
             return;
         case ND_DEREF:
             gen(node->lhs);
@@ -161,7 +180,7 @@ void gen_func(Function *fn) {
 
     // Header.
     printf(".global %s\n", fn->name);
-    printf("\n%s:\n", fn->name);
+    printf("%s:\n", fn->name);
 
     // Prologue.
     printf("  push rbp\n");
@@ -183,8 +202,20 @@ void gen_func(Function *fn) {
     }
 }
 
+void gen_data(Node *gvar) {
+    printf("%s:\n", gvar->name);
+    printf("  .zero %d\n", gvar->ty->size);
+}
+
 void gen_x86(Program *prog) {
     printf(".intel_syntax noprefix\n");
+
+    printf(".data\n");
+    for (int i = 0; i < prog->gvars->len; i++) {
+        gen_data(prog->gvars->vals->data[i]);
+    }
+
+    printf(".text\n");
     for (int i = 0; i < prog->fns->len; i++) {
         gen_func(get_elem_from_vec(prog->fns->vals, i));
     }
