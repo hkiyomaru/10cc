@@ -8,17 +8,13 @@ int label_id = 0;
 int roundup(int x, int align) { return (x + align - 1) & ~(align - 1); }
 
 void gen_lval(Node *node) {
-    if (node->kind != ND_LVAR) {
-        error("Not a local variable");
-    }
+    assert(node->kind == ND_LVAR);
     printf("  lea rax, [rbp-%d]\n", node->offset);
     printf("  push rax\n");
 }
 
 void gen_gval(Node *node) {
-    if (node->kind != ND_GVAR) {
-        error("Not a global variable");
-    }
+    assert(node->kind == ND_GVAR);
     printf("  lea rax, %s\n", node->name);
     printf("  push rax\n");
 }
@@ -30,8 +26,12 @@ void gen(Node *node) {
             printf("  push %d\n", node->val);
             return;
         case ND_FUNC_CALL:
-            for (int i = 0; i < node->args->len; i++) gen(vec_get(node->args, i));
-            for (int i = node->args->len - 1; 0 <= i; i--) printf("  pop %s\n", argregs[i]);
+            for (int i = 0; i < node->args->len; i++) {
+                gen(vec_get(node->args, i));
+            }
+            for (int i = node->args->len - 1; 0 <= i; i--) {
+                printf("  pop %s\n", argregs[i]);
+            }
             printf("  call %s\n", node->name);
             printf("  push rax\n");
             return;

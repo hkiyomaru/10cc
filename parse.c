@@ -17,10 +17,7 @@ Node *primary();
 
 Token *consume(TokenKind kind, char *str) {
     Token *token = vec_get(tokens, pos);
-    if (token->kind != kind) {
-        return NULL;
-    }
-    if (str && strcmp(token->str, str) != 0) {
+    if (token->kind != kind || (str && strcmp(token->str, str) != 0)) {
         return NULL;
     }
     pos++;
@@ -29,10 +26,7 @@ Token *consume(TokenKind kind, char *str) {
 
 Token *expect(TokenKind kind, char *str) {
     Token *token = vec_get(tokens, pos);
-    if (token->kind != kind) {
-        error_at(token->loc, "Unexpected token");
-    }
-    if (str && strcmp(token->str, str) != 0) {
+    if (token->kind != kind || (str && strcmp(token->str, str) != 0)) {
         error_at(token->loc, "Unexpected token");
     }
     pos++;
@@ -80,9 +74,7 @@ Type *ary_of(Type *base, int size) {
 }
 
 Node *ary_to_ptr(Node *ary) {
-    if (ary->ty->ty != ARY) {
-        error("Not an array");
-    }
+    assert(ary->ty->ty == ARY);
     Node *addr = calloc(1, sizeof(Node));
     addr->kind = ND_ADDR;
     addr->lhs = ary;
@@ -165,8 +157,8 @@ Node *new_node_num(int val) {
 Node *new_node_gvar(Type *ty, char *name) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_GVAR;
-    node->name = name;
     node->ty = ty;
+    node->name = name;
     map_insert(prog->gvars, node->name, node);
     return node;
 }
@@ -174,8 +166,8 @@ Node *new_node_gvar(Type *ty, char *name) {
 Node *new_node_lvar(Type *ty, char *name) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_LVAR;
-    node->name = name;
     node->ty = ty;
+    node->name = name;
     map_insert(fn->lvars, node->name, node);
     return node;
 }
@@ -420,9 +412,8 @@ Node *primary() {
                 error_at(tok->loc, "Undefined variable");
             }
             Node *offset = new_node(ND_MUL, expr(), new_node_num(var->ty->ary_of->size));
-            Node *addr = new_node(ND_ADD, var, offset);
             expect(TK_RESERVED, "]");
-            return new_node(ND_DEREF, addr, NULL);
+            return new_node(ND_DEREF, new_node(ND_ADD, var, offset), NULL);
         } else {
             Node *var = find_var(tok->str);
             if (!var) {
@@ -465,14 +456,14 @@ void top_level() {
     Token *tok = expect(TK_IDENT, NULL);
 
     if (consume(TK_RESERVED, "(")) {
-        // Function
+        // Function.
         fn = calloc(1, sizeof(Function));
         fn->rty = ty;
         fn->name = tok->str;
         fn->args = vec_create();
         fn->lvars = map_create();
 
-        // Parse the arguments
+        // Arguments.
         while (!consume(TK_RESERVED, ")")) {
             if (0 < fn->args->len) {
                 expect(TK_RESERVED, ",");
@@ -488,10 +479,10 @@ void top_level() {
             vec_push(fn->args, node);
         }
 
-        // Register the function
+        // NOTE: functions must be registered before parsing their bodies to deal with recursion
         map_insert(prog->fns, fn->name, fn);
 
-        // Parse the body
+        // Body.
         fn->body = vec_create();
         expect(TK_RESERVED, "{");
         while (!consume(TK_RESERVED, "}")) {
