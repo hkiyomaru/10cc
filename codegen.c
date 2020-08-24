@@ -30,7 +30,7 @@ void gen(Node *node) {
             printf("  push %d\n", node->val);
             return;
         case ND_FUNC_CALL:
-            for (int i = 0; i < node->args->len; i++) gen(get_elem_from_vec(node->args, i));
+            for (int i = 0; i < node->args->len; i++) gen(vec_get(node->args, i));
             for (int i = node->args->len - 1; 0 <= i; i--) printf("  pop %s\n", argregs[i]);
             printf("  call %s\n", node->name);
             printf("  push rax\n");
@@ -110,7 +110,7 @@ void gen(Node *node) {
             printf(".Lend%03d:\n", cur_label_id);
             return;
         case ND_BLOCK:
-            for (int i = 0; i < node->stmts->len; i++) gen(get_elem_from_vec(node->stmts, i));
+            for (int i = 0; i < node->stmts->len; i++) gen(vec_get(node->stmts, i));
             return;
         case ND_ADDR:
             if (node->lhs->kind == ND_LVAR) {
@@ -190,14 +190,14 @@ void gen_func(Function *fn) {
     // Argument values.
     for (int i = 0; i < fn->args->len; i++) {
         printf("  mov rax, rbp\n");
-        Node *arg = get_elem_from_vec(fn->args, i);
+        Node *arg = vec_get(fn->args, i);
         printf("  sub rax, %d\n", arg->offset);
         printf("  mov [rax], %s\n", argregs[i]);
     }
 
     // Codes.
     for (int i = 0; i < fn->body->len; i++) {
-        gen(get_elem_from_vec(fn->body, i));
+        gen(vec_get(fn->body, i));
         printf("  pop rax\n");
     }
 }
@@ -217,6 +217,6 @@ void gen_x86(Program *prog) {
 
     printf(".text\n");
     for (int i = 0; i < prog->fns->len; i++) {
-        gen_func(get_elem_from_vec(prog->fns->vals, i));
+        gen_func(vec_get(prog->fns->vals, i));
     }
 }

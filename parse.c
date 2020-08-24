@@ -16,7 +16,7 @@ Node *unary();
 Node *primary();
 
 Token *consume(TokenKind kind, char *str) {
-    Token *token = get_elem_from_vec(tokens, pos);
+    Token *token = vec_get(tokens, pos);
     if (token->kind != kind) {
         return NULL;
     }
@@ -28,7 +28,7 @@ Token *consume(TokenKind kind, char *str) {
 }
 
 Token *expect(TokenKind kind, char *str) {
-    Token *token = get_elem_from_vec(tokens, pos);
+    Token *token = vec_get(tokens, pos);
     if (token->kind != kind) {
         error_at(token->loc, "Unexpected token");
     }
@@ -40,12 +40,12 @@ Token *expect(TokenKind kind, char *str) {
 }
 
 bool at_eof() {
-    Token *token = get_elem_from_vec(tokens, pos);
+    Token *token = vec_get(tokens, pos);
     return token->kind == TK_EOF;
 }
 
 bool at_typename() {
-    Token *token = get_elem_from_vec(tokens, pos);
+    Token *token = vec_get(tokens, pos);
     return token->kind == TK_INT;
 }
 
@@ -91,7 +91,7 @@ Node *ary_to_ptr(Node *ary) {
 }
 
 Type *read_ty() {
-    Token *token = get_elem_from_vec(tokens, pos);
+    Token *token = vec_get(tokens, pos);
 
     Type *ty;
     if (consume(TK_INT, NULL)) {
@@ -167,7 +167,7 @@ Node *new_node_gvar(Type *ty, char *name) {
     node->kind = ND_GVAR;
     node->name = name;
     node->ty = ty;
-    add_elem_to_map(prog->gvars, node->name, node);
+    map_insert(prog->gvars, node->name, node);
     return node;
 }
 
@@ -176,7 +176,7 @@ Node *new_node_lvar(Type *ty, char *name) {
     node->kind = ND_LVAR;
     node->name = name;
     node->ty = ty;
-    add_elem_to_map(fn->lvars, node->name, node);
+    map_insert(fn->lvars, node->name, node);
     return node;
 }
 
@@ -192,10 +192,10 @@ Node *new_node_func_call(Type *ty, char *name, Vector *args) {
 Node *find_var(char *name) {
     Node *var = NULL;
     if (fn && fn->lvars) {
-        var = get_elem_from_map(fn->lvars, name);
+        var = map_at(fn->lvars, name);
     }
     if (!var) {
-        var = get_elem_from_map(prog->gvars, name);
+        var = map_at(prog->gvars, name);
     }
     return var;
 }
@@ -213,9 +213,9 @@ Node *stmt() {
     if (consume(TK_RESERVED, "{")) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_BLOCK;
-        node->stmts = create_vec();
+        node->stmts = vec_create();
         while (!consume(TK_RESERVED, "}")) {
-            add_elem_to_vec(node->stmts, (void *)stmt());
+            vec_push(node->stmts, (void *)stmt());
         }
         return node;
     } else if (consume(TK_RETURN, NULL)) {
@@ -404,12 +404,12 @@ Node *primary() {
     Token *tok = consume(TK_IDENT, NULL);
     if (tok) {
         if (consume(TK_RESERVED, "(")) {
-            Vector *args = create_vec();
+            Vector *args = vec_create();
             while (!consume(TK_RESERVED, ")")) {
-                add_elem_to_vec(args, expr());
+                vec_push(args, expr());
                 consume(TK_RESERVED, ",");
             }
-            Function *fn_ = get_elem_from_map(prog->fns, tok->str);
+            Function *fn_ = map_at(prog->fns, tok->str);
             if (!fn_) {
                 error_at(tok->loc, "Undefined function");
             }
@@ -469,8 +469,8 @@ void top_level() {
         fn = calloc(1, sizeof(Function));
         fn->rty = ty;
         fn->name = tok->str;
-        fn->args = create_vec();
-        fn->lvars = create_map();
+        fn->args = vec_create();
+        fn->lvars = map_create();
 
         // Parse the arguments
         while (!consume(TK_RESERVED, ")")) {
@@ -480,22 +480,22 @@ void top_level() {
 
             Type *ty = read_ty();
             Token *tok = expect(TK_IDENT, NULL);
-            if (get_elem_from_map(fn->lvars, tok->str)) {
+            if (map_at(fn->lvars, tok->str)) {
                 error_at(tok->loc, "Redefinition of '%s'", tok->str);
             }
             ty = read_array(ty);
             Node *node = new_node_lvar(ty, tok->str);
-            add_elem_to_vec(fn->args, node);
+            vec_push(fn->args, node);
         }
 
         // Register the function
-        add_elem_to_map(prog->fns, fn->name, fn);
+        map_insert(prog->fns, fn->name, fn);
 
         // Parse the body
-        fn->body = create_vec();
+        fn->body = vec_create();
         expect(TK_RESERVED, "{");
         while (!consume(TK_RESERVED, "}")) {
-            add_elem_to_vec(fn->body, stmt());
+            vec_push(fn->body, stmt());
         }
         return;
     } else {
@@ -514,8 +514,8 @@ Program *parse(Vector *tokens_) {
     pos = 0;
 
     prog = calloc(1, sizeof(Program));
-    prog->fns = create_map();
-    prog->gvars = create_map();
+    prog->fns = map_create();
+    prog->gvars = map_create();
     while (!at_eof()) {
         top_level();
     }

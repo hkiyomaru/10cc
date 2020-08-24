@@ -141,7 +141,7 @@ void draw_node_tree(Node *node, int depth, char *prefix) {
 
 void draw_ast(Program *prog) {
     for (int i = 0; i < prog->fns->len; i++) {
-        Function *fn = get_elem_from_vec(prog->fns->vals, i);
+        Function *fn = vec_get(prog->fns->vals, i);
         fprintf(stderr, "%s(\n", fn->name);
         for (int j = 0; j < fn->args->len; j++) {
             char prefix[256] = {'\0'};
