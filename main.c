@@ -14,8 +14,11 @@ int main(int argc, char **argv) {
     // Tokenize user input.
     Vector *tokens = tokenize();
 
-    // Construct an abstract syntax tree.
+    // Construct abstract syntax trees.
     Program *prog = parse(tokens);
+
+    // Apply semantic parsing to the constructed ASTs.
+    sema(prog);
 
 #if LOGLEVEL <= 2
     // Draw the abstract syntax tree.

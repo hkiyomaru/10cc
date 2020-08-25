@@ -73,15 +73,6 @@ Type *ary_of(Type *base, int size) {
     return ty;
 }
 
-Node *ary_to_ptr(Node *ary) {
-    assert(ary->ty->ty == ARY);
-    Node *addr = calloc(1, sizeof(Node));
-    addr->kind = ND_ADDR;
-    addr->lhs = ary;
-    addr->ty = ptr_to(ary->ty->ary_of);
-    return addr;
-}
-
 Type *read_ty() {
     Token *token = vec_get(tokens, pos);
 
@@ -112,37 +103,8 @@ Type *read_array(Type *ty) {
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = kind;
-
-    if (lhs && (lhs->kind == ND_LVAR || lhs->kind == ND_GVAR) && lhs->ty->ty == ARY) {
-        lhs = ary_to_ptr(lhs);
-    }
-    if (rhs && (lhs->kind == ND_LVAR || lhs->kind == ND_GVAR) && rhs->ty->ty == ARY) {
-        rhs = ary_to_ptr(rhs);
-    }
-
     node->lhs = lhs;
     node->rhs = rhs;
-    switch (kind) {
-        case ND_ADD:
-        case ND_SUB:
-        case ND_MUL:
-        case ND_DIV:
-        case ND_EQ:
-        case ND_NE:
-        case ND_LE:
-        case ND_LT:
-        case ND_ASSIGN:
-            node->ty = lhs->ty;
-            break;
-        case ND_ADDR:
-            node->ty = ptr_to(lhs->ty);
-            break;
-        case ND_DEREF:
-            node->ty = node->lhs->ty->ptr_to;
-            break;
-        default:
-            break;
-    }
     return node;
 }
 
@@ -315,22 +277,10 @@ Node *add() {
     for (;;) {
         Node *rhs;
         if (consume(TK_RESERVED, "+")) {
-            if (node->ty->ty == PTR) {
-                rhs = new_node(ND_MUL, mul(), new_node_num(node->ty->ptr_to->size));
-            } else if (node->ty->ty == ARY) {
-                rhs = new_node(ND_MUL, mul(), new_node_num(node->ty->ary_of->size));
-            } else {
-                rhs = mul();
-            }
+            rhs = mul();
             node = new_node(ND_ADD, node, rhs);
         } else if (consume(TK_RESERVED, "-")) {
-            if (node->ty->ty == PTR) {
-                rhs = new_node(ND_MUL, mul(), new_node_num(node->ty->ptr_to->size));
-            } else if (node->ty->ty == ARY) {
-                rhs = new_node(ND_MUL, mul(), new_node_num(node->ty->ary_of->size));
-            } else {
-                rhs = mul();
-            }
+            rhs = mul();
             node = new_node(ND_SUB, node, rhs);
         } else {
             return node;
@@ -411,9 +361,9 @@ Node *primary() {
             if (!var) {
                 error_at(tok->loc, "Undefined variable");
             }
-            Node *offset = new_node(ND_MUL, expr(), new_node_num(var->ty->ary_of->size));
+            Node *index = expr();
             expect(TK_RESERVED, "]");
-            return new_node(ND_DEREF, new_node(ND_ADD, var, offset), NULL);
+            return new_node(ND_DEREF, new_node(ND_ADD, var, index), NULL);
         } else {
             Node *var = find_var(tok->str);
             if (!var) {
@@ -431,22 +381,9 @@ Node *primary() {
 
     Node *node = new_node_num(expect(TK_NUM, NULL)->val);
     if (consume(TK_RESERVED, "[")) {
-        Node *var, *offset;
-        tok = expect(TK_IDENT, NULL);
-        var = find_var(tok->str);
-        if (!var) {
-            error_at(tok->loc, "Undefined variable");
-        }
-        if (var->ty->ty == PTR) {
-            offset = new_node(ND_MUL, node, new_node_num(var->ty->ptr_to->size));
-        } else if (var->ty->ty == ARY) {
-            offset = new_node(ND_MUL, node, new_node_num(var->ty->ary_of->size));
-        } else {
-            offset = node;
-        }
-        Node *addr = new_node(ND_ADD, var, offset);
+        Node *index = expr();
         expect(TK_RESERVED, "]");
-        return new_node(ND_DEREF, addr, NULL);
+        return new_node(ND_DEREF, new_node(ND_ADD, index, node), NULL);
     }
     return node;
 }

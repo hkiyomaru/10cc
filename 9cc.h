@@ -137,6 +137,15 @@ typedef struct {
 
 Program *parse(Vector *tokens_);
 
+Type *int_ty();
+Type *ptr_to(Type *base);
+Node *new_node_num(int val);
+
+/**
+ * sema.c
+ */
+void sema(Program *prog);
+
 /**
  * codegen.c
  */
