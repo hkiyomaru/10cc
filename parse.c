@@ -13,6 +13,7 @@ Node *relational();
 Node *add();
 Node *mul();
 Node *unary();
+Node *suffix();
 Node *primary();
 
 Token *consume(TokenKind kind, char *str) {
@@ -75,14 +76,12 @@ Type *ary_of(Type *base, int size) {
 
 Type *read_ty() {
     Token *token = vec_get(tokens, pos);
-
     Type *ty;
     if (consume(TK_INT, NULL)) {
         ty = int_ty();
     } else {
         error_at(token->loc, "Invalid type");
     }
-
     while ((consume(TK_RESERVED, "*"))) {
         ty = ptr_to(ty);
     }
@@ -93,9 +92,10 @@ Type *read_array(Type *ty) {
     if (consume(TK_RESERVED, "[")) {
         if (consume(TK_RESERVED, "]")) {
             ty = ary_of(ty, -1);
+        } else {
+            ty = ary_of(ty, expect(TK_NUM, NULL)->val);
+            expect(TK_RESERVED, "]");
         }
-        ty = ary_of(ty, expect(TK_NUM, NULL)->val);
-        expect(TK_RESERVED, "]");
     }
     return ty;
 }
@@ -134,11 +134,22 @@ Node *new_node_lvar(Type *ty, char *name) {
     return node;
 }
 
-Node *new_node_func_call(Type *ty, char *name, Vector *args) {
+Node *new_node_func_call(Token *tok) {
+    Vector *args = vec_create();
+    while (!consume(TK_RESERVED, ")")) {
+        if (0 < args->len) {
+            expect(TK_RESERVED, ",");
+        }
+        vec_push(args, expr());
+    }
+    Function *fn_ = map_at(prog->fns, tok->str);
+    if (!fn_) {
+        error_at(tok->loc, "Undefined function");
+    }
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_FUNC_CALL;
-    node->ty = ty;
-    node->name = name;
+    node->name = tok->str;
+    node->ty = fn_->rty;
     node->args = args;
     return node;
 }
@@ -310,17 +321,30 @@ Node *mul() {
  */
 Node *unary() {
     if (consume(TK_RESERVED, "+")) {
-        return primary();
+        return unary();
     } else if (consume(TK_RESERVED, "-")) {
-        return new_node(ND_SUB, new_node_num(0), primary());
+        return new_node(ND_SUB, new_node_num(0), unary());
     } else if (consume(TK_RESERVED, "&")) {
-        return new_node(ND_ADDR, primary(), NULL);
+        return new_node(ND_ADDR, unary(), NULL);
     } else if (consume(TK_RESERVED, "*")) {
-        return new_node(ND_DEREF, primary(), NULL);
+        return new_node(ND_DEREF, unary(), NULL);
     } else if (consume(TK_SIZEOF, NULL)) {
         return new_node_num(unary()->ty->size);
     } else {
-        return primary();
+        return suffix();
+    }
+}
+
+Node *suffix() {
+    Node *lhs = primary();
+    for (;;) {
+        if (consume(TK_RESERVED, "[")) {
+            Node *node = new_node(ND_ADD, lhs, assign());
+            lhs = new_node(ND_DEREF, node, NULL);
+            expect(TK_RESERVED, "]");
+            continue;
+        }
+        return lhs;
     }
 }
 
@@ -331,6 +355,12 @@ Node *unary() {
  *         | "(" expr ")"
  */
 Node *primary() {
+    if (consume(TK_RESERVED, "(")) {
+        Node *node = expr();
+        expect(TK_RESERVED, ")");
+        return node;
+    }
+
     // Variable declaration
     if (at_typename()) {
         Type *ty = read_ty();
@@ -346,24 +376,7 @@ Node *primary() {
     Token *tok = consume(TK_IDENT, NULL);
     if (tok) {
         if (consume(TK_RESERVED, "(")) {
-            Vector *args = vec_create();
-            while (!consume(TK_RESERVED, ")")) {
-                vec_push(args, expr());
-                consume(TK_RESERVED, ",");
-            }
-            Function *fn_ = map_at(prog->fns, tok->str);
-            if (!fn_) {
-                error_at(tok->loc, "Undefined function");
-            }
-            return new_node_func_call(fn_->rty, tok->str, args);
-        } else if (consume(TK_RESERVED, "[")) {
-            Node *var = find_var(tok->str);
-            if (!var) {
-                error_at(tok->loc, "Undefined variable");
-            }
-            Node *index = expr();
-            expect(TK_RESERVED, "]");
-            return new_node(ND_DEREF, new_node(ND_ADD, var, index), NULL);
+            return new_node_func_call(tok);
         } else {
             Node *var = find_var(tok->str);
             if (!var) {
@@ -373,19 +386,8 @@ Node *primary() {
         }
     }
 
-    if (consume(TK_RESERVED, "(")) {
-        Node *node = expr();
-        expect(TK_RESERVED, ")");
-        return node;
-    }
-
-    Node *node = new_node_num(expect(TK_NUM, NULL)->val);
-    if (consume(TK_RESERVED, "[")) {
-        Node *index = expr();
-        expect(TK_RESERVED, "]");
-        return new_node(ND_DEREF, new_node(ND_ADD, index, node), NULL);
-    }
-    return node;
+    // Number
+    return new_node_num(expect(TK_NUM, NULL)->val);
 }
 
 void top_level() {
