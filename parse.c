@@ -91,7 +91,7 @@ Type *read_ty() {
 Type *read_array(Type *ty) {
     if (consume(TK_RESERVED, "[")) {
         if (consume(TK_RESERVED, "]")) {
-            ty = ary_of(ty, -1);
+            ty = ary_of(ty, 0);
         } else {
             ty = ary_of(ty, expect(TK_NUM, NULL)->val);
             expect(TK_RESERVED, "]");
@@ -166,12 +166,26 @@ Node *find_var(char *name) {
 }
 
 /**
+ * declaration = T ident ("[" num? "]")?
+ */
+Node *declaration() {
+    Type *ty = read_ty();
+    Token *tok = expect(TK_IDENT, NULL);
+    if (find_var(tok->str)) {
+        error_at(tok->loc, "Redefinition of '%s'", tok->str);
+    }
+    ty = read_array(ty);
+    return new_node_lvar(ty, tok->str);
+}
+
+/**
  * stmt = expr ";"
  *      | "{" stmt* "}"
  *      | "if" "(" expr ")" stmt ("else" stmt)?
  *      | "while" "(" expr ")" stmt
  *      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
  *      | "return" expr ";"
+ *      | T ident ";"
  */
 Node *stmt() {
     Node *node;
@@ -227,9 +241,15 @@ Node *stmt() {
         node->then = stmt();
         return node;
     }
-    node = expr();
-    expect(TK_RESERVED, ";");
-    return node;
+    if (at_typename()) {
+        node = declaration();
+        expect(TK_RESERVED, ";");
+        return node;
+    } else {
+        node = expr();
+        expect(TK_RESERVED, ";");
+        return node;
+    }
 }
 
 /**
@@ -351,7 +371,6 @@ Node *suffix() {
 /**
  * primary = num
  *         | ident ("(" ")")?
- *         | T ident
  *         | "(" expr ")"
  */
 Node *primary() {
@@ -359,17 +378,6 @@ Node *primary() {
         Node *node = expr();
         expect(TK_RESERVED, ")");
         return node;
-    }
-
-    // Variable declaration
-    if (at_typename()) {
-        Type *ty = read_ty();
-        Token *tok = expect(TK_IDENT, NULL);
-        if (find_var(tok->str)) {
-            error_at(tok->loc, "Redefinition of '%s'", tok->str);
-        }
-        ty = read_array(ty);
-        return new_node_lvar(ty, tok->str);
     }
 
     // Variable reference or function call
@@ -407,15 +415,7 @@ void top_level() {
             if (0 < fn->args->len) {
                 expect(TK_RESERVED, ",");
             }
-
-            Type *ty = read_ty();
-            Token *tok = expect(TK_IDENT, NULL);
-            if (map_at(fn->lvars, tok->str)) {
-                error_at(tok->loc, "Redefinition of '%s'", tok->str);
-            }
-            ty = read_array(ty);
-            Node *node = new_node_lvar(ty, tok->str);
-            vec_push(fn->args, node);
+            vec_push(fn->args, declaration());
         }
 
         // NOTE: functions must be registered before parsing their bodies to deal with recursion
