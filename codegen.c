@@ -5,20 +5,41 @@ char *argregs[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
 int label_id = 0;
 
+/**
+ * Rounds up a number.
+ *
+ * @param x A number to be rounded up.
+ * @param aligh A base number.
+ */
 int roundup(int x, int align) { return (x + align - 1) & ~(align - 1); }
 
+/**
+ * Generates a code to push an address to a local variable to the stack.
+ *
+ * @param node A node representing a local variable.
+ */
 void gen_lval(Node *node) {
     assert(node->kind == ND_LVAR);
     printf("  lea rax, [rbp-%d]\n", node->offset);
     printf("  push rax\n");
 }
 
+/**
+ * Generates a code to push an address to a global variable to the stack.
+ *
+ * @param node A node representing a global variable.
+ */
 void gen_gval(Node *node) {
     assert(node->kind == ND_GVAR);
     printf("  lea rax, %s\n", node->name);
     printf("  push rax\n");
 }
 
+/**
+ * Generates code to perform the operation of a node.
+ *
+ * @param node A node.
+ */
 void gen(Node *node) {
     int cur_label_id;
     switch (node->kind) {
@@ -168,8 +189,12 @@ void gen(Node *node) {
     printf("  push rax\n");
 }
 
+/**
+ * Generates code to perform a function.
+ *
+ * @param fn A function.
+ */
 void gen_func(Function *fn) {
-    // Assign offsets.
     int offset = 0;
     for (int i = 0; i < fn->lvars->len; i++) {
         Node *var = fn->lvars->vals->data[i];
@@ -178,16 +203,13 @@ void gen_func(Function *fn) {
         var->offset = offset;
     }
 
-    // Header.
     printf(".global %s\n", fn->name);
     printf("%s:\n", fn->name);
 
-    // Prologue.
     printf("  push rbp\n");
     printf("  mov rbp, rsp\n");
     printf("  sub rsp, %d\n", roundup(offset, 16));
 
-    // Argument values.
     for (int i = 0; i < fn->args->len; i++) {
         printf("  mov rax, rbp\n");
         Node *arg = vec_get(fn->args, i);
@@ -195,18 +217,27 @@ void gen_func(Function *fn) {
         printf("  mov [rax], %s\n", argregs[i]);
     }
 
-    // Codes.
     for (int i = 0; i < fn->body->len; i++) {
         gen(vec_get(fn->body, i));
         printf("  pop rax\n");
     }
 }
 
+/**
+ * Generates code to allocate memory for global variables.
+ *
+ * @param gvar A node reprenting a global variable.
+ */
 void gen_data(Node *gvar) {
     printf("%s:\n", gvar->name);
     printf("  .zero %d\n", gvar->ty->size);
 }
 
+/**
+ * Generates code written in x86 assembly language.
+ *
+ * @param prog A program.
+ */
 void gen_x86(Program *prog) {
     printf(".intel_syntax noprefix\n");
 
