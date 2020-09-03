@@ -100,25 +100,28 @@ Type *read_array(Type *ty) {
     return ty;
 }
 
-Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
+Node *new_node(NodeKind kind) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = kind;
+    return node;
+}
+
+Node *new_bin_op(NodeKind kind, Node *lhs, Node *rhs) {
+    Node *node = new_node(kind);
     node->lhs = lhs;
     node->rhs = rhs;
     return node;
 }
 
 Node *new_node_num(int val) {
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = ND_NUM;
+    Node *node = new_node(ND_NUM);
     node->val = val;
     node->ty = int_ty();
     return node;
 }
 
 Node *new_node_gvar(Type *ty, char *name) {
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = ND_GVAR;
+    Node *node = new_node(ND_GVAR);
     node->ty = ty;
     node->name = name;
     map_insert(prog->gvars, node->name, node);
@@ -126,8 +129,7 @@ Node *new_node_gvar(Type *ty, char *name) {
 }
 
 Node *new_node_lvar(Type *ty, char *name) {
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = ND_LVAR;
+    Node *node = new_node(ND_LVAR);
     node->ty = ty;
     node->name = name;
     map_insert(fn->lvars, node->name, node);
@@ -146,8 +148,7 @@ Node *new_node_func_call(Token *tok) {
     if (!fn_) {
         error_at(tok->loc, "Undefined function");
     }
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = ND_FUNC_CALL;
+    Node *node = new_node(ND_FUNC_CALL);
     node->name = tok->str;
     node->ty = fn_->rty;
     node->args = args;
@@ -190,22 +191,19 @@ Node *declaration() {
 Node *stmt() {
     Node *node;
     if (consume(TK_RESERVED, "{")) {
-        node = calloc(1, sizeof(Node));
-        node->kind = ND_BLOCK;
+        node = new_node(ND_BLOCK);
         node->stmts = vec_create();
         while (!consume(TK_RESERVED, "}")) {
             vec_push(node->stmts, (void *)stmt());
         }
         return node;
     } else if (consume(TK_RETURN, NULL)) {
-        node = calloc(1, sizeof(Node));
-        node->kind = ND_RETURN;
+        node = new_node(ND_RETURN);
         node->lhs = expr();
         expect(TK_RESERVED, ";");
         return node;
     } else if (consume(TK_IF, NULL)) {
-        node = calloc(1, sizeof(Node));
-        node->kind = ND_IF;
+        node = new_node(ND_IF);
         expect(TK_RESERVED, "(");
         node->cond = expr();
         expect(TK_RESERVED, ")");
@@ -215,16 +213,14 @@ Node *stmt() {
         }
         return node;
     } else if (consume(TK_WHILE, NULL)) {
-        node = calloc(1, sizeof(Node));
-        node->kind = ND_WHILE;
+        node = new_node(ND_WHILE);
         expect(TK_RESERVED, "(");
         node->cond = expr();
         expect(TK_RESERVED, ")");
         node->then = stmt();
         return node;
     } else if (consume(TK_FOR, NULL)) {
-        node = calloc(1, sizeof(Node));
-        node->kind = ND_FOR;
+        node = new_node(ND_FOR);
         expect(TK_RESERVED, "(");
         if (!consume(TK_RESERVED, ";")) {
             node->init = expr();
@@ -263,7 +259,7 @@ Node *expr() { return assign(); }
 Node *assign() {
     Node *node = equality();
     if (consume(TK_RESERVED, "=")) {
-        node = new_node(ND_ASSIGN, node, assign());
+        node = new_bin_op(ND_ASSIGN, node, assign());
     }
     return node;
 }
@@ -274,9 +270,9 @@ Node *assign() {
 Node *equality() {
     Node *node = relational();
     if (consume(TK_RESERVED, "==")) {
-        node = new_node(ND_EQ, node, relational());
+        node = new_bin_op(ND_EQ, node, relational());
     } else if (consume(TK_RESERVED, "!=")) {
-        node = new_node(ND_NE, node, relational());
+        node = new_bin_op(ND_NE, node, relational());
     } else {
         return node;
     }
@@ -288,13 +284,13 @@ Node *equality() {
 Node *relational() {
     Node *node = add();
     if (consume(TK_RESERVED, "<=")) {
-        return new_node(ND_LE, node, add());
+        return new_bin_op(ND_LE, node, add());
     } else if (consume(TK_RESERVED, ">=")) {
-        return new_node(ND_LE, add(), node);
+        return new_bin_op(ND_LE, add(), node);
     } else if (consume(TK_RESERVED, "<")) {
-        return new_node(ND_LT, node, add());
+        return new_bin_op(ND_LT, node, add());
     } else if (consume(TK_RESERVED, ">")) {
-        return new_node(ND_LT, add(), node);
+        return new_bin_op(ND_LT, add(), node);
     } else {
         return node;
     }
@@ -309,10 +305,10 @@ Node *add() {
         Node *rhs;
         if (consume(TK_RESERVED, "+")) {
             rhs = mul();
-            node = new_node(ND_ADD, node, rhs);
+            node = new_bin_op(ND_ADD, node, rhs);
         } else if (consume(TK_RESERVED, "-")) {
             rhs = mul();
-            node = new_node(ND_SUB, node, rhs);
+            node = new_bin_op(ND_SUB, node, rhs);
         } else {
             return node;
         }
@@ -326,9 +322,9 @@ Node *mul() {
     Node *node = unary();
     for (;;) {
         if (consume(TK_RESERVED, "*")) {
-            node = new_node(ND_MUL, node, unary());
+            node = new_bin_op(ND_MUL, node, unary());
         } else if (consume(TK_RESERVED, "/")) {
-            node = new_node(ND_DIV, node, unary());
+            node = new_bin_op(ND_DIV, node, unary());
         } else {
             return node;
         }
@@ -343,11 +339,11 @@ Node *unary() {
     if (consume(TK_RESERVED, "+")) {
         return unary();
     } else if (consume(TK_RESERVED, "-")) {
-        return new_node(ND_SUB, new_node_num(0), unary());
+        return new_bin_op(ND_SUB, new_node_num(0), unary());
     } else if (consume(TK_RESERVED, "&")) {
-        return new_node(ND_ADDR, unary(), NULL);
+        return new_bin_op(ND_ADDR, unary(), NULL);
     } else if (consume(TK_RESERVED, "*")) {
-        return new_node(ND_DEREF, unary(), NULL);
+        return new_bin_op(ND_DEREF, unary(), NULL);
     } else if (consume(TK_SIZEOF, NULL)) {
         return new_node_num(unary()->ty->size);
     } else {
@@ -359,8 +355,8 @@ Node *suffix() {
     Node *lhs = primary();
     for (;;) {
         if (consume(TK_RESERVED, "[")) {
-            Node *node = new_node(ND_ADD, lhs, assign());
-            lhs = new_node(ND_DEREF, node, NULL);
+            Node *node = new_bin_op(ND_ADD, lhs, assign());
+            lhs = new_bin_op(ND_DEREF, node, NULL);
             expect(TK_RESERVED, "]");
             continue;
         }
