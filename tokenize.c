@@ -1,7 +1,14 @@
 #include "9cc.h"
 
-Vector *tokens;
-
+/**
+ * Creates a token.
+ *
+ * @param kind The kind of a token.
+ * @param str The string of a token.
+ * @param len The length of the string of a token.
+ *
+ * @return A token.
+ */
 Token *new_token(TokenKind kind, char *str, int len) {
     Token *tok = calloc(1, sizeof(Token));
 
@@ -15,8 +22,13 @@ Token *new_token(TokenKind kind, char *str, int len) {
     return tok;
 }
 
+/**
+ * Tokenize a program.
+ *
+ * @return A list of tokens.
+ */
 Vector *tokenize() {
-    tokens = vec_create();
+    Vector *tokens = vec_create();
     char *p = user_input;
     while (*p) {
         if (isspace(*p)) {
