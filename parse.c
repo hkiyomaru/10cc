@@ -1,10 +1,10 @@
 #include "9cc.h"
 
-Program *prog;
-Function *fn;
+Program *prog; /**< The program. */
+Function *fn;  /**< The function being parsed. */
 
-Vector *tokens;
-int pos;
+Vector *tokens; /**< A list of tokens. */
+int pos;        /**< The position of the current token. */
 
 Node *expr();
 Node *assign();
@@ -16,6 +16,15 @@ Node *unary();
 Node *suffix();
 Node *primary();
 
+/**
+ * Returns the current token if it satisfies the given conditions.
+ * Otherwise, NULL will be returned.
+ *
+ * @param kind The kind of a token.
+ * @param str The string expression of a token.
+ *
+ * @return The current token.
+ */
 Token *consume(TokenKind kind, char *str) {
     Token *token = vec_get(tokens, pos);
     if (token->kind != kind || (str && strcmp(token->str, str) != 0)) {
@@ -25,6 +34,15 @@ Token *consume(TokenKind kind, char *str) {
     return token;
 }
 
+/**
+ * Returns the current token if it satisfies the given conditions.
+ * Otherwise, stops the program with an error message.
+ *
+ * @param kind The kind of a token.
+ * @param str The string expression of a token.
+ *
+ * @return The current token.
+ */
 Token *expect(TokenKind kind, char *str) {
     Token *token = vec_get(tokens, pos);
     if (token->kind != kind || (str && strcmp(token->str, str) != 0)) {
@@ -34,16 +52,34 @@ Token *expect(TokenKind kind, char *str) {
     return token;
 }
 
+/**
+ * Returns True if the kind of the current token is EOF.
+ *
+ * @return True if the kind of the current token is EOF.
+ */
 bool at_eof() {
     Token *token = vec_get(tokens, pos);
     return token->kind == TK_EOF;
 }
 
+/**
+ * Returns True if the kind of the current token is a type.
+ *
+ * @return True if the kind of the current token is a type.
+ */
 bool at_typename() {
     Token *token = vec_get(tokens, pos);
     return token->kind == TK_INT;
 }
 
+/**
+ * Creates a type.
+ *
+ * @param ty A type ID.
+ * @param size Required bytes to represent the type.
+ *
+ * @return A type.
+ */
 Type *new_ty(int ty, int size) {
     Type *ret = calloc(1, sizeof(Type));
     ret->ty = ty;
@@ -52,18 +88,38 @@ Type *new_ty(int ty, int size) {
     return ret;
 }
 
+/**
+ * Creates an INT type.
+ *
+ * @return An INT type.
+ */
 Type *int_ty() {
     Type *ty = new_ty(INT, 4);
     ty->align = 8;  // TODO
     return ty;
 }
 
+/**
+ * Creates a PTR type.
+ *
+ * @param base The type to be pointed.
+ *
+ * @return A PTR type.
+ */
 Type *ptr_to(Type *base) {
     Type *ty = new_ty(PTR, 8);
     ty->ptr_to = base;
     return ty;
 }
 
+/**
+ * Creates an ARY type.
+ *
+ * @param base The type of each item.
+ * @param size The number of items.
+ *
+ * @return An ARY type.
+ */
 Type *ary_of(Type *base, int size) {
     Type *ty = calloc(1, sizeof(Type));
     ty->ty = ARY;
@@ -74,6 +130,11 @@ Type *ary_of(Type *base, int size) {
     return ty;
 }
 
+/**
+ * Parses tokens to represent a type.
+ *
+ * @return A type.
+ */
 Type *read_ty() {
     Token *token = vec_get(tokens, pos);
     Type *ty;
@@ -88,6 +149,13 @@ Type *read_ty() {
     return ty;
 }
 
+/**
+ * Parses tokens to represent an array.
+ *
+ * @param ty The type of each item.
+ *
+ * @return A type.
+ */
 Type *read_array(Type *ty) {
     if (consume(TK_RESERVED, "[")) {
         if (consume(TK_RESERVED, "]")) {
@@ -100,12 +168,28 @@ Type *read_array(Type *ty) {
     return ty;
 }
 
+/**
+ * Creates a node.
+ *
+ * @param kind The kind of a node.
+ *
+ * @return A node.
+ */
 Node *new_node(NodeKind kind) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = kind;
     return node;
 }
 
+/**
+ * Creates a node to represent a binary operation.
+ *
+ * @param kind The kind of a node.
+ * @param lhs The left-hand side of a binary operation.
+ * @param rhs The right-hand side of a binary operation.
+ *
+ * @return A node.
+ */
 Node *new_bin_op(NodeKind kind, Node *lhs, Node *rhs) {
     Node *node = new_node(kind);
     node->lhs = lhs;
@@ -113,6 +197,13 @@ Node *new_bin_op(NodeKind kind, Node *lhs, Node *rhs) {
     return node;
 }
 
+/**
+ * Creates a node to represent a number.
+ *
+ * @param val A number.
+ *
+ * @return A node.
+ */
 Node *new_node_num(int val) {
     Node *node = new_node(ND_NUM);
     node->val = val;
@@ -120,6 +211,15 @@ Node *new_node_num(int val) {
     return node;
 }
 
+/**
+ * Creates a node to represent a global variable.
+ * The created variable is added into the list of global variables.
+ *
+ * @param ty The type of the global variable.
+ * @param name The name of the global variable.
+ *
+ * @return A node.
+ */
 Node *new_node_gvar(Type *ty, char *name) {
     Node *node = new_node(ND_GVAR);
     node->ty = ty;
@@ -128,6 +228,15 @@ Node *new_node_gvar(Type *ty, char *name) {
     return node;
 }
 
+/**
+ * Creates a node to represent a local variable.
+ * The created variable is added into the list of local variables.
+ *
+ * @param ty The type of the local variable.
+ * @param name The name of the local variable.
+ *
+ * @return A node.
+ */
 Node *new_node_lvar(Type *ty, char *name) {
     Node *node = new_node(ND_LVAR);
     node->ty = ty;
@@ -136,6 +245,15 @@ Node *new_node_lvar(Type *ty, char *name) {
     return node;
 }
 
+/**
+ * Creates a node to represent a function call.
+ * Here, '(' has already been consumed.
+ * So, the current token must be an argument or ')'.
+ *
+ * @param tok The name of a function.
+ *
+ * @return A node.
+ */
 Node *new_node_func_call(Token *tok) {
     Vector *args = vec_create();
     while (!consume(TK_RESERVED, ")")) {
@@ -155,6 +273,15 @@ Node *new_node_func_call(Token *tok) {
     return node;
 }
 
+/**
+ * If there exists a variable whose name matches the given condition, returns it.
+ * Otherwise, NULL will be returned.
+ * The lookup process priotizes local variables than global variables.
+ *
+ * @param name The name of a varaible.
+ *
+ * @return A node.
+ */
 Node *find_var(char *name) {
     Node *var = NULL;
     if (fn && fn->lvars) {
@@ -167,7 +294,10 @@ Node *find_var(char *name) {
 }
 
 /**
- * declaration = T ident ("[" num? "]")?
+ * Parses tokens to represent a declaration, where
+ *     declaration = T ident ("[" num? "]")?
+ *
+ * @return A node.
  */
 Node *declaration() {
     Type *ty = read_ty();
@@ -180,13 +310,16 @@ Node *declaration() {
 }
 
 /**
- * stmt = expr ";"
- *      | "{" stmt* "}"
- *      | "if" "(" expr ")" stmt ("else" stmt)?
- *      | "while" "(" expr ")" stmt
- *      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
- *      | "return" expr ";"
- *      | T ident ";"
+ * Parses tokens to represent a statement, where
+ *     stmt = expr ";"
+ *          | "{" stmt* "}"
+ *          | "if" "(" expr ")" stmt ("else" stmt)?
+ *          | "while" "(" expr ")" stmt
+ *          | "for" "(" expr? ";" expr? ";" expr? ")" stmt
+ *          | "return" expr ";"
+ *          | T ident ";"
+ *
+ * @return A node.
  */
 Node *stmt() {
     Node *node;
@@ -249,12 +382,18 @@ Node *stmt() {
 }
 
 /**
- * expr = assign
+ * Parses tokens to represent an expression, where
+ *     expr = assign
+ *
+ * @return A node.
  */
 Node *expr() { return assign(); }
 
 /**
- * assign = equality ("=" assign)?
+ * Parses tokens to represent an assignment, where
+ *     assign = equality ("=" assign)?
+ *
+ * @return A node.
  */
 Node *assign() {
     Node *node = equality();
@@ -265,7 +404,10 @@ Node *assign() {
 }
 
 /**
- * equality = relational (("==" | "!=") relational)?
+ * Parses tokens to represent an equality, where
+ *     equality = relational (("==" | "!=") relational)?
+ *
+ * @return A node.
  */
 Node *equality() {
     Node *node = relational();
@@ -279,7 +421,10 @@ Node *equality() {
 }
 
 /**
- * relational = add (("<=" | ">=" | "<" | ">") add)?
+ * Parses tokens to represent a relationality, where
+ *     relational = add (("<=" | ">=" | "<" | ">") add)?
+ *
+ * @return A node.
  */
 Node *relational() {
     Node *node = add();
@@ -297,7 +442,10 @@ Node *relational() {
 }
 
 /**
- * add = mul ("+" unary | "-" unary)*
+ * Parses tokens to represent addition, where
+ *     add = mul ("+" unary | "-" unary)*
+ *
+ * @return A node.
  */
 Node *add() {
     Node *node = mul();
@@ -316,7 +464,10 @@ Node *add() {
 }
 
 /*
- * mul = unary (("*" | "/") unary)*
+ * Parses tokens to represent multiplication, where
+ *     mul = unary (("*" | "/") unary)*
+ *
+ * @return A node.
  */
 Node *mul() {
     Node *node = unary();
@@ -332,8 +483,11 @@ Node *mul() {
 }
 
 /*
- * unary = "sizeof" unary
- *       | ("+" | "-" | "&" | "*")? primary
+ * Parses tokens to represent an unary operation, where
+ *     unary = "sizeof" unary
+ *           | ("+" | "-" | "&" | "*")? primary
+ *
+ * @return A node.
  */
 Node *unary() {
     if (consume(TK_RESERVED, "+")) {
@@ -351,6 +505,13 @@ Node *unary() {
     }
 }
 
+/**
+ * Parses tokens to represent a primary item.
+ * Then, if possible, parse the suffix, where
+ *     suffix = primary ("[" assign "]")*
+ *
+ * @return A node.
+ */
 Node *suffix() {
     Node *lhs = primary();
     for (;;) {
@@ -365,9 +526,12 @@ Node *suffix() {
 }
 
 /**
- * primary = num
- *         | ident ("(" ")")?
- *         | "(" expr ")"
+ * Parses tokens to represent a primary item, where
+ *     primary = num
+ *             | ident ("(" ")")?
+ *             | "(" expr ")"
+ *
+ * @return A node.
  */
 Node *primary() {
     if (consume(TK_RESERVED, "(")) {
@@ -376,7 +540,6 @@ Node *primary() {
         return node;
     }
 
-    // Variable reference or function call
     Token *tok = consume(TK_IDENT, NULL);
     if (tok) {
         if (consume(TK_RESERVED, "(")) {
@@ -390,23 +553,24 @@ Node *primary() {
         }
     }
 
-    // Number
     return new_node_num(expect(TK_NUM, NULL)->val);
 }
 
+/**
+ * Parses tokens at the top level of the program.
+ */
 void top_level() {
     Type *ty = read_ty();
     Token *tok = expect(TK_IDENT, NULL);
 
     if (consume(TK_RESERVED, "(")) {
-        // Function.
+        // Function
         fn = calloc(1, sizeof(Function));
         fn->rty = ty;
         fn->name = tok->str;
         fn->args = vec_create();
         fn->lvars = map_create();
 
-        // Arguments.
         while (!consume(TK_RESERVED, ")")) {
             if (0 < fn->args->len) {
                 expect(TK_RESERVED, ",");
@@ -417,7 +581,6 @@ void top_level() {
         // NOTE: functions must be registered before parsing their bodies to deal with recursion
         map_insert(prog->fns, fn->name, fn);
 
-        // Body.
         fn->body = vec_create();
         expect(TK_RESERVED, "{");
         while (!consume(TK_RESERVED, "}")) {
@@ -435,6 +598,13 @@ void top_level() {
     }
 }
 
+/**
+ * Parses tokens syntactically.
+ *
+ * @param tokens_ A list of tokens.
+ *
+ * @return A program.
+ */
 Program *parse(Vector *tokens_) {
     tokens = tokens_;
     pos = 0;
