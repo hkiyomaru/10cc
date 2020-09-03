@@ -1,29 +1,55 @@
 #include "9cc.h"
 
-void check_lval(Node *node) {
+/**
+ * Ensures the node is referable.
+ *
+ * @param node A node.
+ */
+void check_referable(Node *node) {
     NodeKind kind = node->kind;
     assert(kind == ND_LVAR || kind == ND_GVAR || kind == ND_DEREF);
 }
 
+/**
+ * Ensures the node is an integer.
+ *
+ * @param node A node.
+ */
 void check_int(Node *node) {
     int ty = node->ty->ty;
     assert(ty == INT);
 }
 
+/**
+ * If the given node is an array, performs type conversion.
+ * Otherwise, does nothing.
+ *
+ * @param base A node.
+ * @param decay If True, does nothing.
+ *
+ * @return A node.
+ */
 Node *maybe_decay(Node *base, bool decay) {
     if (!decay || base->ty->ty != ARY) {
         return base;
     }
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = ND_ADDR;
+    Node *node = new_node(ND_ADDR);
     node->ty = ptr_to(base->ty->ary_of);
     node->lhs = base;
     return node;
 }
 
+/**
+ * Scales the number by referring to the given type.
+ *
+ * @param kind The kind of a node.
+ * @param base A node to be scaled.
+ * @param ty A type to specify the scale.
+ *
+ * @return A node.
+ */
 Node *scale_ptr(NodeKind kind, Node *base, Type *ty) {
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = kind;
+    Node *node = new_node(kind);
     node->lhs = base;
     node->rhs = new_node_num(ty->ptr_to->size);
     return node;
@@ -31,10 +57,32 @@ Node *scale_ptr(NodeKind kind, Node *base, Type *ty) {
 
 Node *do_walk(Node *node, bool decay);
 
+/**
+ * Semantically parses a node.
+ *
+ * @param node A node.
+ *
+ * @return A node.
+ */
 Node *walk(Node *node) { return do_walk(node, true); }
 
+/**
+ * Semantically parses a node without decay.
+ *
+ * @param node A node.
+ *
+ * @return A node.
+ */
 Node *walk_nodecay(Node *node) { return do_walk(node, false); }
 
+/**
+ * Semantically parses a node.
+ *
+ * @param node A node.
+ * @param decay If True, the node may be decayed to a pointer.
+ *
+ * @return A node.
+ */
 Node *do_walk(Node *node, bool decay) {
     switch (node->kind) {
         case ND_NUM:
@@ -96,7 +144,7 @@ Node *do_walk(Node *node, bool decay) {
             return node;
         case ND_ASSIGN:
             node->lhs = walk_nodecay(node->lhs);
-            check_lval(node->lhs);
+            check_referable(node->lhs);
             node->rhs = walk(node->rhs);
             node->ty = node->lhs->ty;
             return node;
@@ -114,7 +162,7 @@ Node *do_walk(Node *node, bool decay) {
             return node;
         case ND_ADDR:
             node->lhs = walk(node->lhs);
-            check_lval(node->lhs);
+            check_referable(node->lhs);
             node->ty = ptr_to(node->lhs->ty);
             return node;
         case ND_DEREF:
@@ -143,6 +191,9 @@ Node *do_walk(Node *node, bool decay) {
     }
 }
 
+/**
+ * Semantically parses a program.
+ */
 void sema(Program *prog) {
     for (int i = 0; i < prog->fns->len; i++) {
         Function *fn = vec_get(prog->fns->vals, i);

@@ -139,6 +139,7 @@ Program *parse(Vector *tokens_);
 
 Type *int_ty();
 Type *ptr_to(Type *base);
+Node *new_node(NodeKind kind);
 Node *new_node_num(int val);
 
 /**
