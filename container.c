@@ -2,6 +2,11 @@
 
 int INITIAL_VECTOR_SIZE = 32;
 
+/**
+ * Creates an empty vector.
+ *
+ * @return A vector.
+ */
 Vector *vec_create() {
     Vector *vec = malloc(sizeof(Vector));
     vec->data = malloc(sizeof(void *) * INITIAL_VECTOR_SIZE);
@@ -10,21 +15,40 @@ Vector *vec_create() {
     return vec;
 }
 
-void vec_push(Vector *vec, void *elem) {
+/**
+ * Pushes an item to a vector.
+ *
+ * @param vec A vector.
+ * @param item An item to be registered.
+ */
+void vec_push(Vector *vec, void *item) {
     if (vec->len == vec->capacity) {
         vec->capacity *= 2;
         vec->data = realloc(vec->data, sizeof(void *) * vec->capacity);
     }
-    vec->data[vec->len++] = elem;
+    vec->data[vec->len++] = item;
 }
 
-void *vec_get(Vector *vec, int key) {
-    if (vec->len <= key) {
+/**
+ * Gets an item from a vector.
+ *
+ * @param vec A vector.
+ * @param index An index.
+ *
+ * @return An item.
+ */
+void *vec_get(Vector *vec, int index) {
+    if (vec->len <= index) {
         error("IndexError: vector index out of range");
     }
-    return vec->data[key];
+    return vec->data[index];
 }
 
+/**
+ * Creates an empty map.
+ *
+ * @return A map.
+ */
 Map *map_create() {
     Map *map = malloc(sizeof(Map));
     map->keys = vec_create();
@@ -33,6 +57,13 @@ Map *map_create() {
     return map;
 }
 
+/**
+ * Inserts an item to a map.
+ *
+ * @param map A map.
+ * @param key A key.
+ * @param val A value.
+ */
 void map_insert(Map *map, char *key, void *val) {
     for (int i = 0; i < map->len; i++) {
         if (strcmp(vec_get(map->keys, i), key) == 0) {
@@ -46,6 +77,15 @@ void map_insert(Map *map, char *key, void *val) {
     map->len++;
 }
 
+/**
+ * Gets an item from a map.
+ * NULL will be returned if the key is not in the map.
+ *
+ * @param map A map.
+ * @param key A key.
+ *
+ * @return An item.
+ */
 void *map_at(Map *map, char *key) {
     for (int i = 0; i < map->len; i++) {
         if (strcmp(vec_get(map->keys, i), key) == 0) {
