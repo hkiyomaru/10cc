@@ -16,8 +16,8 @@ void check_referable(Node *node) {
  * @param node A node.
  */
 void check_int(Node *node) {
-    int ty = node->ty->ty;
-    assert(ty == INT);
+    TypeKind ty = node->ty->ty;
+    assert(ty == TY_INT);
 }
 
 /**
@@ -30,11 +30,11 @@ void check_int(Node *node) {
  * @return A node.
  */
 Node *maybe_decay(Node *base, bool decay) {
-    if (!decay || base->ty->ty != ARY) {
+    if (!decay || base->ty->ty != TY_ARY) {
         return base;
     }
     Node *node = new_node(ND_ADDR);
-    node->ty = ptr_to(base->ty->ary_of);
+    node->ty = ptr_to(base->ty->base);
     node->lhs = base;
     return node;
 }
@@ -51,7 +51,7 @@ Node *maybe_decay(Node *base, bool decay) {
 Node *scale_ptr(NodeKind kind, Node *base, Type *ty) {
     Node *node = new_node(kind);
     node->lhs = base;
-    node->rhs = new_node_num(ty->ptr_to->size);
+    node->rhs = new_node_num(ty->base->size);
     return node;
 }
 
@@ -116,12 +116,12 @@ Node *do_walk(Node *node, bool decay) {
         case ND_ADD:
             node->lhs = walk(node->lhs);
             node->rhs = walk(node->rhs);
-            if (node->rhs->ty->ty == PTR) {
+            if (node->rhs->ty->ty == TY_PTR) {
                 Node *tmp = node->lhs;
                 node->lhs = node->rhs;
                 node->rhs = tmp;
             }
-            if (node->lhs->ty->ty == PTR) {
+            if (node->lhs->ty->ty == TY_PTR) {
                 node->rhs = scale_ptr(ND_MUL, node->rhs, node->lhs->ty);
                 node->ty = node->lhs->ty;
             } else {
@@ -135,7 +135,7 @@ Node *do_walk(Node *node, bool decay) {
             Type *lty = node->lhs->ty;
             Type *rty = node->rhs->ty;
 
-            if (lty->ty == PTR && rty->ty == PTR) {
+            if (lty->ty == TY_PTR && rty->ty == TY_PTR) {
                 node = scale_ptr(ND_DIV, node, lty);
                 node->ty = lty;
             } else {
@@ -167,8 +167,8 @@ Node *do_walk(Node *node, bool decay) {
             return node;
         case ND_DEREF:
             node->lhs = walk(node->lhs);
-            assert(node->lhs->ty->ty == PTR);
-            node->ty = node->lhs->ty->ptr_to;
+            assert(node->lhs->ty->ty == TY_PTR);
+            node->ty = node->lhs->ty->base;
             return maybe_decay(node, decay);
         case ND_RETURN:
             node->lhs = walk(node->lhs);

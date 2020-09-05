@@ -80,7 +80,7 @@ bool at_typename() {
  *
  * @return A type.
  */
-Type *new_ty(int ty, int size) {
+Type *new_ty(TypeKind ty, int size) {
     Type *ret = calloc(1, sizeof(Type));
     ret->ty = ty;
     ret->size = size;
@@ -94,7 +94,7 @@ Type *new_ty(int ty, int size) {
  * @return An INT type.
  */
 Type *int_ty() {
-    Type *ty = new_ty(INT, 4);
+    Type *ty = new_ty(TY_INT, 4);
     ty->align = 8;  // TODO
     return ty;
 }
@@ -107,8 +107,8 @@ Type *int_ty() {
  * @return A PTR type.
  */
 Type *ptr_to(Type *base) {
-    Type *ty = new_ty(PTR, 8);
-    ty->ptr_to = base;
+    Type *ty = new_ty(TY_PTR, 8);
+    ty->base = base;
     return ty;
 }
 
@@ -122,10 +122,10 @@ Type *ptr_to(Type *base) {
  */
 Type *ary_of(Type *base, int size) {
     Type *ty = calloc(1, sizeof(Type));
-    ty->ty = ARY;
+    ty->ty = TY_ARY;
     ty->size = base->size * size;
     ty->align = base->align;
-    ty->ary_of = base;
+    ty->base = base;
     ty->array_size = size;
     return ty;
 }

@@ -56,13 +56,15 @@ typedef struct {
     char *loc;
 } Token;
 
+typedef enum { TY_INT, TY_PTR, TY_ARY } TypeKind;
+
 struct Type {
-    enum { INT, PTR, ARY } ty;
+    TypeKind ty;
     int size;
     int align;
+
+    struct Type *base; /**< used when ty is TY_PTR or TY_ARY */
     int array_size;
-    struct Type *ptr_to;
-    struct Type *ary_of;
 };
 
 typedef struct Type Type;
@@ -72,6 +74,8 @@ Vector *tokenize();
 /**
  * parse.c
  */
+
+/**< AST nodes */
 typedef enum {
     ND_ADD,        // +
     ND_SUB,        // -
