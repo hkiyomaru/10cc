@@ -190,47 +190,56 @@ void gen(Node *node) {
 }
 
 /**
- * Generates code to perform a function.
+ * Generates code to allocate memory for global variables.
  *
- * @param fn A function.
+ * @param prog A program.
  */
-void gen_func(Function *fn) {
-    int offset = 0;
-    for (int i = 0; i < fn->lvars->len; i++) {
-        Node *var = fn->lvars->vals->data[i];
-        offset += var->ty->size;
-        offset = roundup(offset, var->ty->align);
-        var->offset = offset;
-    }
-
-    printf(".global %s\n", fn->name);
-    printf("%s:\n", fn->name);
-
-    printf("  push rbp\n");
-    printf("  mov rbp, rsp\n");
-    printf("  sub rsp, %d\n", roundup(offset, 16));
-
-    for (int i = 0; i < fn->args->len; i++) {
-        printf("  mov rax, rbp\n");
-        Node *arg = vec_get(fn->args, i);
-        printf("  sub rax, %d\n", arg->offset);
-        printf("  mov [rax], %s\n", argregs[i]);
-    }
-
-    for (int i = 0; i < fn->body->len; i++) {
-        gen(vec_get(fn->body, i));
-        printf("  pop rax\n");
+void gen_data(Program *prog) {
+    printf(".data\n");
+    for (int i = 0; i < prog->gvars->len; i++) {
+        Node *gvar = prog->gvars->vals->data[i];
+        printf("%s:\n", gvar->name);
+        printf("  .zero %d\n", gvar->ty->size);
     }
 }
 
 /**
- * Generates code to allocate memory for global variables.
+ * Generates code to perform functions.
  *
- * @param gvar A node reprenting a global variable.
+ * @param prog A program.
  */
-void gen_data(Node *gvar) {
-    printf("%s:\n", gvar->name);
-    printf("  .zero %d\n", gvar->ty->size);
+void gen_text(Program *prog) {
+    printf(".text\n");
+    for (int i = 0; i < prog->fns->len; i++) {
+        Function *fn = vec_get(prog->fns->vals, i);
+
+        int offset = 0;
+        for (int i = 0; i < fn->lvars->len; i++) {
+            Node *var = fn->lvars->vals->data[i];
+            offset += var->ty->size;
+            offset = roundup(offset, var->ty->align);
+            var->offset = offset;
+        }
+
+        printf(".global %s\n", fn->name);
+        printf("%s:\n", fn->name);
+
+        printf("  push rbp\n");
+        printf("  mov rbp, rsp\n");
+        printf("  sub rsp, %d\n", roundup(offset, 16));
+
+        for (int i = 0; i < fn->args->len; i++) {
+            printf("  mov rax, rbp\n");
+            Node *arg = vec_get(fn->args, i);
+            printf("  sub rax, %d\n", arg->offset);
+            printf("  mov [rax], %s\n", argregs[i]);
+        }
+
+        for (int i = 0; i < fn->body->len; i++) {
+            gen(vec_get(fn->body, i));
+            printf("  pop rax\n");
+        }
+    }
 }
 
 /**
@@ -240,14 +249,6 @@ void gen_data(Node *gvar) {
  */
 void gen_x86(Program *prog) {
     printf(".intel_syntax noprefix\n");
-
-    printf(".data\n");
-    for (int i = 0; i < prog->gvars->len; i++) {
-        gen_data(prog->gvars->vals->data[i]);
-    }
-
-    printf(".text\n");
-    for (int i = 0; i < prog->fns->len; i++) {
-        gen_func(vec_get(prog->fns->vals, i));
-    }
+    gen_data(prog);
+    gen_text(prog);
 }
