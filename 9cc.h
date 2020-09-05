@@ -8,8 +8,6 @@
 
 #define LOGLEVEL 6
 
-extern char *user_input;
-
 /**
  * container.c
  */
@@ -49,15 +47,18 @@ typedef enum {
     TK_SIZEOF     // sizeof
 } TokenKind;
 
-typedef struct {
+typedef struct Token Token;
+struct Token {
     TokenKind kind;
+    Token *next;
     int val;
     char *str;
     char *loc;
-} Token;
+};
 
 typedef enum { TY_INT, TY_PTR, TY_ARY } TypeKind;
 
+typedef struct Type Type;
 struct Type {
     TypeKind ty;
     int size;
@@ -67,9 +68,14 @@ struct Type {
     int array_size;
 };
 
-typedef struct Type Type;
+extern char *user_input;
+extern Token *token;
 
-Vector *tokenize();
+Token *consume(TokenKind kind, char *str);
+Token *expect(TokenKind kind, char *str);
+bool at_eof();
+bool at_typename();
+Token *tokenize();
 
 /**
  * parse.c
@@ -139,7 +145,7 @@ typedef struct {
     Map *gvars;
 } Program;
 
-Program *parse(Vector *tokens_);
+Program *parse();
 
 Type *int_ty();
 Type *ptr_to(Type *base);

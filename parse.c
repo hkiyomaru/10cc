@@ -3,9 +3,6 @@
 Program *prog; /**< The program. */
 Function *fn;  /**< The function being parsed. */
 
-Vector *tokens; /**< A list of tokens. */
-int pos;        /**< The position of the current token. */
-
 Node *expr();
 Node *assign();
 Node *equality();
@@ -15,62 +12,6 @@ Node *mul();
 Node *unary();
 Node *suffix();
 Node *primary();
-
-/**
- * Returns the current token if it satisfies the given conditions.
- * Otherwise, NULL will be returned.
- *
- * @param kind The kind of a token.
- * @param str The string expression of a token.
- *
- * @return The current token.
- */
-Token *consume(TokenKind kind, char *str) {
-    Token *token = vec_get(tokens, pos);
-    if (token->kind != kind || (str && strcmp(token->str, str) != 0)) {
-        return NULL;
-    }
-    pos++;
-    return token;
-}
-
-/**
- * Returns the current token if it satisfies the given conditions.
- * Otherwise, stops the program with an error message.
- *
- * @param kind The kind of a token.
- * @param str The string expression of a token.
- *
- * @return The current token.
- */
-Token *expect(TokenKind kind, char *str) {
-    Token *token = vec_get(tokens, pos);
-    if (token->kind != kind || (str && strcmp(token->str, str) != 0)) {
-        error_at(token->loc, "Unexpected token");
-    }
-    pos++;
-    return token;
-}
-
-/**
- * Returns True if the kind of the current token is EOF.
- *
- * @return True if the kind of the current token is EOF.
- */
-bool at_eof() {
-    Token *token = vec_get(tokens, pos);
-    return token->kind == TK_EOF;
-}
-
-/**
- * Returns True if the kind of the current token is a type.
- *
- * @return True if the kind of the current token is a type.
- */
-bool at_typename() {
-    Token *token = vec_get(tokens, pos);
-    return token->kind == TK_INT;
-}
 
 /**
  * Creates a type.
@@ -136,7 +77,6 @@ Type *ary_of(Type *base, int size) {
  * @return A type.
  */
 Type *read_ty() {
-    Token *token = vec_get(tokens, pos);
     Type *ty;
     if (consume(TK_INT, NULL)) {
         ty = int_ty();
@@ -605,10 +545,7 @@ void top_level() {
  *
  * @return A program.
  */
-Program *parse(Vector *tokens_) {
-    tokens = tokens_;
-    pos = 0;
-
+Program *parse() {
     prog = calloc(1, sizeof(Program));
     prog->fns = map_create();
     prog->gvars = map_create();

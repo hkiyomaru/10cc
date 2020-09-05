@@ -8,9 +8,8 @@ int main(int argc, char **argv) {
     }
 
     user_input = argv[1];
-
-    Vector *tokens = tokenize();
-    Program *prog = parse(tokens);
+    token = tokenize();
+    Program *prog = parse();
     sema(prog);
 
 #if LOGLEVEL <= 2

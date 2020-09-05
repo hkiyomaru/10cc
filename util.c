@@ -1,7 +1,5 @@
 #include "9cc.h"
 
-char *user_input;
-
 /**
  * Shows an error message.
  *
