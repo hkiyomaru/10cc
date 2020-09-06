@@ -7,7 +7,6 @@ int label_id = 0;
 
 /**
  * Rounds up a number.
- *
  * @param x A number to be rounded up.
  * @param aligh A base number.
  */
@@ -15,7 +14,6 @@ int roundup(int x, int align) { return (x + align - 1) & ~(align - 1); }
 
 /**
  * Generates a code to push an address to a local variable to the stack.
- *
  * @param node A node representing a local variable.
  */
 void gen_lval(Node *node) {
@@ -26,7 +24,6 @@ void gen_lval(Node *node) {
 
 /**
  * Generates a code to push an address to a global variable to the stack.
- *
  * @param node A node representing a global variable.
  */
 void gen_gval(Node *node) {
@@ -37,7 +34,6 @@ void gen_gval(Node *node) {
 
 /**
  * Generates code to perform the operation of a node.
- *
  * @param node A node.
  */
 void gen(Node *node) {
@@ -131,7 +127,9 @@ void gen(Node *node) {
             printf(".Lend%03d:\n", cur_label_id);
             return;
         case ND_BLOCK:
-            for (int i = 0; i < node->stmts->len; i++) gen(vec_get(node->stmts, i));
+            for (int i = 0; i < node->stmts->len; i++) {
+                gen(vec_get(node->stmts, i));
+            }
             return;
         case ND_ADDR:
             if (node->lhs->kind == ND_LVAR) {
@@ -191,7 +189,6 @@ void gen(Node *node) {
 
 /**
  * Generates code to allocate memory for global variables.
- *
  * @param prog A program.
  */
 void gen_data(Program *prog) {
@@ -205,7 +202,6 @@ void gen_data(Program *prog) {
 
 /**
  * Generates code to perform functions.
- *
  * @param prog A program.
  */
 void gen_text(Program *prog) {
@@ -244,7 +240,6 @@ void gen_text(Program *prog) {
 
 /**
  * Generates code written in x86 assembly language.
- *
  * @param prog A program.
  */
 void gen_x86(Program *prog) {

@@ -6,10 +6,8 @@ Token *token;
 /**
  * Returns the current token if it satisfies the given conditions.
  * Otherwise, NULL will be returned.
- *
  * @param kind The kind of a token.
  * @param str The string expression of a token.
- *
  * @return The current token.
  */
 Token *consume(TokenKind kind, char *str) {
@@ -24,10 +22,8 @@ Token *consume(TokenKind kind, char *str) {
 /**
  * Returns the current token if it satisfies the given conditions.
  * Otherwise, stops the program with an error message.
- *
  * @param kind The kind of a token.
  * @param str The string expression of a token.
- *
  * @return The current token.
  */
 Token *expect(TokenKind kind, char *str) {
@@ -41,17 +37,17 @@ Token *expect(TokenKind kind, char *str) {
 
 /**
  * Returns True if the kind of the current token is EOF.
- *
  * @return True if the kind of the current token is EOF.
  */
 bool at_eof() { return token->kind == TK_EOF; }
 
 /**
  * Returns True if the kind of the current token is a type.
- *
  * @return True if the kind of the current token is a type.
  */
-bool at_typename() { return token->kind == TK_RESERVED && !strcmp(token->str, "int"); }
+bool at_typename() {
+    return token->kind == TK_RESERVED && !strcmp(token->str, "int");
+}
 
 /**
  * Reads reserved keywords consisting of multiple characters.
@@ -75,7 +71,8 @@ char *read_reserved(char *p) {
         }
     }
 
-    char *single_ops[] = {"+", "-", "*", "/", "(", ")", "<", ">", "=", ";", "{", "}", ",", "[", "]", "&"};
+    char *single_ops[] = {"+", "-", "*", "/", "(", ")", "<", ">",
+                          "=", ";", "{", "}", ",", "[", "]", "&"};
     for (int i = 0; i < sizeof(single_ops) / sizeof(single_ops[0]); i++) {
         int len = strlen(single_ops[i]);
         if (startswith(p, single_ops[i])) {
@@ -87,11 +84,9 @@ char *read_reserved(char *p) {
 
 /**
  * Creates a token.
- *
  * @param kind The kind of a token.
  * @param str The string of a token.
  * @param len The length of the string of a token.
- *
  * @return A token.
  */
 Token *new_token(TokenKind kind, Token *cur, char *p, int len) {
@@ -110,7 +105,6 @@ Token *new_token(TokenKind kind, Token *cur, char *p, int len) {
 
 /**
  * Tokenize a program.
- *
  * @return The head of a linked list of tokens.
  */
 Token *tokenize() {

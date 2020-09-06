@@ -2,7 +2,6 @@
 
 /**
  * Shows an error message.
- *
  * @param fmt The format of an error message.
  * @param arg Arguments which will be filled in the message.
  */
@@ -16,7 +15,6 @@ void error(char *fmt, ...) {
 
 /**
  * Shows an error message with its location information.
- *
  * @param loc The location of an error.
  * @param fmt The format of an error message.
  * @param arg Arguments which will be filled in the message.
@@ -35,26 +33,21 @@ void error_at(char *loc, char *fmt, ...) {
 
 /**
  * Returns True if the first string starts with the second string.
- *
  * @param p A string.
  * @param q A string.
- *
  * @return True if the first string starts with the second string.
  */
 bool startswith(char *p, char *q) { return memcmp(p, q, strlen(q)) == 0; }
 
 /**
  * Returns True if the given character is an alphabet, or a number, or _.
- *
  * @param c A character.
- *
  * @return True if the given character is an alphabet, or a number, or _.
  */
 bool isalnumus(char c) { return isalnum(c) || c == '_'; }
 
 /**
  * Draws the abstract syntax tree of a node.
- *
  * @param node A node.
  * @param depth The depth of the node.
  * @param role The role of the node.
@@ -174,7 +167,6 @@ void draw_node_tree(Node *node, int depth, char *role) {
 
 /**
  * Draws the abstract syntax tree of a program.
- *
  * @param prog A program.
  */
 void draw_ast(Program *prog) {

@@ -15,10 +15,8 @@ Node *primary();
 
 /**
  * Creates a type.
- *
  * @param ty A type ID.
  * @param size Required bytes to represent the type.
- *
  * @return A type.
  */
 Type *new_ty(TypeKind ty, int size) {
@@ -31,7 +29,6 @@ Type *new_ty(TypeKind ty, int size) {
 
 /**
  * Creates an INT type.
- *
  * @return An INT type.
  */
 Type *int_ty() {
@@ -42,9 +39,7 @@ Type *int_ty() {
 
 /**
  * Creates a PTR type.
- *
  * @param base The type to be pointed.
- *
  * @return A PTR type.
  */
 Type *ptr_to(Type *base) {
@@ -55,10 +50,8 @@ Type *ptr_to(Type *base) {
 
 /**
  * Creates an ARY type.
- *
  * @param base The type of each item.
  * @param size The number of items.
- *
  * @return An ARY type.
  */
 Type *ary_of(Type *base, int size) {
@@ -73,7 +66,6 @@ Type *ary_of(Type *base, int size) {
 
 /**
  * Parses tokens to represent a type.
- *
  * @return A type.
  */
 Type *read_ty() {
@@ -91,9 +83,7 @@ Type *read_ty() {
 
 /**
  * Parses tokens to represent an array.
- *
  * @param ty The type of each item.
- *
  * @return A type.
  */
 Type *read_array(Type *ty) {
@@ -110,9 +100,7 @@ Type *read_array(Type *ty) {
 
 /**
  * Creates a node.
- *
  * @param kind The kind of a node.
- *
  * @return A node.
  */
 Node *new_node(NodeKind kind) {
@@ -123,11 +111,9 @@ Node *new_node(NodeKind kind) {
 
 /**
  * Creates a node to represent a binary operation.
- *
  * @param kind The kind of a node.
  * @param lhs The left-hand side of a binary operation.
  * @param rhs The right-hand side of a binary operation.
- *
  * @return A node.
  */
 Node *new_bin_op(NodeKind kind, Node *lhs, Node *rhs) {
@@ -139,9 +125,7 @@ Node *new_bin_op(NodeKind kind, Node *lhs, Node *rhs) {
 
 /**
  * Creates a node to represent a number.
- *
  * @param val A number.
- *
  * @return A node.
  */
 Node *new_node_num(int val) {
@@ -154,10 +138,8 @@ Node *new_node_num(int val) {
 /**
  * Creates a node to represent a global variable.
  * The created variable is added into the list of global variables.
- *
  * @param ty The type of the global variable.
  * @param name The name of the global variable.
- *
  * @return A node.
  */
 Node *new_node_gvar(Type *ty, char *name) {
@@ -171,10 +153,8 @@ Node *new_node_gvar(Type *ty, char *name) {
 /**
  * Creates a node to represent a local variable.
  * The created variable is added into the list of local variables.
- *
  * @param ty The type of the local variable.
  * @param name The name of the local variable.
- *
  * @return A node.
  */
 Node *new_node_lvar(Type *ty, char *name) {
@@ -189,9 +169,7 @@ Node *new_node_lvar(Type *ty, char *name) {
  * Creates a node to represent a function call.
  * Here, '(' has already been consumed.
  * So, the current token must be an argument or ')'.
- *
  * @param tok The name of a function.
- *
  * @return A node.
  */
 Node *new_node_func_call(Token *tok) {
@@ -214,12 +192,10 @@ Node *new_node_func_call(Token *tok) {
 }
 
 /**
- * If there exists a variable whose name matches the given condition, returns it.
- * Otherwise, NULL will be returned.
- * The lookup process priotizes local variables than global variables.
- *
+ * If there exists a variable whose name matches the given condition,
+ * returns it. Otherwise, NULL will be returned. The lookup process
+ * priotizes local variables than global variables.
  * @param name The name of a varaible.
- *
  * @return A node.
  */
 Node *find_var(char *name) {
@@ -236,7 +212,6 @@ Node *find_var(char *name) {
 /**
  * Parses tokens to represent a declaration, where
  *     declaration = T ident ("[" num? "]")?
- *
  * @return A node.
  */
 Node *declaration() {
@@ -258,7 +233,6 @@ Node *declaration() {
  *          | "for" "(" expr? ";" expr? ";" expr? ")" stmt
  *          | "return" expr ";"
  *          | T ident ";"
- *
  * @return A node.
  */
 Node *stmt() {
@@ -324,7 +298,6 @@ Node *stmt() {
 /**
  * Parses tokens to represent an expression, where
  *     expr = assign
- *
  * @return A node.
  */
 Node *expr() { return assign(); }
@@ -332,7 +305,6 @@ Node *expr() { return assign(); }
 /**
  * Parses tokens to represent an assignment, where
  *     assign = equality ("=" assign)?
- *
  * @return A node.
  */
 Node *assign() {
@@ -346,7 +318,6 @@ Node *assign() {
 /**
  * Parses tokens to represent an equality, where
  *     equality = relational (("==" | "!=") relational)?
- *
  * @return A node.
  */
 Node *equality() {
@@ -363,7 +334,6 @@ Node *equality() {
 /**
  * Parses tokens to represent a relationality, where
  *     relational = add (("<=" | ">=" | "<" | ">") add)?
- *
  * @return A node.
  */
 Node *relational() {
@@ -384,7 +354,6 @@ Node *relational() {
 /**
  * Parses tokens to represent addition, where
  *     add = mul ("+" unary | "-" unary)*
- *
  * @return A node.
  */
 Node *add() {
@@ -406,7 +375,6 @@ Node *add() {
 /*
  * Parses tokens to represent multiplication, where
  *     mul = unary (("*" | "/") unary)*
- *
  * @return A node.
  */
 Node *mul() {
@@ -426,7 +394,6 @@ Node *mul() {
  * Parses tokens to represent an unary operation, where
  *     unary = "sizeof" unary
  *           | ("+" | "-" | "&" | "*")? primary
- *
  * @return A node.
  */
 Node *unary() {
@@ -449,7 +416,6 @@ Node *unary() {
  * Parses tokens to represent a primary item.
  * Then, if possible, parse the suffix, where
  *     suffix = primary ("[" assign "]")*
- *
  * @return A node.
  */
 Node *suffix() {
@@ -470,7 +436,6 @@ Node *suffix() {
  *     primary = num
  *             | ident ("(" ")")?
  *             | "(" expr ")"
- *
  * @return A node.
  */
 Node *primary() {
@@ -518,7 +483,8 @@ void top_level() {
             vec_push(fn->args, declaration());
         }
 
-        // NOTE: functions must be registered before parsing their bodies to deal with recursion
+        // NOTE: functions must be registered before parsing their bodies
+        // to deal with recursion
         map_insert(prog->fns, fn->name, fn);
 
         fn->body = vec_create();
@@ -540,9 +506,7 @@ void top_level() {
 
 /**
  * Parses tokens syntactically.
- *
  * @param tokens_ A list of tokens.
- *
  * @return A program.
  */
 Program *parse() {

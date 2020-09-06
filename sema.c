@@ -2,7 +2,6 @@
 
 /**
  * Ensures the node is referable.
- *
  * @param node A node.
  */
 void check_referable(Node *node) {
@@ -12,7 +11,6 @@ void check_referable(Node *node) {
 
 /**
  * Ensures the node is an integer.
- *
  * @param node A node.
  */
 void check_int(Node *node) {
@@ -23,10 +21,8 @@ void check_int(Node *node) {
 /**
  * If the given node is an array, performs type conversion.
  * Otherwise, does nothing.
- *
  * @param base A node.
  * @param decay If True, does nothing.
- *
  * @return A node.
  */
 Node *maybe_decay(Node *base, bool decay) {
@@ -41,11 +37,9 @@ Node *maybe_decay(Node *base, bool decay) {
 
 /**
  * Scales the number by referring to the given type.
- *
  * @param kind The kind of a node.
  * @param base A node to be scaled.
  * @param ty A type to specify the scale.
- *
  * @return A node.
  */
 Node *scale_ptr(NodeKind kind, Node *base, Type *ty) {
@@ -59,28 +53,22 @@ Node *do_walk(Node *node, bool decay);
 
 /**
  * Semantically parses a node.
- *
  * @param node A node.
- *
  * @return A node.
  */
 Node *walk(Node *node) { return do_walk(node, true); }
 
 /**
  * Semantically parses a node without decay.
- *
  * @param node A node.
- *
  * @return A node.
  */
 Node *walk_nodecay(Node *node) { return do_walk(node, false); }
 
 /**
  * Semantically parses a node.
- *
  * @param node A node.
  * @param decay If True, the node may be decayed to a pointer.
- *
  * @return A node.
  */
 Node *do_walk(Node *node, bool decay) {

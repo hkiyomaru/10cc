@@ -4,7 +4,6 @@ int INITIAL_VECTOR_SIZE = 32;
 
 /**
  * Creates an empty vector.
- *
  * @return A vector.
  */
 Vector *vec_create() {
@@ -17,7 +16,6 @@ Vector *vec_create() {
 
 /**
  * Pushes an item to a vector.
- *
  * @param vec A vector.
  * @param item An item to be registered.
  */
@@ -31,10 +29,8 @@ void vec_push(Vector *vec, void *item) {
 
 /**
  * Gets an item from a vector.
- *
  * @param vec A vector.
  * @param index An index.
- *
  * @return An item.
  */
 void *vec_get(Vector *vec, int index) {
@@ -46,7 +42,6 @@ void *vec_get(Vector *vec, int index) {
 
 /**
  * Creates an empty map.
- *
  * @return A map.
  */
 Map *map_create() {
@@ -59,7 +54,6 @@ Map *map_create() {
 
 /**
  * Inserts an item to a map.
- *
  * @param map A map.
  * @param key A key.
  * @param val A value.
@@ -80,10 +74,8 @@ void map_insert(Map *map, char *key, void *val) {
 /**
  * Gets an item from a map.
  * NULL will be returned if the key is not in the map.
- *
  * @param map A map.
  * @param key A key.
- *
  * @return An item.
  */
 void *map_at(Map *map, char *key) {
