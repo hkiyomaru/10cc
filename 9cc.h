@@ -37,14 +37,7 @@ typedef enum {
     TK_RESERVED,  // '+', '-', and so on
     TK_IDENT,     // identifier
     TK_NUM,       // number
-    TK_RETURN,    // return
-    TK_IF,        // if
-    TK_ELSE,      // else
-    TK_WHILE,     // while
-    TK_FOR,       // for
-    TK_EOF,       // EOF
-    TK_INT,       // int
-    TK_SIZEOF     // sizeof
+    TK_EOF        // EOF
 } TokenKind;
 
 typedef struct Token Token;

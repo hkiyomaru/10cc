@@ -51,7 +51,39 @@ bool at_eof() { return token->kind == TK_EOF; }
  *
  * @return True if the kind of the current token is a type.
  */
-bool at_typename() { return token->kind == TK_INT; }
+bool at_typename() { return token->kind == TK_RESERVED && !strcmp(token->str, "int"); }
+
+/**
+ * Reads reserved keywords consisting of multiple characters.
+ * @param p The pointer to the current position.
+ * @return A reserved keyword.
+ */
+char *read_reserved(char *p) {
+    char *kws[] = {"return", "if", "else", "while", "for", "int", "sizeof"};
+    for (int i = 0; i < sizeof(kws) / sizeof(kws[0]); i++) {
+        int len = strlen(kws[i]);
+        if (startswith(p, kws[i]) && !isalnumus(p[len])) {
+            return kws[i];
+        }
+    }
+
+    char *multi_ops[] = {"<=", ">=", "==", "!="};
+    for (int i = 0; i < sizeof(multi_ops) / sizeof(multi_ops[0]); i++) {
+        int len = strlen(multi_ops[i]);
+        if (startswith(p, multi_ops[i])) {
+            return multi_ops[i];
+        }
+    }
+
+    char *single_ops[] = {"+", "-", "*", "/", "(", ")", "<", ">", "=", ";", "{", "}", ",", "[", "]", "&"};
+    for (int i = 0; i < sizeof(single_ops) / sizeof(single_ops[0]); i++) {
+        int len = strlen(single_ops[i]);
+        if (startswith(p, single_ops[i])) {
+            return single_ops[i];
+        }
+    }
+    return NULL;
+}
 
 /**
  * Creates a token.
@@ -62,7 +94,7 @@ bool at_typename() { return token->kind == TK_INT; }
  *
  * @return A token.
  */
-Token *new_token(Token *cur, TokenKind kind, char *p, int len) {
+Token *new_token(TokenKind kind, Token *cur, char *p, int len) {
     Token *tok = calloc(1, sizeof(Token));
 
     char *str_sliced = calloc(len + 1, sizeof(char));
@@ -94,75 +126,31 @@ Token *tokenize() {
             continue;
         }
 
-        if (strncmp(p, "return", 6) == 0 && !isalnumus(p[6])) {
-            cur = new_token(cur, TK_RETURN, p, 6);
-            p += 6;
-            continue;
-        }
-
-        if (strncmp(p, "if", 2) == 0 && !isalnumus(p[2])) {
-            cur = new_token(cur, TK_IF, p, 2);
-            p += 2;
-            continue;
-        }
-
-        if (strncmp(p, "else", 4) == 0 && !isalnumus(p[4])) {
-            cur = new_token(cur, TK_ELSE, p, 4);
-            p += 4;
-            continue;
-        }
-
-        if (strncmp(p, "while", 5) == 0 && !isalnumus(p[5])) {
-            cur = new_token(cur, TK_WHILE, p, 5);
-            p += 5;
-            continue;
-        }
-
-        if (strncmp(p, "for", 3) == 0 && !isalnumus(p[3])) {
-            cur = new_token(cur, TK_FOR, p, 3);
-            p += 3;
-            continue;
-        }
-
-        if (strncmp(p, "int", 3) == 0 && !isalnumus(p[3])) {
-            cur = new_token(cur, TK_INT, p, 3);
-            p += 3;
-            continue;
-        }
-
-        if (strncmp(p, "sizeof", 6) == 0 && !isalnumus(p[6])) {
-            cur = new_token(cur, TK_SIZEOF, p, 6);
-            p += 6;
+        char *kw = read_reserved(p);
+        if (kw) {
+            int len = strlen(kw);
+            cur = new_token(TK_RESERVED, cur, p, len);
+            p += len;
             continue;
         }
 
         if (isalpha(*p) || *p == '_') {
             int len = 1;
-            while (isalnumus(p[len])) len++;
-            cur = new_token(cur, TK_IDENT, p, len);
+            while (isalnumus(p[len])) {
+                len++;
+            }
+            cur = new_token(TK_IDENT, cur, p, len);
             p += len;
             continue;
         }
 
-        if (startswith(p, "==") || startswith(p, "!=") || startswith(p, "<=") || startswith(p, ">=")) {
-            cur = new_token(cur, TK_RESERVED, p, 2);
-            p += 2;
-            continue;
-        }
-
-        if (strchr("+-*/()<>=;{}[],&", *p)) {
-            cur = new_token(cur, TK_RESERVED, p, 1);
-            p++;
-            continue;
-        }
-
         if (isdigit(*p)) {
-            cur = new_token(cur, TK_NUM, p, 0);
-            cur->val = strtol(p, &p, 10); /**< strtol increments `p` */
+            cur = new_token(TK_NUM, cur, p, 0);
+            cur->val = strtol(p, &p, 10);  // strtol increments `p`
             continue;
         }
         error_at(p, "Failed to tokenize user input");
     }
-    cur = new_token(cur, TK_EOF, p, 0);
+    cur = new_token(TK_EOF, cur, p, 0);
     return head.next;
 }

@@ -66,7 +66,7 @@ Map *map_create() {
  */
 void map_insert(Map *map, char *key, void *val) {
     for (int i = 0; i < map->len; i++) {
-        if (strcmp(vec_get(map->keys, i), key) == 0) {
+        if (!strcmp(vec_get(map->keys, i), key)) {
             void *old_val = vec_get(map->vals, i);
             old_val = val;
             return;
@@ -88,7 +88,7 @@ void map_insert(Map *map, char *key, void *val) {
  */
 void *map_at(Map *map, char *key) {
     for (int i = 0; i < map->len; i++) {
-        if (strcmp(vec_get(map->keys, i), key) == 0) {
+        if (!strcmp(vec_get(map->keys, i), key)) {
             return vec_get(map->vals, i);
         }
     }

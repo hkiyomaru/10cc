@@ -78,7 +78,7 @@ Type *ary_of(Type *base, int size) {
  */
 Type *read_ty() {
     Type *ty;
-    if (consume(TK_INT, NULL)) {
+    if (consume(TK_RESERVED, "int")) {
         ty = int_ty();
     } else {
         error_at(token->loc, "Invalid type");
@@ -270,29 +270,29 @@ Node *stmt() {
             vec_push(node->stmts, (void *)stmt());
         }
         return node;
-    } else if (consume(TK_RETURN, NULL)) {
+    } else if (consume(TK_RESERVED, "return")) {
         node = new_node(ND_RETURN);
         node->lhs = expr();
         expect(TK_RESERVED, ";");
         return node;
-    } else if (consume(TK_IF, NULL)) {
+    } else if (consume(TK_RESERVED, "if")) {
         node = new_node(ND_IF);
         expect(TK_RESERVED, "(");
         node->cond = expr();
         expect(TK_RESERVED, ")");
         node->then = stmt();
-        if (consume(TK_ELSE, NULL)) {
+        if (consume(TK_RESERVED, "else")) {
             node->els = stmt();
         }
         return node;
-    } else if (consume(TK_WHILE, NULL)) {
+    } else if (consume(TK_RESERVED, "while")) {
         node = new_node(ND_WHILE);
         expect(TK_RESERVED, "(");
         node->cond = expr();
         expect(TK_RESERVED, ")");
         node->then = stmt();
         return node;
-    } else if (consume(TK_FOR, NULL)) {
+    } else if (consume(TK_RESERVED, "for")) {
         node = new_node(ND_FOR);
         expect(TK_RESERVED, "(");
         if (!consume(TK_RESERVED, ";")) {
@@ -438,7 +438,7 @@ Node *unary() {
         return new_bin_op(ND_ADDR, unary(), NULL);
     } else if (consume(TK_RESERVED, "*")) {
         return new_bin_op(ND_DEREF, unary(), NULL);
-    } else if (consume(TK_SIZEOF, NULL)) {
+    } else if (consume(TK_RESERVED, "sizeof")) {
         return new_node_num(unary()->ty->size);
     } else {
         return suffix();
