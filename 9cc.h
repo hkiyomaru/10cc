@@ -49,7 +49,7 @@ struct Token {
     char *loc;
 };
 
-typedef enum { TY_INT, TY_PTR, TY_ARY } TypeKind;
+typedef enum { TY_INT, TY_PTR, TY_ARY, TY_CHAR } TypeKind;
 
 typedef struct Type Type;
 struct Type {

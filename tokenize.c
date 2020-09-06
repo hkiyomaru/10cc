@@ -46,7 +46,8 @@ bool at_eof() { return token->kind == TK_EOF; }
  * @return True if the kind of the current token is a type.
  */
 bool at_typename() {
-    return token->kind == TK_RESERVED && !strcmp(token->str, "int");
+    return token->kind == TK_RESERVED &&
+           (!strcmp(token->str, "int") || !strcmp(token->str, "char"));
 }
 
 /**
@@ -55,7 +56,8 @@ bool at_typename() {
  * @return A reserved keyword.
  */
 char *read_reserved(char *p) {
-    char *kws[] = {"return", "if", "else", "while", "for", "int", "sizeof"};
+    char *kws[] = {"return", "if",     "else", "while",
+                   "for",    "sizeof", "int",  "char"};
     for (int i = 0; i < sizeof(kws) / sizeof(kws[0]); i++) {
         int len = strlen(kws[i]);
         if (startswith(p, kws[i]) && !isalnumus(p[len])) {

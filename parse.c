@@ -38,6 +38,16 @@ Type *int_ty() {
 }
 
 /**
+ * Creates a CHAR type.
+ * @return A CHAR type.
+ */
+Type *char_ty() {
+    Type *ty = new_ty(TY_CHAR, 1);
+    ty->align = 8;  // TODO
+    return ty;
+}
+
+/**
  * Creates a PTR type.
  * @param base The type to be pointed.
  * @return A PTR type.
@@ -72,6 +82,8 @@ Type *read_ty() {
     Type *ty;
     if (consume(TK_RESERVED, "int")) {
         ty = int_ty();
+    } else if (consume(TK_RESERVED, "char")) {
+        ty = char_ty();
     } else {
         error_at(token->loc, "Invalid type");
     }
