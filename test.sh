@@ -18,13 +18,14 @@ assert() {
     fi
 }
 
-assert 0 "int main () {return 0;}"
-assert 42 "int main () {return 21+63-42;}"
-assert 42 "int main () {return 21 + 63 - 42;}"
-assert 42 "int main () {return 2 * 20 + 2;}"
-assert 42 "int main () {return 2 * (20 + 1);}"
-assert 42 "int main () {return -2 + 2 * (20 + 2);}"
-assert 1 "int main () {return 1 == 1;}"
+# assert 0 "int main () {return 0;}"
+# assert 42 "int main () {return 21+63-42;}"
+# assert 42 "int main () {return 21 + 63 - 42;}"
+# assert 42 "int main () {return 2 * 20 + 2;}"
+# assert 42 "int main () {return 2 * (20 + 1);}"
+# assert 42 "int main () {return -2 + 2 * (20 + 2);}"
+# assert 1 "int main () {return 1 == 1;}"
+assert 0 "int main () {return 1 != 1;}"
 assert 0 "int main () {return (1 < (5 + -10) * 2) == (10 < (120 - 60));}"
 assert 42 "int main () {int a; a = 42; return a;}"
 assert 42 "int main () {int a; a = 21; a = a + 21; return a;}"

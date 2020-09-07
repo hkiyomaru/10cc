@@ -64,6 +64,7 @@ struct Type {
 extern char *user_input;
 extern Token *token;
 
+Token *peek(TokenKind kind, char *str);
 Token *consume(TokenKind kind, char *str);
 Token *expect(TokenKind kind, char *str);
 bool at_eof();

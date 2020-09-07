@@ -4,34 +4,47 @@ char *user_input;
 Token *token;
 
 /**
- * Returns the current token if it satisfies the given conditions.
+ * Returns the current token if it satisfies given conditions.
+ * @param kind The kind of a token.
+ * @param str The string expression of a token.
+ * @return The current token.
+ */
+Token *peek(TokenKind kind, char *str) {
+    if (token->kind != kind || (str && strcmp(token->str, str))) {
+        return NULL;
+    }
+    return token;
+}
+
+/**
+ * Pops the current token if it satisfies given conditions.
  * Otherwise, NULL will be returned.
  * @param kind The kind of a token.
  * @param str The string expression of a token.
  * @return The current token.
  */
 Token *consume(TokenKind kind, char *str) {
-    if (token->kind != kind || (str && strcmp(token->str, str) != 0)) {
-        return NULL;
+    Token *ret = peek(kind, str);
+    if (ret) {
+        token = token->next;
     }
-    Token *ret = token;
-    token = token->next;
     return ret;
 }
 
 /**
- * Returns the current token if it satisfies the given conditions.
- * Otherwise, stops the program with an error message.
+ * Pops the current token if it satisfies given conditions.
+ * Otherwise, raises an error message.
  * @param kind The kind of a token.
  * @param str The string expression of a token.
  * @return The current token.
  */
 Token *expect(TokenKind kind, char *str) {
-    if (token->kind != kind || (str && strcmp(token->str, str) != 0)) {
+    Token *ret = peek(kind, str);
+    if (ret) {
+        token = token->next;
+    } else {
         error_at(token->loc, "Unexpected token");
     }
-    Token *ret = token;
-    token = token->next;
     return ret;
 }
 
@@ -39,19 +52,16 @@ Token *expect(TokenKind kind, char *str) {
  * Returns True if the kind of the current token is EOF.
  * @return True if the kind of the current token is EOF.
  */
-bool at_eof() { return token->kind == TK_EOF; }
+bool at_eof() { return peek(TK_EOF, NULL); }
 
 /**
  * Returns True if the kind of the current token is a type.
  * @return True if the kind of the current token is a type.
  */
 bool at_typename() {
-    if (token->kind != TK_RESERVED) {
-        return false;
-    }
     char *typenames[] = {"int", "char"};
     for (int i = 0; i < sizeof(typenames) / sizeof(typenames[0]); i++) {
-        if (!strcmp(token->str, typenames[i])) {
+        if (peek(TK_RESERVED, typenames[i])) {
             return true;
         }
     }
@@ -75,7 +85,6 @@ char *read_reserved(char *p) {
 
     char *multi_ops[] = {"<=", ">=", "==", "!="};
     for (int i = 0; i < sizeof(multi_ops) / sizeof(multi_ops[0]); i++) {
-        int len = strlen(multi_ops[i]);
         if (startswith(p, multi_ops[i])) {
             return multi_ops[i];
         }
@@ -84,7 +93,6 @@ char *read_reserved(char *p) {
     char *single_ops[] = {"+", "-", "*", "/", "(", ")", "<", ">",
                           "=", ";", "{", "}", ",", "[", "]", "&"};
     for (int i = 0; i < sizeof(single_ops) / sizeof(single_ops[0]); i++) {
-        int len = strlen(single_ops[i]);
         if (startswith(p, single_ops[i])) {
             return single_ops[i];
         }

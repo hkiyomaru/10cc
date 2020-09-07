@@ -111,6 +111,32 @@ Type *read_array(Type *ty) {
 }
 
 /**
+ * If there exists a variable whose name matches given conditions,
+ * returns it. Otherwise, NULL will be returned. The lookup process
+ * priotizes local variables than global variables.
+ * @param name The name of a varaible.
+ * @return A node.
+ */
+Node *find_var(char *name) {
+    Node *var = NULL;
+    if (fn && fn->lvars) {
+        var = map_at(fn->lvars, name);
+    }
+    if (!var) {
+        var = map_at(prog->gvars, name);
+    }
+    return var;
+}
+
+/**
+ * If there exists a function whose name matches given condition,
+ * returns it. Otherwise, NULL will be returned.
+ * @param name The name of a function.
+ * @return A function.
+ */
+Function *find_func(char *name) { return map_at(prog->fns, name); }
+
+/**
  * Creates a node.
  * @param kind The kind of a node.
  * @return A node.
@@ -150,8 +176,8 @@ Node *new_node_num(int val) {
 /**
  * Creates a node to represent a global variable.
  * The created variable is added into the list of global variables.
- * @param ty The type of the global variable.
- * @param name The name of the global variable.
+ * @param ty The type of a global variable.
+ * @param name The name of a global variable.
  * @return A node.
  */
 Node *new_node_gvar(Type *ty, char *name) {
@@ -165,8 +191,8 @@ Node *new_node_gvar(Type *ty, char *name) {
 /**
  * Creates a node to represent a local variable.
  * The created variable is added into the list of local variables.
- * @param ty The type of the local variable.
- * @param name The name of the local variable.
+ * @param ty The type of a local variable.
+ * @param name The name of a local variable.
  * @return A node.
  */
 Node *new_node_lvar(Type *ty, char *name) {
@@ -179,46 +205,31 @@ Node *new_node_lvar(Type *ty, char *name) {
 
 /**
  * Creates a node to represent a function call.
- * Here, '(' has already been consumed.
- * So, the current token must be an argument or ')'.
+ * Here, the function name has already been consumed.
+ * So, the current token must be '('.
  * @param tok The name of a function.
  * @return A node.
  */
 Node *new_node_func_call(Token *tok) {
+    Node *node = new_node(ND_FUNC_CALL);
+    node->name = tok->str;
+
+    Function *fn_ = find_func(tok->str);
+    if (!fn_) {
+        error_at(tok->loc, "Undefined function");
+    }
+    node->ty = fn_->rty;
+
     Vector *args = vec_create();
+    expect(TK_RESERVED, "(");
     while (!consume(TK_RESERVED, ")")) {
         if (0 < args->len) {
             expect(TK_RESERVED, ",");
         }
         vec_push(args, expr());
     }
-    Function *fn_ = map_at(prog->fns, tok->str);
-    if (!fn_) {
-        error_at(tok->loc, "Undefined function");
-    }
-    Node *node = new_node(ND_FUNC_CALL);
-    node->name = tok->str;
-    node->ty = fn_->rty;
     node->args = args;
     return node;
-}
-
-/**
- * If there exists a variable whose name matches the given condition,
- * returns it. Otherwise, NULL will be returned. The lookup process
- * priotizes local variables than global variables.
- * @param name The name of a varaible.
- * @return A node.
- */
-Node *find_var(char *name) {
-    Node *var = NULL;
-    if (fn && fn->lvars) {
-        var = map_at(fn->lvars, name);
-    }
-    if (!var) {
-        var = map_at(prog->gvars, name);
-    }
-    return var;
 }
 
 /**
@@ -334,12 +345,14 @@ Node *assign() {
  */
 Node *equality() {
     Node *node = relational();
-    if (consume(TK_RESERVED, "==")) {
-        node = new_bin_op(ND_EQ, node, relational());
-    } else if (consume(TK_RESERVED, "!=")) {
-        node = new_bin_op(ND_NE, node, relational());
-    } else {
-        return node;
+    for (;;) {
+        if (consume(TK_RESERVED, "==")) {
+            node = new_bin_op(ND_EQ, node, relational());
+        } else if (consume(TK_RESERVED, "!=")) {
+            node = new_bin_op(ND_NE, node, relational());
+        } else {
+            return node;
+        }
     }
 }
 
@@ -459,7 +472,7 @@ Node *primary() {
 
     Token *tok = consume(TK_IDENT, NULL);
     if (tok) {
-        if (consume(TK_RESERVED, "(")) {
+        if (peek(TK_RESERVED, "(")) {
             return new_node_func_call(tok);
         } else {
             Node *var = find_var(tok->str);
@@ -474,37 +487,53 @@ Node *primary() {
 }
 
 /**
- * Parses tokens at the top level of the program.
+ * Parses a function and registers it to the program.
+ * Here, the function name has already been consumed.
+ * So, the current token must be '('.
+ * @param ty The type of a return variable.
+ * @param tok The name of a function.
+ * @return A function.
+ */
+Function *new_func(Type *ty, Token *tok) {
+    fn = calloc(1, sizeof(Function));
+    fn->rty = ty;
+    fn->name = tok->str;
+    fn->args = vec_create();
+    fn->lvars = map_create();
+
+    // Parse the arguments
+    expect(TK_RESERVED, "(");
+    while (!consume(TK_RESERVED, ")")) {
+        if (0 < fn->args->len) {
+            expect(TK_RESERVED, ",");
+        }
+        vec_push(fn->args, declaration());
+    }
+
+    // NOTE: functions must be registered before parsing their bodies
+    // to deal with recursion
+    map_insert(prog->fns, fn->name, fn);
+
+    fn->body = vec_create();
+    expect(TK_RESERVED, "{");
+    while (!consume(TK_RESERVED, "}")) {
+        vec_push(fn->body, stmt());
+    }
+}
+
+/**
+ * Parses tokens at the top level of a program.
  */
 void top_level() {
     Type *ty = read_ty();
     Token *tok = expect(TK_IDENT, NULL);
 
-    if (consume(TK_RESERVED, "(")) {
+    if (peek(TK_RESERVED, "(")) {
         // Function
-        fn = calloc(1, sizeof(Function));
-        fn->rty = ty;
-        fn->name = tok->str;
-        fn->args = vec_create();
-        fn->lvars = map_create();
-
-        while (!consume(TK_RESERVED, ")")) {
-            if (0 < fn->args->len) {
-                expect(TK_RESERVED, ",");
-            }
-            vec_push(fn->args, declaration());
+        if (find_func(tok->str)) {
+            error_at(tok->loc, "Redefinition of %s", tok->str);
         }
-
-        // NOTE: functions must be registered before parsing their bodies
-        // to deal with recursion
-        map_insert(prog->fns, fn->name, fn);
-
-        fn->body = vec_create();
-        expect(TK_RESERVED, "{");
-        while (!consume(TK_RESERVED, "}")) {
-            vec_push(fn->body, stmt());
-        }
-        return;
+        new_func(ty, tok);
     } else {
         // Global variable
         if (find_var(tok->str)) {
@@ -518,7 +547,6 @@ void top_level() {
 
 /**
  * Parses tokens syntactically.
- * @param tokens_ A list of tokens.
  * @return A program.
  */
 Program *parse() {
