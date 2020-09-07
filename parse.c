@@ -1,7 +1,7 @@
 #include "9cc.h"
 
-Program *prog; /**< The program. */
-Function *fn;  /**< The function being parsed. */
+Program *prog;  // The program
+Function *fn;   // The function being parsed
 
 Node *expr();
 Node *assign();

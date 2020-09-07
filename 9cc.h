@@ -57,7 +57,7 @@ struct Type {
     int size;
     int align;
 
-    struct Type *base; /**< used when ty is TY_PTR or TY_ARY */
+    struct Type *base;  // used when ty is TY_PTR or TY_ARY
     int array_size;
 };
 
@@ -73,34 +73,31 @@ Token *tokenize();
 /**
  * parse.c
  */
-
-/**< AST nodes */
 typedef enum {
-    ND_ADD,        // +
-    ND_SUB,        // -
-    ND_MUL,        // *
-    ND_DIV,        // /
-    ND_EQ,         // ==
-    ND_NE,         // ==
-    ND_LE,         // <=
-    ND_LT,         // <
-    ND_ASSIGN,     // =
-    ND_NUM,        // number
-    ND_LVAR,       // local variable
-    ND_GVAR,       // global variable
-    ND_RETURN,     // return
-    ND_IF,         // if
-    ND_ELSE,       // else
-    ND_WHILE,      // while
-    ND_FOR,        // for
-    ND_FUNC_CALL,  // function call
-    ND_BLOCK,      // block
-    ND_ADDR,       // &
-    ND_DEREF       // *
-} NodeKind;
+    ND_ADD,
+    ND_SUB,
+    ND_MUL,
+    ND_DIV,
+    ND_EQ,
+    ND_NE,
+    ND_LE,
+    ND_LT,
+    ND_ASSIGN,
+    ND_NUM,
+    ND_LVAR,
+    ND_GVAR,
+    ND_RETURN,
+    ND_IF,
+    ND_ELSE,
+    ND_WHILE,
+    ND_FOR,
+    ND_FUNC_CALL,
+    ND_BLOCK,
+    ND_ADDR,
+    ND_DEREF
+} NodeKind;  // AST nodes
 
 typedef struct Node Node;
-
 struct Node {
     char *name;
     NodeKind kind;

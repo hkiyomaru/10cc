@@ -46,8 +46,16 @@ bool at_eof() { return token->kind == TK_EOF; }
  * @return True if the kind of the current token is a type.
  */
 bool at_typename() {
-    return token->kind == TK_RESERVED &&
-           (!strcmp(token->str, "int") || !strcmp(token->str, "char"));
+    if (token->kind != TK_RESERVED) {
+        return false;
+    }
+    char *typenames[] = {"int", "char"};
+    for (int i = 0; i < sizeof(typenames) / sizeof(typenames[0]); i++) {
+        if (!strcmp(token->str, typenames[i])) {
+            return true;
+        }
+    }
+    return false;
 }
 
 /**
