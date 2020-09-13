@@ -134,11 +134,32 @@ Token *tokenize() {
 
     char *p = user_input;
     while (*p) {
+        // Skip white space.
         if (isspace(*p)) {
             p++;
             continue;
         }
 
+        // Skip line comments.
+        if (strncmp(p, "//", 2) == 0) {
+            p += 2;
+            while (*p != '\n') {
+                p++;
+            }
+            continue;
+        }
+
+        // Skip block comments.
+        if (strncmp(p, "/*", 2) == 0) {
+            char *q = strstr(p + 2, "*/");
+            if (!q) {
+                error_at(p, "Unclosed block comment");
+            }
+            p = q + 2;
+            continue;
+        }
+
+        // Read reserved keywords.
         char *kw = read_reserved(p);
         if (kw) {
             int len = strlen(kw);
@@ -147,6 +168,7 @@ Token *tokenize() {
             continue;
         }
 
+        // Read identifiers.
         if (isalpha(*p) || *p == '_') {
             int len = 1;
             while (isalnumus(p[len])) {
@@ -157,6 +179,7 @@ Token *tokenize() {
             continue;
         }
 
+        // Read numbers.
         if (isdigit(*p)) {
             cur = new_token(TK_NUM, cur, p, 0);
             cur->val = strtol(p, &p, 10);  // strtol increments `p`
