@@ -506,11 +506,14 @@ Function *new_func(Type *ty, Token *tok) {
     // to deal with recursion
     map_insert(prog->fns, fn->name, fn);
 
-    fn->body = vec_create();
+    // Parse the body.
+    fn->body = new_node(ND_BLOCK);
+    fn->body->stmts = vec_create();
     expect(TK_RESERVED, "{");
     while (!consume(TK_RESERVED, "}")) {
-        vec_push(fn->body, stmt());
+        vec_push(fn->body->stmts, (void *)stmt());
     }
+    return fn;
 }
 
 /**

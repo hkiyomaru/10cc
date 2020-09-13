@@ -121,8 +121,6 @@ struct Node {
     Vector *args;
 
     int offset;
-
-    Node *ref;
 };
 
 typedef struct {
@@ -130,7 +128,7 @@ typedef struct {
     char *name;
     Map *lvars;
     Vector *args;
-    Vector *body;
+    Node *body;
 } Function;
 
 typedef struct {

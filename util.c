@@ -237,9 +237,7 @@ void draw_ast(Program *prog) {
             draw_node_tree(fn->args->data[j], 1, prefix);
         }
         fprintf(stderr, ")\n");
-        for (int j = 0; j < fn->body->len; j++) {
-            draw_node_tree(fn->body->data[j], 1, "");
-        }
+        draw_node_tree(fn->body, 1, "");
         fprintf(stderr, "\n");
     }
 }

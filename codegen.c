@@ -296,10 +296,7 @@ void gen_text(Program *prog) {
             load_arg(vec_get(fn->args, i), i);
         }
 
-        for (int i = 0; i < fn->body->len; i++) {
-            gen(vec_get(fn->body, i));
-            printf("  pop rax\n");
-        }
+        gen(fn->body);
     }
 }
 
