@@ -7,8 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define LOGLEVEL 6
-
 /**
  * container.c
  */

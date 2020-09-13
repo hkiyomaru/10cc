@@ -45,7 +45,7 @@ void load(Type *ty) {
             printf("  mov rax, [rax]\n");
             break;
         default:
-            error("Failed to load a variable, %d", ty->kind);
+            error("Failed to load a variable");
     }
     printf("  push rax\n");
 }
@@ -263,7 +263,6 @@ void gen_data(Program *prog) {
     for (int i = 0; i < prog->gvars->len; i++) {
         Node *gvar = prog->gvars->vals->data[i];
         printf("%s:\n", gvar->name);
-
         printf("  .zero %d\n", gvar->ty->size);
     }
 }

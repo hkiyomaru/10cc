@@ -160,8 +160,8 @@ Node *new_bin_op(NodeKind kind, Node *lhs, Node *rhs) {
  */
 Node *new_node_num(int val) {
     Node *node = new_node(ND_NUM);
-    node->val = val;
     node->ty = int_ty();
+    node->val = val;
     return node;
 }
 
@@ -203,24 +203,22 @@ Node *new_node_lvar(Type *ty, char *name) {
  * @return A node.
  */
 Node *new_node_func_call(Token *tok) {
-    Node *node = new_node(ND_FUNC_CALL);
-    node->name = tok->str;
-
     Function *fn_ = find_func(tok->str);
     if (!fn_) {
         error_at(tok->loc, "Undefined function");
     }
-    node->ty = fn_->rty;
 
-    Vector *args = vec_create();
+    Node *node = new_node(ND_FUNC_CALL);
+    node->name = tok->str;
+    node->ty = fn_->rty;
+    node->args = vec_create();
     expect(TK_RESERVED, "(");
     while (!consume(TK_RESERVED, ")")) {
-        if (0 < args->len) {
+        if (0 < node->args->len) {
             expect(TK_RESERVED, ",");
         }
-        vec_push(args, expr());
+        vec_push(node->args, expr());
     }
-    node->args = args;
     return node;
 }
 
@@ -376,13 +374,10 @@ Node *relational() {
 Node *add() {
     Node *node = mul();
     for (;;) {
-        Node *rhs;
         if (consume(TK_RESERVED, "+")) {
-            rhs = mul();
-            node = new_bin_op(ND_ADD, node, rhs);
+            node = new_bin_op(ND_ADD, node, mul());
         } else if (consume(TK_RESERVED, "-")) {
-            rhs = mul();
-            node = new_bin_op(ND_SUB, node, rhs);
+            node = new_bin_op(ND_SUB, node, mul());
         } else {
             return node;
         }
@@ -436,15 +431,15 @@ Node *unary() {
  * @return A node.
  */
 Node *suffix() {
-    Node *lhs = primary();
+    Node *node = primary();
     for (;;) {
         if (consume(TK_RESERVED, "[")) {
-            Node *node = new_bin_op(ND_ADD, lhs, assign());
-            lhs = new_bin_op(ND_DEREF, node, NULL);
+            Node *addr = new_bin_op(ND_ADD, node, assign());
+            node = new_bin_op(ND_DEREF, addr, NULL);
             expect(TK_RESERVED, "]");
             continue;
         }
-        return lhs;
+        return node;
     }
 }
 
@@ -490,10 +485,10 @@ Function *new_func(Type *ty, Token *tok) {
     fn = calloc(1, sizeof(Function));
     fn->rty = ty;
     fn->name = tok->str;
-    fn->args = vec_create();
     fn->lvars = map_create();
 
     // Parse the arguments
+    fn->args = vec_create();
     expect(TK_RESERVED, "(");
     while (!consume(TK_RESERVED, ")")) {
         if (0 < fn->args->len) {
@@ -522,15 +517,12 @@ Function *new_func(Type *ty, Token *tok) {
 void top_level() {
     Type *ty = read_ty();
     Token *tok = expect(TK_IDENT, NULL);
-
     if (peek(TK_RESERVED, "(")) {
-        // Function
         if (find_func(tok->str)) {
             error_at(tok->loc, "Redefinition of %s", tok->str);
         }
         new_func(ty, tok);
     } else {
-        // Global variable
         if (find_var(tok->str)) {
             error_at(tok->loc, "Redefinition of %s", tok->str);
         }

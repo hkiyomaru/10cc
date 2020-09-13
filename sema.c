@@ -174,7 +174,6 @@ Node *do_walk(Node *node, bool decay) {
             }
             return node;
         default:
-            fprintf(stderr, "\n\n%d\n\n", node->kind);
             assert(0 && "Unknown node type");
     }
 }

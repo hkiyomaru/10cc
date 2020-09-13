@@ -1,6 +1,20 @@
 #include "9cc.h"
 
 /**
+ * Returns a formatted string.
+ * @param fmt The format of a string.
+ * @param arg Arguments which will be filled in the message.
+ */
+char *format(char *fmt, ...) {
+    char *buff = calloc(512, sizeof(char));
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(buff, sizeof(buff), fmt, ap);
+    va_end(ap);
+    return buff;
+}
+
+/**
  * Shows an error message.
  * @param fmt The format of an error message.
  * @param arg Arguments which will be filled in the message.
@@ -56,7 +70,7 @@ void error_at(char *loc, char *fmt, ...) {
 }
 
 /**
- * Returns True if the first string starts with the second string.
+ * Returns true if the first string starts with the second string.
  * @param p A string.
  * @param q A string.
  * @return True if the first string starts with the second string.
@@ -64,7 +78,7 @@ void error_at(char *loc, char *fmt, ...) {
 bool startswith(char *p, char *q) { return memcmp(p, q, strlen(q)) == 0; }
 
 /**
- * Returns True if the given character is an alphabet, or a number, or _.
+ * Returns true if the given character is an alphabet, or a number, or _.
  * @param c A character.
  * @return True if the given character is an alphabet, or a number, or _.
  */
@@ -92,16 +106,16 @@ char *read_file(char *path) {
     }
 
     // Read the file.
-    char *buf = calloc(1, size + 2);
-    fread(buf, size, 1, fp);
+    char *buff = calloc(1, size + 2);
+    fread(buff, size, 1, fp);
     fclose(fp);
 
     // Make sure that the file ends with a new line.
-    if (size == 0 || buf[size - 1] != '\n') {
-        buf[size++] = '\n';
+    if (size == 0 || buff[size - 1] != '\n') {
+        buff[size++] = '\n';
     }
-    buf[size] = '\0';
-    return buf;
+    buff[size] = '\0';
+    return buff;
 }
 
 /**
@@ -195,8 +209,7 @@ void draw_node_tree(Node *node, int depth, char *role) {
             case ND_FUNC_CALL:
                 fprintf(stderr, "FUNC_CALL(name: %s)\n", node->name);
                 for (int i = 0; i < node->args->len; i++) {
-                    char prefix[16] = {'\0'};
-                    sprintf(prefix, "arg%d", i);
+                    char *prefix = format("arg%d", i);
                     draw_node_tree(node->args->data[i], depth + 1, prefix);
                 }
                 break;
@@ -232,8 +245,7 @@ void draw_ast(Program *prog) {
         Function *fn = vec_get(prog->fns->vals, i);
         fprintf(stderr, "%s(\n", fn->name);
         for (int j = 0; j < fn->args->len; j++) {
-            char prefix[256] = {'\0'};
-            sprintf(prefix, "arg%d", j);
+            char *prefix = format("arg%d", j);
             draw_node_tree(fn->args->data[j], 1, prefix);
         }
         fprintf(stderr, ")\n");

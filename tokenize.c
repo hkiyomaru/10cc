@@ -50,13 +50,13 @@ Token *expect(TokenKind kind, char *str) {
 }
 
 /**
- * Returns True if the kind of the current token is EOF.
+ * Returns true if the kind of the current token is EOF.
  * @return True if the kind of the current token is EOF.
  */
 bool at_eof() { return peek(TK_EOF, NULL); }
 
 /**
- * Returns True if the kind of the current token is a type.
+ * Returns true if the kind of the current token is a type.
  * @return True if the kind of the current token is a type.
  */
 bool at_typename() {
@@ -109,12 +109,11 @@ char *read_reserved(char *p) {
  * @return A token.
  */
 Token *new_token(TokenKind kind, Token *cur, char *p, int len) {
-    Token *tok = calloc(1, sizeof(Token));
-
     char *str_sliced = calloc(len + 1, sizeof(char));
     strncpy(str_sliced, p, len);
     str_sliced[len] = '\0';
 
+    Token *tok = calloc(1, sizeof(Token));
     tok->kind = kind;
     tok->str = str_sliced;
     tok->loc = p;
