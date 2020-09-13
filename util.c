@@ -20,12 +20,36 @@ void error(char *fmt, ...) {
  * @param arg Arguments which will be filled in the message.
  */
 void error_at(char *loc, char *fmt, ...) {
-    va_list ap;
-    va_start(ap, fmt);
-    int pos = loc - user_input;
-    fprintf(stderr, "%s\n", user_input);
+    // Find the start/end positions of the line.
+    char *line = loc;
+    while (user_input < line && line[-1] != '\n') {
+        line--;
+    }
+    char *end = loc;
+    while (*end != '\n') {
+        end++;
+    }
+
+    // Investigate the line number.
+    int line_num = 1;
+    for (char *p = user_input; p < line; p++) {
+        if (*p == '\n') {
+            line_num++;
+        }
+    }
+
+    // Report the line number with the file name.
+    int indent = fprintf(stderr, "%s:%d: ", filename, line_num);
+    fprintf(stderr, "%.*s\n", (int)(end - line), line);
+
+    // Display a pointer to the error location.
+    int pos = loc - line + indent;
     fprintf(stderr, "%*s", pos, "");
     fprintf(stderr, "^ ");
+
+    // Display an error message.
+    va_list ap;
+    va_start(ap, fmt);
     vfprintf(stderr, fmt, ap);
     fprintf(stderr, "\n");
     exit(1);
@@ -45,6 +69,40 @@ bool startswith(char *p, char *q) { return memcmp(p, q, strlen(q)) == 0; }
  * @return True if the given character is an alphabet, or a number, or _.
  */
 bool isalnumus(char c) { return isalnum(c) || c == '_'; }
+
+/**
+ * Returns the contents of a given file.
+ * @param path Path to a file.
+ * @return Contents.
+ */
+char *read_file(char *path) {
+    // Open the file.
+    FILE *fp = fopen(path, "r");
+    if (!fp) {
+        error("cannot open %s: %s", path, strerror(errno));
+    }
+
+    // Investigate the file size.
+    if (fseek(fp, 0, SEEK_END) == -1) {
+        error("%s: fseek: %s", path, strerror(errno));
+    }
+    size_t size = ftell(fp);
+    if (fseek(fp, 0, SEEK_SET) == -1) {
+        error("%s: fseek: %s", path, strerror(errno));
+    }
+
+    // Read the file.
+    char *buf = calloc(1, size + 2);
+    fread(buf, size, 1, fp);
+    fclose(fp);
+
+    // Make sure that the file ends with a new line.
+    if (size == 0 || buf[size - 1] != '\n') {
+        buf[size++] = '\n';
+    }
+    buf[size] = '\0';
+    return buf;
+}
 
 /**
  * Draws the abstract syntax tree of a node.

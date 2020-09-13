@@ -6,7 +6,8 @@ assert() {
     expected="$1"
     input="$2"
 
-    ./9cc "$input" > tmp.s
+    echo "${input}" > tmp.c
+    ./9cc tmp.c > tmp.s
     cc -static -o tmp tmp.s
     ./tmp
     actual="$?"
@@ -16,6 +17,8 @@ assert() {
     else
         echo -e "\033[31m[FAILED]\033[m $input => $expected expected, but got $actual"
     fi
+
+    rm tmp.c
 }
 
 assert 0 "int main () {return 0;}"

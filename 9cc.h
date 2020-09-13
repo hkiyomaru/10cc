@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <ctype.h>
+#include <errno.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -61,6 +62,7 @@ struct Type {
     int array_size;
 };
 
+extern char *filename;
 extern char *user_input;
 extern Token *token;
 
@@ -160,4 +162,5 @@ void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);
 bool startswith(char *p, char *q);
 bool isalnumus(char c);
+char *read_file(char *path);
 void draw_ast(Program *prog);

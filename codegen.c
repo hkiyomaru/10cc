@@ -263,6 +263,7 @@ void gen_data(Program *prog) {
     for (int i = 0; i < prog->gvars->len; i++) {
         Node *gvar = prog->gvars->vals->data[i];
         printf("%s:\n", gvar->name);
+
         printf("  .zero %d\n", gvar->ty->size);
     }
 }
