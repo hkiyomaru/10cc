@@ -1,14 +1,83 @@
 #include "9cc.h"
 
-int num_argregs = 6;
-char *argregs[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+char *argregs1[] = {"dil", "sil", "dl", "cl", "r8b", "r9b"};
+char *argregs4[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
+char *argregs8[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
 int label_id = 0;
 
 /**
+ * Loads an argument following the function calling convention.
+ * @param arg A node representing an argument.
+ * @param index The index of the argument.
+ */
+void load_arg(Node *arg, int index) {
+    char **argregs;
+    switch (arg->ty->size) {
+        case 1:
+            printf("  mov [rbp-%d], %s\n", arg->offset, argregs1[index]);
+            break;
+        case 4:
+            printf("  mov [rbp-%d], %s\n", arg->offset, argregs4[index]);
+            break;
+        case 8:
+            printf("  mov [rbp-%d], %s\n", arg->offset, argregs8[index]);
+            break;
+        default:
+            error("Failed to load an argument");
+    }
+}
+
+/**
+ * Loads a value from an address. The address must be on the top of the stack.
+ * @param ty A type of a value to be loaded.
+ */
+void load(Type *ty) {
+    printf("  pop rax\n");
+    switch (ty->size) {
+        case 1:
+            printf("  movsx rax, byte ptr [rax]\n");
+            break;
+        case 4:
+            printf("  movsx rax, dword ptr [rax]\n");
+            break;
+        case 8:
+            printf("  mov rax, [rax]\n");
+            break;
+        default:
+            error("Failed to load a variable, %d", ty->kind);
+    }
+    printf("  push rax\n");
+}
+
+/**
+ * Stores a value to an address. The top of the stack must be the value.
+ * The second from the top must be the address.
+ * @param ty A type of a value to be stored.
+ */
+void store(Type *ty) {
+    printf("  pop rdi\n");
+    printf("  pop rax\n");
+    switch (ty->size) {
+        case 1:
+            printf("  mov [rax], dil\n");
+            break;
+        case 4:
+            printf("  mov [rax], edi\n");
+            break;
+        case 8:
+            printf("  mov [rax], rdi\n");
+            break;
+        default:
+            error("Failed to store a variable");
+    }
+    printf("  push rdi\n");
+}
+
+/**
  * Rounds up a number.
  * @param x A number to be rounded up.
- * @param aligh A base number.
+ * @param align A base number.
  */
 int roundup(int x, int align) { return (x + align - 1) & ~(align - 1); }
 
@@ -42,26 +111,40 @@ void gen(Node *node) {
         case ND_NUM:
             printf("  push %d\n", node->val);
             return;
+        case ND_ADDR:
+            if (node->lhs->kind == ND_LVAR) {
+                gen_lval(node->lhs);
+            } else if (node->lhs->kind == ND_GVAR) {
+                gen_gval(node->lhs);
+            }
+            return;
+        case ND_DEREF:
+            gen(node->lhs);
+            load(node->ty);
+            return;
+        case ND_GVAR:
+            gen_gval(node);
+            if (node->ty->kind != TY_ARY) {
+                // Just a definition of an array, like `int ary[3];`.
+                // Since such a node cannot be an rhs of a binary operation,
+                // `load()` is not necessary.
+                load(node->ty);
+            }
+            return;
+        case ND_LVAR:
+            gen_lval(node);
+            if (node->ty->kind != TY_ARY) {
+                load(node->ty);
+            }
+            return;
         case ND_FUNC_CALL:
             for (int i = 0; i < node->args->len; i++) {
                 gen(vec_get(node->args, i));
             }
             for (int i = node->args->len - 1; 0 <= i; i--) {
-                printf("  pop %s\n", argregs[i]);
+                printf("  pop %s\n", argregs8[i]);
             }
             printf("  call %s\n", node->name);
-            printf("  push rax\n");
-            return;
-        case ND_GVAR:
-            gen_gval(node);
-            printf("  pop rax\n");
-            printf("  mov rax, [rax]\n");
-            printf("  push rax\n");
-            return;
-        case ND_LVAR:
-            gen_lval(node);
-            printf("  pop rax\n");
-            printf("  mov rax, [rax]\n");
             printf("  push rax\n");
             return;
         case ND_ASSIGN:
@@ -73,17 +156,7 @@ void gen(Node *node) {
                 gen_gval(node->lhs);
             }
             gen(node->rhs);
-            printf("  pop rdi\n");
-            printf("  pop rax\n");
-            printf("  mov [rax], rdi\n");
-            printf("  push rdi\n");
-            return;
-        case ND_RETURN:
-            gen(node->lhs);
-            printf("  pop rax\n");
-            printf("  mov rsp, rbp\n");
-            printf("  pop rbp\n");
-            printf("  ret\n");
+            store(node->lhs->ty);
             return;
         case ND_IF:
             cur_label_id = label_id++;
@@ -126,23 +199,17 @@ void gen(Node *node) {
             printf("  jmp .Lbegin%03d\n", cur_label_id);
             printf(".Lend%03d:\n", cur_label_id);
             return;
+        case ND_RETURN:
+            gen(node->lhs);
+            printf("  pop rax\n");
+            printf("  mov rsp, rbp\n");
+            printf("  pop rbp\n");
+            printf("  ret\n");
+            return;
         case ND_BLOCK:
             for (int i = 0; i < node->stmts->len; i++) {
                 gen(vec_get(node->stmts, i));
             }
-            return;
-        case ND_ADDR:
-            if (node->lhs->kind == ND_LVAR) {
-                gen_lval(node->lhs);
-            } else if (node->lhs->kind == ND_GVAR) {
-                gen_gval(node->lhs);
-            }
-            return;
-        case ND_DEREF:
-            gen(node->lhs);
-            printf("  pop rax\n");
-            printf("  mov rax, [rax]\n");
-            printf("  push rax\n");
             return;
     }
     gen(node->lhs);
@@ -211,7 +278,7 @@ void gen_text(Program *prog) {
 
         int offset = 0;
         for (int i = 0; i < fn->lvars->len; i++) {
-            Node *var = fn->lvars->vals->data[i];
+            Node *var = vec_get(fn->lvars->vals, i);
             offset += var->ty->size;
             offset = roundup(offset, var->ty->align);
             var->offset = offset;
@@ -225,9 +292,7 @@ void gen_text(Program *prog) {
         printf("  sub rsp, %d\n", roundup(offset, 16));
 
         for (int i = 0; i < fn->args->len; i++) {
-            Node *arg = vec_get(fn->args, i);
-            printf("  lea rax, [rbp-%d]\n", arg->offset);
-            printf("  mov [rax], %s\n", argregs[i]);
+            load_arg(vec_get(fn->args, i), i);
         }
 
         for (int i = 0; i < fn->body->len; i++) {

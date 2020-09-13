@@ -21,7 +21,7 @@ Node *primary();
  */
 Type *new_ty(TypeKind ty, int size) {
     Type *ret = calloc(1, sizeof(Type));
-    ret->ty = ty;
+    ret->kind = ty;
     ret->size = size;
     ret->align = size;
     return ret;
@@ -31,21 +31,13 @@ Type *new_ty(TypeKind ty, int size) {
  * Creates an INT type.
  * @return An INT type.
  */
-Type *int_ty() {
-    Type *ty = new_ty(TY_INT, 4);
-    ty->align = 8;  // TODO
-    return ty;
-}
+Type *int_ty() { return new_ty(TY_INT, 4); }
 
 /**
  * Creates a CHAR type.
  * @return A CHAR type.
  */
-Type *char_ty() {
-    Type *ty = new_ty(TY_CHAR, 1);
-    ty->align = 8;  // TODO
-    return ty;
-}
+Type *char_ty() { return new_ty(TY_CHAR, 1); }
 
 /**
  * Creates a PTR type.
@@ -64,13 +56,13 @@ Type *ptr_to(Type *base) {
  * @param size The number of items.
  * @return An ARY type.
  */
-Type *ary_of(Type *base, int size) {
+Type *ary_of(Type *base, int len) {
     Type *ty = calloc(1, sizeof(Type));
-    ty->ty = TY_ARY;
-    ty->size = base->size * size;
+    ty->kind = TY_ARY;
+    ty->size = base->size * len;
     ty->align = base->align;
     ty->base = base;
-    ty->array_size = size;
+    ty->array_size = len;
     return ty;
 }
 

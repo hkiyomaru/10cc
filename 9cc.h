@@ -53,7 +53,7 @@ typedef enum { TY_INT, TY_PTR, TY_ARY, TY_CHAR } TypeKind;
 
 typedef struct Type Type;
 struct Type {
-    TypeKind ty;
+    TypeKind kind;
     int size;
     int align;
 

@@ -14,7 +14,7 @@ void check_referable(Node *node) {
  * @param node A node.
  */
 void check_int(Node *node) {
-    TypeKind ty = node->ty->ty;
+    TypeKind ty = node->ty->kind;
     assert(ty == TY_INT);
 }
 
@@ -26,7 +26,7 @@ void check_int(Node *node) {
  * @return A node.
  */
 Node *maybe_decay(Node *base, bool decay) {
-    if (!decay || base->ty->ty != TY_ARY) {
+    if (!decay || base->ty->kind != TY_ARY) {
         return base;
     }
     Node *node = new_node(ND_ADDR);
@@ -104,12 +104,12 @@ Node *do_walk(Node *node, bool decay) {
         case ND_ADD:
             node->lhs = walk(node->lhs);
             node->rhs = walk(node->rhs);
-            if (node->rhs->ty->ty == TY_PTR) {
+            if (node->rhs->ty->kind == TY_PTR) {
                 Node *tmp = node->lhs;
                 node->lhs = node->rhs;
                 node->rhs = tmp;
             }
-            if (node->lhs->ty->ty == TY_PTR) {
+            if (node->lhs->ty->kind == TY_PTR) {
                 node->rhs = scale_ptr(ND_MUL, node->rhs, node->lhs->ty);
                 node->ty = node->lhs->ty;
             } else {
@@ -123,7 +123,7 @@ Node *do_walk(Node *node, bool decay) {
             Type *lty = node->lhs->ty;
             Type *rty = node->rhs->ty;
 
-            if (lty->ty == TY_PTR && rty->ty == TY_PTR) {
+            if (lty->kind == TY_PTR && rty->kind == TY_PTR) {
                 node = scale_ptr(ND_DIV, node, lty);
                 node->ty = lty;
             } else {
@@ -155,7 +155,7 @@ Node *do_walk(Node *node, bool decay) {
             return node;
         case ND_DEREF:
             node->lhs = walk(node->lhs);
-            assert(node->lhs->ty->ty == TY_PTR);
+            assert(node->lhs->ty->kind == TY_PTR);
             node->ty = node->lhs->ty->base;
             return maybe_decay(node, decay);
         case ND_RETURN:
