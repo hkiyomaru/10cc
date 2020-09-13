@@ -225,9 +225,8 @@ void gen_text(Program *prog) {
         printf("  sub rsp, %d\n", roundup(offset, 16));
 
         for (int i = 0; i < fn->args->len; i++) {
-            printf("  mov rax, rbp\n");
             Node *arg = vec_get(fn->args, i);
-            printf("  sub rax, %d\n", arg->offset);
+            printf("  lea rax, [rbp-%d]\n", arg->offset);
             printf("  mov [rax], %s\n", argregs[i]);
         }
 
