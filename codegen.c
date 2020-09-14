@@ -300,10 +300,10 @@ void gen_text(Program *prog) {
 }
 
 /**
- * Generates code written in x86 assembly language.
+ * Generates code written in x86-64 assembly.
  * @param prog A program.
  */
-void gen_x86(Program *prog) {
+void codegen(Program *prog) {
     printf(".intel_syntax noprefix\n");
     gen_data(prog);
     gen_text(prog);

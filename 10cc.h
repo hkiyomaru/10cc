@@ -149,7 +149,7 @@ void sema(Program *prog);
 /**
  * codegen.c
  */
-void gen_x86();
+void codegen();
 
 /**
  * util.c

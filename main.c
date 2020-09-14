@@ -12,6 +12,6 @@ int main(int argc, char **argv) {
     Program *prog = parse();
     sema(prog);
     // draw_ast(prog);
-    gen_x86(prog);
+    codegen(prog);
     return 0;
 }
