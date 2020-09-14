@@ -1,4 +1,4 @@
-#include "9cc.h"
+#include "10cc.h"
 
 Program *prog;  // The program
 Function *fn;   // The function being parsed

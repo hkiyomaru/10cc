@@ -1,6 +1,6 @@
 a.out
 *.o
 tmp*
-9cc
+10cc
 
 .vscode/

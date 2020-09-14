@@ -1,4 +1,4 @@
-#include "9cc.h"
+#include "10cc.h"
 
 /**
  * Ensures the node is referable.

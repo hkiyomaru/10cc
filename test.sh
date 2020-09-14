@@ -7,7 +7,7 @@ assert() {
     input="$2"
 
     echo "${input}" > tmp.c
-    ./9cc tmp.c > tmp.s
+    ./10cc tmp.c > tmp.s
     cc -static -o tmp tmp.s
     ./tmp
     actual="$?"

@@ -1,4 +1,4 @@
-#include "9cc.h"
+#include "10cc.h"
 
 char *argregs1[] = {"dil", "sil", "dl", "cl", "r8b", "r9b"};
 char *argregs4[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
