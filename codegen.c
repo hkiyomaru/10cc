@@ -4,7 +4,7 @@ char *argregs1[] = {"dil", "sil", "dl", "cl", "r8b", "r9b"};
 char *argregs4[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
 char *argregs8[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
-int label_id = 0;
+int label_cnt = 0;
 
 /**
  * Loads an argument following the function calling convention.
@@ -12,7 +12,6 @@ int label_id = 0;
  * @param index The index of the argument.
  */
 void load_arg(Node *arg, int index) {
-    char **argregs;
     switch (arg->ty->size) {
         case 1:
             printf("  mov [rbp-%d], %s\n", arg->offset, argregs1[index]);
@@ -106,7 +105,7 @@ void gen_gval(Node *node) {
  * @param node A node.
  */
 void gen(Node *node) {
-    int cur_label_id;
+    int cur_label_cnt;
     switch (node->kind) {
         case ND_NUM:
             printf("  push %d\n", node->val);
@@ -125,9 +124,6 @@ void gen(Node *node) {
         case ND_GVAR:
             gen_gval(node);
             if (node->ty->kind != TY_ARY) {
-                // Just a definition of an array, like `int ary[3];`.
-                // Since such a node cannot be an rhs of a binary operation,
-                // `load()` is not necessary.
                 load(node->ty);
             }
             return;
@@ -154,50 +150,52 @@ void gen(Node *node) {
                 gen_lval(node->lhs);
             } else if (node->lhs->kind == ND_GVAR) {
                 gen_gval(node->lhs);
+            } else {
+                error("Illegal assignment: the lhs is not referable");
             }
             gen(node->rhs);
             store(node->lhs->ty);
             return;
         case ND_IF:
-            cur_label_id = label_id++;
+            cur_label_cnt = label_cnt++;
             gen(node->cond);
             printf("  pop rax\n");
             printf("  cmp rax, 0\n");
             if (node->els) {
-                printf("  je .Lelse%03d\n", cur_label_id);
+                printf("  je .Lelse%03d\n", cur_label_cnt);
                 gen(node->then);
-                printf("  jmp .Lend%03d\n", cur_label_id);
-                printf(".Lelse%03d:\n", cur_label_id);
+                printf("  jmp .Lend%03d\n", cur_label_cnt);
+                printf(".Lelse%03d:\n", cur_label_cnt);
                 gen(node->els);
             } else {
-                printf("  je .Lend%03d\n", cur_label_id);
+                printf("  je .Lend%03d\n", cur_label_cnt);
                 gen(node->then);
             }
-            printf(".Lend%03d:\n", cur_label_id);
+            printf(".Lend%03d:\n", cur_label_cnt);
             return;
         case ND_WHILE:
-            cur_label_id = label_id++;
-            printf(".Lbegin%03d:\n", cur_label_id);
+            cur_label_cnt = label_cnt++;
+            printf(".Lbegin%03d:\n", cur_label_cnt);
             gen(node->cond);
             printf("  pop rax\n");
             printf("  cmp rax, 0\n");
-            printf("  je .Lend%03d\n", cur_label_id);
+            printf("  je .Lend%03d\n", cur_label_cnt);
             gen(node->then);
-            printf("  jmp .Lbegin%03d\n", cur_label_id);
-            printf(".Lend%03d:\n", cur_label_id);
+            printf("  jmp .Lbegin%03d\n", cur_label_cnt);
+            printf(".Lend%03d:\n", cur_label_cnt);
             return;
         case ND_FOR:
-            cur_label_id = label_id++;
+            cur_label_cnt = label_cnt++;
             gen(node->init);
-            printf(".Lbegin%03d:\n", cur_label_id);
+            printf(".Lbegin%03d:\n", cur_label_cnt);
             gen(node->cond);
             printf("  pop rax\n");
             printf("  cmp rax, 0\n");
-            printf("  je .Lend%03d\n", cur_label_id);
+            printf("  je .Lend%03d\n", cur_label_cnt);
             gen(node->then);
             gen(node->upd);
-            printf("  jmp .Lbegin%03d\n", cur_label_id);
-            printf(".Lend%03d:\n", cur_label_id);
+            printf("  jmp .Lbegin%03d\n", cur_label_cnt);
+            printf(".Lend%03d:\n", cur_label_cnt);
             return;
         case ND_RETURN:
             gen(node->lhs);
