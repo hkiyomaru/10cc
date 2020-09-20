@@ -207,17 +207,18 @@ void draw_node_tree(Node *node, int depth, char *role) {
                 }
                 break;
             case ND_FUNC_CALL:
-                fprintf(stderr, "FUNC_CALL(name: %s)\n", node->name);
+                fprintf(stderr, "FUNC_CALL(name: %s)\n", node->funcname);
                 for (int i = 0; i < node->args->len; i++) {
                     char *prefix = format("arg%d", i);
                     draw_node_tree(node->args->data[i], depth + 1, prefix);
                 }
                 break;
-            case ND_GVAR:
-                fprintf(stderr, "GVAR(name: %s)\n", node->name);
-                break;
-            case ND_LVAR:
-                fprintf(stderr, "LVAR(name: %s)\n", node->name);
+            case ND_VARREF:
+                if (node->var->is_local) {
+                    fprintf(stderr, "LVAR(name: %s)\n", node->var->name);
+                } else {
+                    fprintf(stderr, "GVAR(name: %s)\n", node->var->name);
+                }
                 break;
             case ND_NUM:
                 fprintf(stderr, "NUM(%d)\n", node->val);

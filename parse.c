@@ -107,10 +107,10 @@ Type *read_array(Type *type) {
  * returns it. Otherwise, NULL will be returned. The lookup process
  * priotizes local variables than global variables.
  * @param name The name of a varaible.
- * @return A node.
+ * @return A variable.
  */
-Node *find_var(char *name) {
-    Node *var = NULL;
+Var *find_var(char *name) {
+    Var *var = NULL;
     if (fn && fn->lvars) {
         var = map_at(fn->lvars, name);
     }
@@ -170,6 +170,34 @@ Node *new_node_num(int val, Token *tok) {
 }
 
 /**
+ * Creates a variable.
+ * @param type The type of a global variable.
+ * @param tok An identifiier token.
+ * @param is_local If true, creates a local variable.
+ * @return A variable.
+ */
+Var *new_var(Type *type, Token *tok, bool is_local) {
+    Var *var = calloc(1, sizeof(Var));
+    var->type = type;
+    var->name = tok->str;
+    var->is_local = is_local;
+    return var;
+}
+
+/**
+ * Creates a node to refer a variable.
+ * @param var A variable to be refered.
+ * @param tok An representative token.
+ * @return A node.
+ */
+Node *new_node_varref(Var *var, Token *tok) {
+    Node *node = new_node(ND_VARREF, NULL);
+    node->type = var->type;
+    node->var = var;
+    return node;
+}
+
+/**
  * Creates a node to represent a global variable.
  * The created variable is added into the list of global variables.
  * @param type The type of a global variable.
@@ -177,11 +205,9 @@ Node *new_node_num(int val, Token *tok) {
  * @return A node.
  */
 Node *new_node_gvar(Type *type, Token *tok) {
-    Node *node = new_node(ND_GVAR, tok);
-    node->type = type;
-    node->name = tok->str;
-    map_insert(prog->gvars, node->name, node);
-    return node;
+    Var *var = new_var(type, tok, false);
+    map_insert(prog->gvars, var->name, var);
+    return new_node_varref(var, tok);
 }
 
 /**
@@ -192,11 +218,9 @@ Node *new_node_gvar(Type *type, Token *tok) {
  * @return A node.
  */
 Node *new_node_lvar(Type *type, Token *tok) {
-    Node *node = new_node(ND_LVAR, tok);
-    node->type = type;
-    node->name = tok->str;
-    map_insert(fn->lvars, node->name, node);
-    return node;
+    Var *var = new_var(type, tok, true);
+    map_insert(fn->lvars, var->name, var);
+    return new_node_varref(var, tok);
 }
 
 /**
@@ -497,11 +521,11 @@ Node *primary() {
         if (peek(TK_RESERVED, "(")) {
             return new_node_func_call(tok);
         } else {
-            Node *var = find_var(tok->str);
+            Var *var = find_var(tok->str);
             if (!var) {
                 error_at(tok->loc, "error: '%s' undeclared", tok->str);
             }
-            return var;
+            return new_node_varref(var, tok);
         }
     }
 
@@ -523,7 +547,7 @@ Function *new_func(Type *rtype, Token *tok) {
     fn->name = tok->str;
     fn->lvars = map_create();
 
-    // Parse the arguments
+    // Parse the arguments.
     fn->args = vec_create();
     expect(TK_RESERVED, "(");
     while (!consume(TK_RESERVED, ")")) {
@@ -534,7 +558,7 @@ Function *new_func(Type *rtype, Token *tok) {
     }
 
     // NOTE: functions must be registered before parsing their bodies
-    // to deal with recursion
+    // to deal with recursion.
     map_insert(prog->fns, fn->name, fn);
 
     // Parse the body.
@@ -559,7 +583,7 @@ void top_level() {
         }
         new_func(type, tok);
     } else {
-        if (find_var(tok->str)) {
+        if (map_at(prog->gvars, tok->str)) {
             error_at(tok->loc, "error: redefinition of %s", tok->str);
         }
         type = read_array(type);

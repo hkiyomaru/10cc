@@ -85,8 +85,7 @@ typedef enum {
     ND_LT,
     ND_ASSIGN,
     ND_NUM,
-    ND_LVAR,
-    ND_GVAR,
+    ND_VARREF,
     ND_RETURN,
     ND_IF,
     ND_ELSE,
@@ -99,6 +98,18 @@ typedef enum {
     ND_SIZEOF,
     ND_NULL
 } NodeKind;  // AST nodes
+
+typedef struct Var {
+    char *name;
+    Type *type;
+    bool is_local;
+
+    // Local variables
+    int offset;
+
+    // Global variables
+    char *data;
+} Var;
 
 typedef struct Node Node;
 struct Node {
@@ -123,10 +134,11 @@ struct Node {
     char *funcname;
     Vector *args;
 
-    // Variable
-    char *name;
+    // Variable reference
+    Var *var;
+
+    // Number literal
     int val;
-    int offset;
 };
 
 typedef struct {

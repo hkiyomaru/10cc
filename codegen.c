@@ -8,25 +8,20 @@ int label_cnt = 0;
 
 /**
  * Loads an argument following the function calling convention.
- * @param node A node representing an argument.
+ * @param Node A node.
  * @param index The index of the argument.
  */
 void load_arg(Node *node, int index) {
-    if (5 < index) {
-        error_at(node->tok->loc, "error: too long arguments");
-    }
-    switch (node->type->size) {
+    switch (node->var->type->size) {
         case 1:
-            printf("  mov [rbp-%d], %s\n", node->offset, argregs1[index]);
+            printf("  mov [rbp-%d], %s\n", node->var->offset, argregs1[index]);
             break;
         case 4:
-            printf("  mov [rbp-%d], %s\n", node->offset, argregs4[index]);
+            printf("  mov [rbp-%d], %s\n", node->var->offset, argregs4[index]);
             break;
         case 8:
-            printf("  mov [rbp-%d], %s\n", node->offset, argregs8[index]);
+            printf("  mov [rbp-%d], %s\n", node->var->offset, argregs8[index]);
             break;
-        default:
-            error("error: unsupported type");  // won't be called
     }
 }
 
@@ -84,22 +79,15 @@ void store(Type *type) {
 int roundup(int x, int align) { return (x + align - 1) & ~(align - 1); }
 
 /**
- * Generates a code to push an address to a local variable to the stack.
+ * Generates a code to push an address to a variable to the stack.
  * @param node A node representing a local variable.
  */
-void gen_lval(Node *node) {
-    assert(node->kind == ND_LVAR);
-    printf("  lea rax, [rbp-%d]\n", node->offset);
-    printf("  push rax\n");
-}
-
-/**
- * Generates a code to push an address to a global variable to the stack.
- * @param node A node representing a global variable.
- */
-void gen_gval(Node *node) {
-    assert(node->kind == ND_GVAR);
-    printf("  lea rax, %s\n", node->name);
+void gen_val(Node *node) {
+    if (node->var->is_local) {
+        printf("  lea rax, [rbp-%d]\n", node->var->offset);
+    } else {
+        printf("  lea rax, %s\n", node->var->name);
+    }
     printf("  push rax\n");
 }
 
@@ -116,24 +104,14 @@ void gen(Node *node) {
             printf("  push %d\n", node->val);
             return;
         case ND_ADDR:
-            if (node->lhs->kind == ND_LVAR) {
-                gen_lval(node->lhs);
-            } else if (node->lhs->kind == ND_GVAR) {
-                gen_gval(node->lhs);
-            }
+            gen_val(node->lhs);
             return;
         case ND_DEREF:
             gen(node->lhs);
             load(node->type);
             return;
-        case ND_GVAR:
-            gen_gval(node);
-            if (node->type->kind != TY_ARY) {
-                load(node->type);
-            }
-            return;
-        case ND_LVAR:
-            gen_lval(node);
+        case ND_VARREF:
+            gen_val(node);
             if (node->type->kind != TY_ARY) {
                 load(node->type);
             }
@@ -151,12 +129,8 @@ void gen(Node *node) {
         case ND_ASSIGN:
             if (node->lhs->kind == ND_DEREF) {
                 gen(node->lhs->lhs);
-            } else if (node->lhs->kind == ND_LVAR) {
-                gen_lval(node->lhs);
-            } else if (node->lhs->kind == ND_GVAR) {
-                gen_gval(node->lhs);
             } else {
-                error("Illegal assignment: the lhs is not referable");
+                gen_val(node->lhs);
             }
             gen(node->rhs);
             store(node->lhs->type);
@@ -264,9 +238,9 @@ void gen(Node *node) {
 void gen_data(Program *prog) {
     printf(".data\n");
     for (int i = 0; i < prog->gvars->len; i++) {
-        Node *gvar = prog->gvars->vals->data[i];
-        printf("%s:\n", gvar->name);
-        printf("  .zero %d\n", gvar->type->size);
+        Var *var = vec_get(prog->gvars->vals, i);
+        printf("%s:\n", var->name);
+        printf("  .zero %d\n", var->type->size);
     }
 }
 
@@ -281,7 +255,7 @@ void gen_text(Program *prog) {
 
         int offset = 0;
         for (int i = 0; i < fn->lvars->len; i++) {
-            Node *var = vec_get(fn->lvars->vals, i);
+            Var *var = vec_get(fn->lvars->vals, i);
             offset += var->type->size;
             offset = roundup(offset, var->type->align);
             var->offset = offset;

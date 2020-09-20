@@ -6,7 +6,7 @@
  */
 void check_referable(Node *node) {
     NodeKind kind = node->kind;
-    if (kind != ND_LVAR && kind != ND_GVAR && kind != ND_DEREF) {
+    if (kind != ND_VARREF && kind != ND_DEREF) {
         char *loc = node->tok->loc;
         error_at(loc, "error: lvalue required as left operand of assignment");
     }
@@ -25,7 +25,7 @@ void check_int(Node *node) {
 }
 
 /**
- * If the given node is an array, performs type conversion.
+ * If the given node is an array, decays it to a pointer.
  * Otherwise, does nothing.
  * @param base A node.
  * @param decay If True, does nothing.
@@ -83,8 +83,7 @@ Node *do_walk(Node *node, bool decay) {
             return node;
         case ND_NUM:
             return node;
-        case ND_LVAR:
-        case ND_GVAR:
+        case ND_VARREF:
             return maybe_decay(node, decay);
         case ND_IF:
             node->cond = walk(node->cond);
