@@ -246,24 +246,28 @@ Node *declaration() {
  *          | "for" "(" expr? ";" expr? ";" expr? ")" stmt
  *          | "return" expr ";"
  *          | T ident ";"
+ *          | ";"
  * @return A node.
  */
 Node *stmt() {
-    Node *node;
     if (consume(TK_RESERVED, "{")) {
-        node = new_node(ND_BLOCK);
+        Node *node = new_node(ND_BLOCK);
         node->stmts = vec_create();
         while (!consume(TK_RESERVED, "}")) {
             vec_push(node->stmts, (void *)stmt());
         }
         return node;
-    } else if (consume(TK_RESERVED, "return")) {
-        node = new_node(ND_RETURN);
+    }
+
+    if (consume(TK_RESERVED, "return")) {
+        Node *node = new_node(ND_RETURN);
         node->lhs = expr();
         expect(TK_RESERVED, ";");
         return node;
-    } else if (consume(TK_RESERVED, "if")) {
-        node = new_node(ND_IF);
+    }
+
+    if (consume(TK_RESERVED, "if")) {
+        Node *node = new_node(ND_IF);
         expect(TK_RESERVED, "(");
         node->cond = expr();
         expect(TK_RESERVED, ")");
@@ -272,15 +276,19 @@ Node *stmt() {
             node->els = stmt();
         }
         return node;
-    } else if (consume(TK_RESERVED, "while")) {
-        node = new_node(ND_WHILE);
+    }
+
+    if (consume(TK_RESERVED, "while")) {
+        Node *node = new_node(ND_WHILE);
         expect(TK_RESERVED, "(");
         node->cond = expr();
         expect(TK_RESERVED, ")");
         node->then = stmt();
         return node;
-    } else if (consume(TK_RESERVED, "for")) {
-        node = new_node(ND_FOR);
+    }
+
+    if (consume(TK_RESERVED, "for")) {
+        Node *node = new_node(ND_FOR);
         expect(TK_RESERVED, "(");
         if (!consume(TK_RESERVED, ";")) {
             node->init = expr();
@@ -297,15 +305,20 @@ Node *stmt() {
         node->then = stmt();
         return node;
     }
+
     if (at_typename()) {
-        node = declaration();
-        expect(TK_RESERVED, ";");
-        return node;
-    } else {
-        node = expr();
+        Node *node = declaration();
         expect(TK_RESERVED, ";");
         return node;
     }
+
+    if (consume(TK_RESERVED, ";")) {
+        return new_node(ND_NULL);
+    }
+
+    Node *node = expr();
+    expect(TK_RESERVED, ";");
+    return node;
 }
 
 /**

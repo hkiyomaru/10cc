@@ -95,7 +95,8 @@ typedef enum {
     ND_FUNC_CALL,
     ND_BLOCK,
     ND_ADDR,
-    ND_DEREF
+    ND_DEREF,
+    ND_NULL
 } NodeKind;  // AST nodes
 
 typedef struct Node Node;

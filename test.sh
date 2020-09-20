@@ -68,3 +68,4 @@ assert 1 "int main() {int a; int b; int c; a = 1; b = 2; c = 3; return &a - &b;}
 assert 2 "int main() {int a; int b; int c; a = 1; b = 2; c = 3; return &a - &c;}"
 assert 1 "int main() {int a; int b; int c; a = 1; b = 2; c = 3; return *(&b + 1);}"
 assert 3 "int main() {int a; int b; int c; a = 1; b = 2; c = 3; return *(&b - 1);}"
+assert 3 "int main() {int a; int b; int c; a = 1; b = 2; c = 3; return *(&b - 1);;;;}"

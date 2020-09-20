@@ -73,6 +73,8 @@ Node *walk_nodecay(Node *node) { return do_walk(node, false); }
  */
 Node *do_walk(Node *node, bool decay) {
     switch (node->kind) {
+        case ND_NULL:
+            return node;
         case ND_NUM:
             return node;
         case ND_LVAR:
