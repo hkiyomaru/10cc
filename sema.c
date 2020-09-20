@@ -29,7 +29,7 @@ Node *maybe_decay(Node *base, bool decay) {
     if (!decay || base->type->kind != TY_ARY) {
         return base;
     }
-    Node *node = new_node(ND_ADDR);
+    Node *node = new_node(ND_ADDR, base->tok);
     node->type = ptr_to(base->type->base);
     node->lhs = base;
     return node;
@@ -43,9 +43,9 @@ Node *maybe_decay(Node *base, bool decay) {
  * @return A node.
  */
 Node *scale_ptr(NodeKind kind, Node *base, Type *type) {
-    Node *node = new_node(kind);
+    Node *node = new_node(kind, base->tok);
     node->lhs = base;
-    node->rhs = new_node_num(type->base->size);
+    node->rhs = new_node_num(type->base->size, base->tok);
     return node;
 }
 
@@ -181,8 +181,8 @@ Node *do_walk(Node *node, bool decay) {
             }
             return node;
         case ND_SIZEOF:
-            node->lhs = walk(node->lhs);
-            return new_node_num(node->lhs->type->size);
+            node->lhs = walk_nodecay(node->lhs);
+            return new_node_num(node->lhs->type->size, node->tok);
         default:
             assert(0 && "Unknown node type");
     }

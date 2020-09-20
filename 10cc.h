@@ -104,7 +104,7 @@ typedef struct Node Node;
 struct Node {
     NodeKind kind;  // Node kind
     Type *type;     // Type
-    Token *token;   // Representative token
+    Token *tok;     // Representative token
 
     Node *lhs;  // Left-hand side
     Node *rhs;  // Right-hand side
@@ -146,8 +146,8 @@ Program *parse();
 
 Type *int_type();
 Type *ptr_to(Type *base);
-Node *new_node(NodeKind kind);
-Node *new_node_num(int val);
+Node *new_node(NodeKind kind, Token *tok);
+Node *new_node_num(int val, Token *tok);
 
 /**
  * sema.c

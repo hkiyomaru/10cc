@@ -131,11 +131,13 @@ Function *find_func(char *name) { return map_at(prog->fns, name); }
 /**
  * Creates a node.
  * @param kind The kind of a node.
+ * @param tok The representative token of a node.
  * @return A node.
  */
-Node *new_node(NodeKind kind) {
+Node *new_node(NodeKind kind, Token *tok) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = kind;
+    node->tok = tok;
     return node;
 }
 
@@ -144,10 +146,11 @@ Node *new_node(NodeKind kind) {
  * @param kind The kind of a node.
  * @param lhs The left-hand side of a binary operation.
  * @param rhs The right-hand side of a binary operation.
+ * @param tok A binary operator token.
  * @return A node.
  */
-Node *new_bin_op(NodeKind kind, Node *lhs, Node *rhs) {
-    Node *node = new_node(kind);
+Node *new_node_bin_op(NodeKind kind, Node *lhs, Node *rhs, Token *tok) {
+    Node *node = new_node(kind, tok);
     node->lhs = lhs;
     node->rhs = rhs;
     return node;
@@ -156,10 +159,11 @@ Node *new_bin_op(NodeKind kind, Node *lhs, Node *rhs) {
 /**
  * Creates a node to represent a number.
  * @param val A number.
+ * @param tok A number token.
  * @return A node.
  */
-Node *new_node_num(int val) {
-    Node *node = new_node(ND_NUM);
+Node *new_node_num(int val, Token *tok) {
+    Node *node = new_node(ND_NUM, tok);
     node->type = int_type();
     node->val = val;
     return node;
@@ -169,13 +173,13 @@ Node *new_node_num(int val) {
  * Creates a node to represent a global variable.
  * The created variable is added into the list of global variables.
  * @param type The type of a global variable.
- * @param name The name of a global variable.
+ * @param tok An identifiier token.
  * @return A node.
  */
-Node *new_node_gvar(Type *type, char *name) {
-    Node *node = new_node(ND_GVAR);
+Node *new_node_gvar(Type *type, Token *tok) {
+    Node *node = new_node(ND_GVAR, tok);
     node->type = type;
-    node->name = name;
+    node->name = tok->str;
     map_insert(prog->gvars, node->name, node);
     return node;
 }
@@ -184,13 +188,13 @@ Node *new_node_gvar(Type *type, char *name) {
  * Creates a node to represent a local variable.
  * The created variable is added into the list of local variables.
  * @param type The type of a local variable.
- * @param name The name of a local variable.
+ * @param tok An identifiier token.
  * @return A node.
  */
-Node *new_node_lvar(Type *type, char *name) {
-    Node *node = new_node(ND_LVAR);
+Node *new_node_lvar(Type *type, Token *tok) {
+    Node *node = new_node(ND_LVAR, tok);
     node->type = type;
-    node->name = name;
+    node->name = tok->str;
     map_insert(fn->lvars, node->name, node);
     return node;
 }
@@ -199,7 +203,7 @@ Node *new_node_lvar(Type *type, char *name) {
  * Creates a node to represent a function call.
  * Here, the function name has already been consumed.
  * So, the current token must be '('.
- * @param tok The name of a function.
+ * @param tok An identifiier token.
  * @return A node.
  */
 Node *new_node_func_call(Token *tok) {
@@ -207,8 +211,7 @@ Node *new_node_func_call(Token *tok) {
     if (!fn_) {
         error_at(tok->loc, "Undefined function");
     }
-
-    Node *node = new_node(ND_FUNC_CALL);
+    Node *node = new_node(ND_FUNC_CALL, tok);
     node->funcname = tok->str;
     node->type = fn_->rtype;
     node->args = vec_create();
@@ -234,7 +237,7 @@ Node *declaration() {
         error_at(tok->loc, "Redefinition of '%s'", tok->str);
     }
     type = read_array(type);
-    return new_node_lvar(type, tok->str);
+    return new_node_lvar(type, tok);
 }
 
 /**
@@ -250,8 +253,9 @@ Node *declaration() {
  * @return A node.
  */
 Node *stmt() {
-    if (consume(TK_RESERVED, "{")) {
-        Node *node = new_node(ND_BLOCK);
+    Token *tok;
+    if (tok = consume(TK_RESERVED, "{")) {
+        Node *node = new_node(ND_BLOCK, tok);
         node->stmts = vec_create();
         while (!consume(TK_RESERVED, "}")) {
             vec_push(node->stmts, (void *)stmt());
@@ -259,15 +263,15 @@ Node *stmt() {
         return node;
     }
 
-    if (consume(TK_RESERVED, "return")) {
-        Node *node = new_node(ND_RETURN);
+    if (tok = consume(TK_RESERVED, "return")) {
+        Node *node = new_node(ND_RETURN, tok);
         node->lhs = expr();
         expect(TK_RESERVED, ";");
         return node;
     }
 
-    if (consume(TK_RESERVED, "if")) {
-        Node *node = new_node(ND_IF);
+    if (tok = consume(TK_RESERVED, "if")) {
+        Node *node = new_node(ND_IF, tok);
         expect(TK_RESERVED, "(");
         node->cond = expr();
         expect(TK_RESERVED, ")");
@@ -278,8 +282,8 @@ Node *stmt() {
         return node;
     }
 
-    if (consume(TK_RESERVED, "while")) {
-        Node *node = new_node(ND_WHILE);
+    if (tok = consume(TK_RESERVED, "while")) {
+        Node *node = new_node(ND_WHILE, tok);
         expect(TK_RESERVED, "(");
         node->cond = expr();
         expect(TK_RESERVED, ")");
@@ -287,8 +291,8 @@ Node *stmt() {
         return node;
     }
 
-    if (consume(TK_RESERVED, "for")) {
-        Node *node = new_node(ND_FOR);
+    if (tok = consume(TK_RESERVED, "for")) {
+        Node *node = new_node(ND_FOR, tok);
         expect(TK_RESERVED, "(");
         if (!consume(TK_RESERVED, ";")) {
             node->init = expr();
@@ -312,8 +316,8 @@ Node *stmt() {
         return node;
     }
 
-    if (consume(TK_RESERVED, ";")) {
-        return new_node(ND_NULL);
+    if (tok = consume(TK_RESERVED, ";")) {
+        return new_node(ND_NULL, tok);
     }
 
     Node *node = expr();
@@ -335,8 +339,9 @@ Node *expr() { return assign(); }
  */
 Node *assign() {
     Node *node = equality();
-    if (consume(TK_RESERVED, "=")) {
-        node = new_bin_op(ND_ASSIGN, node, assign());
+    Token *tok;
+    if (tok = consume(TK_RESERVED, "=")) {
+        node = new_node_bin_op(ND_ASSIGN, node, assign(), tok);
     }
     return node;
 }
@@ -348,11 +353,12 @@ Node *assign() {
  */
 Node *equality() {
     Node *node = relational();
+    Token *tok;
     for (;;) {
-        if (consume(TK_RESERVED, "==")) {
-            node = new_bin_op(ND_EQ, node, relational());
-        } else if (consume(TK_RESERVED, "!=")) {
-            node = new_bin_op(ND_NE, node, relational());
+        if (tok = consume(TK_RESERVED, "==")) {
+            node = new_node_bin_op(ND_EQ, node, relational(), tok);
+        } else if (tok = consume(TK_RESERVED, "!=")) {
+            node = new_node_bin_op(ND_NE, node, relational(), tok);
         } else {
             return node;
         }
@@ -366,14 +372,15 @@ Node *equality() {
  */
 Node *relational() {
     Node *node = add();
-    if (consume(TK_RESERVED, "<=")) {
-        return new_bin_op(ND_LE, node, add());
-    } else if (consume(TK_RESERVED, ">=")) {
-        return new_bin_op(ND_LE, add(), node);
-    } else if (consume(TK_RESERVED, "<")) {
-        return new_bin_op(ND_LT, node, add());
-    } else if (consume(TK_RESERVED, ">")) {
-        return new_bin_op(ND_LT, add(), node);
+    Token *tok;
+    if (tok = consume(TK_RESERVED, "<=")) {
+        return new_node_bin_op(ND_LE, node, add(), tok);
+    } else if (tok = consume(TK_RESERVED, ">=")) {
+        return new_node_bin_op(ND_LE, add(), node, tok);
+    } else if (tok = consume(TK_RESERVED, "<")) {
+        return new_node_bin_op(ND_LT, node, add(), tok);
+    } else if (tok = consume(TK_RESERVED, ">")) {
+        return new_node_bin_op(ND_LT, add(), node, tok);
     } else {
         return node;
     }
@@ -386,11 +393,12 @@ Node *relational() {
  */
 Node *add() {
     Node *node = mul();
+    Token *tok;
     for (;;) {
-        if (consume(TK_RESERVED, "+")) {
-            node = new_bin_op(ND_ADD, node, mul());
-        } else if (consume(TK_RESERVED, "-")) {
-            node = new_bin_op(ND_SUB, node, mul());
+        if (tok = consume(TK_RESERVED, "+")) {
+            node = new_node_bin_op(ND_ADD, node, mul(), tok);
+        } else if (tok = consume(TK_RESERVED, "-")) {
+            node = new_node_bin_op(ND_SUB, node, mul(), tok);
         } else {
             return node;
         }
@@ -404,11 +412,12 @@ Node *add() {
  */
 Node *mul() {
     Node *node = unary();
+    Token *tok;
     for (;;) {
-        if (consume(TK_RESERVED, "*")) {
-            node = new_bin_op(ND_MUL, node, unary());
-        } else if (consume(TK_RESERVED, "/")) {
-            node = new_bin_op(ND_DIV, node, unary());
+        if (tok = consume(TK_RESERVED, "*")) {
+            node = new_node_bin_op(ND_MUL, node, unary(), tok);
+        } else if (tok = consume(TK_RESERVED, "/")) {
+            node = new_node_bin_op(ND_DIV, node, unary(), tok);
         } else {
             return node;
         }
@@ -423,26 +432,27 @@ Node *mul() {
  * @return A node.
  */
 Node *unary() {
-    if (consume(TK_RESERVED, "+")) {
+    Token *tok;
+    if (tok = consume(TK_RESERVED, "+")) {
         return unary();
-    } else if (consume(TK_RESERVED, "-")) {
-        return new_bin_op(ND_SUB, new_node_num(0), unary());
-    } else if (consume(TK_RESERVED, "&")) {
-        return new_bin_op(ND_ADDR, unary(), NULL);
-    } else if (consume(TK_RESERVED, "*")) {
-        return new_bin_op(ND_DEREF, unary(), NULL);
-    } else if (consume(TK_RESERVED, "sizeof")) {
+    } else if (tok = consume(TK_RESERVED, "-")) {
+        return new_node_bin_op(ND_SUB, new_node_num(0, NULL), unary(), tok);
+    } else if (tok = consume(TK_RESERVED, "&")) {
+        return new_node_bin_op(ND_ADDR, unary(), NULL, tok);
+    } else if (tok = consume(TK_RESERVED, "*")) {
+        return new_node_bin_op(ND_DEREF, unary(), NULL, tok);
+    } else if (tok = consume(TK_RESERVED, "sizeof")) {
         Node *node;
         if (consume(TK_RESERVED, "(")) {
             if (at_typename()) {
-                node = new_node_num(read_type()->size);
+                node = new_node_num(read_type()->size, tok);
+                expect(TK_RESERVED, ")");
+                return node;
             } else {
-                node = new_bin_op(ND_SIZEOF, unary(), NULL);
+                token = tok->next;
             }
-            expect(TK_RESERVED, ")");
-            return node;
         }
-        return new_bin_op(ND_SIZEOF, unary(), NULL);
+        return new_node_bin_op(ND_SIZEOF, unary(), NULL, tok);
     } else {
         return suffix();
     }
@@ -456,10 +466,11 @@ Node *unary() {
  */
 Node *suffix() {
     Node *node = primary();
+    Token *tok;
     for (;;) {
-        if (consume(TK_RESERVED, "[")) {
-            Node *addr = new_bin_op(ND_ADD, node, assign());
-            node = new_bin_op(ND_DEREF, addr, NULL);
+        if (tok = consume(TK_RESERVED, "[")) {
+            Node *addr = new_node_bin_op(ND_ADD, node, assign(), tok);
+            node = new_node_bin_op(ND_DEREF, addr, NULL, tok);
             expect(TK_RESERVED, "]");
             continue;
         }
@@ -475,14 +486,14 @@ Node *suffix() {
  * @return A node.
  */
 Node *primary() {
-    if (consume(TK_RESERVED, "(")) {
+    Token *tok;
+    if (tok = consume(TK_RESERVED, "(")) {
         Node *node = expr();
         expect(TK_RESERVED, ")");
         return node;
     }
 
-    Token *tok = consume(TK_IDENT, NULL);
-    if (tok) {
+    if (tok = consume(TK_IDENT, NULL)) {
         if (peek(TK_RESERVED, "(")) {
             return new_node_func_call(tok);
         } else {
@@ -494,7 +505,8 @@ Node *primary() {
         }
     }
 
-    return new_node_num(expect(TK_NUM, NULL)->val);
+    tok = expect(TK_NUM, NULL);
+    return new_node_num(tok->val, tok);
 }
 
 /**
@@ -526,9 +538,9 @@ Function *new_func(Type *rtype, Token *tok) {
     map_insert(prog->fns, fn->name, fn);
 
     // Parse the body.
-    fn->body = new_node(ND_BLOCK);
+    tok = expect(TK_RESERVED, "{");
+    fn->body = new_node(ND_BLOCK, tok);
     fn->body->stmts = vec_create();
-    expect(TK_RESERVED, "{");
     while (!consume(TK_RESERVED, "}")) {
         vec_push(fn->body->stmts, (void *)stmt());
     }
@@ -552,7 +564,7 @@ void top_level() {
         }
         type = read_array(type);
         expect(TK_RESERVED, ";");
-        new_node_gvar(type, tok->str);
+        new_node_gvar(type, tok);
     }
 }
 
