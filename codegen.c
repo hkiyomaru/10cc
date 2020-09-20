@@ -12,7 +12,7 @@ int label_cnt = 0;
  * @param index The index of the argument.
  */
 void load_arg(Node *arg, int index) {
-    switch (arg->ty->size) {
+    switch (arg->type->size) {
         case 1:
             printf("  mov [rbp-%d], %s\n", arg->offset, argregs1[index]);
             break;
@@ -29,11 +29,11 @@ void load_arg(Node *arg, int index) {
 
 /**
  * Loads a value from an address. The address must be on the top of the stack.
- * @param ty A type of a value to be loaded.
+ * @param type A type of a value to be loaded.
  */
-void load(Type *ty) {
+void load(Type *type) {
     printf("  pop rax\n");
-    switch (ty->size) {
+    switch (type->size) {
         case 1:
             printf("  movsx rax, byte ptr [rax]\n");
             break;
@@ -52,12 +52,12 @@ void load(Type *ty) {
 /**
  * Stores a value to an address. The top of the stack must be the value.
  * The second from the top must be the address.
- * @param ty A type of a value to be stored.
+ * @param type A type of a value to be stored.
  */
-void store(Type *ty) {
+void store(Type *type) {
     printf("  pop rdi\n");
     printf("  pop rax\n");
-    switch (ty->size) {
+    switch (type->size) {
         case 1:
             printf("  mov [rax], dil\n");
             break;
@@ -119,18 +119,18 @@ void gen(Node *node) {
             return;
         case ND_DEREF:
             gen(node->lhs);
-            load(node->ty);
+            load(node->type);
             return;
         case ND_GVAR:
             gen_gval(node);
-            if (node->ty->kind != TY_ARY) {
-                load(node->ty);
+            if (node->type->kind != TY_ARY) {
+                load(node->type);
             }
             return;
         case ND_LVAR:
             gen_lval(node);
-            if (node->ty->kind != TY_ARY) {
-                load(node->ty);
+            if (node->type->kind != TY_ARY) {
+                load(node->type);
             }
             return;
         case ND_FUNC_CALL:
@@ -140,7 +140,7 @@ void gen(Node *node) {
             for (int i = node->args->len - 1; 0 <= i; i--) {
                 printf("  pop %s\n", argregs8[i]);
             }
-            printf("  call %s\n", node->name);
+            printf("  call %s\n", node->funcname);
             printf("  push rax\n");
             return;
         case ND_ASSIGN:
@@ -154,7 +154,7 @@ void gen(Node *node) {
                 error("Illegal assignment: the lhs is not referable");
             }
             gen(node->rhs);
-            store(node->lhs->ty);
+            store(node->lhs->type);
             return;
         case ND_IF:
             cur_label_cnt = label_cnt++;
@@ -261,7 +261,7 @@ void gen_data(Program *prog) {
     for (int i = 0; i < prog->gvars->len; i++) {
         Node *gvar = prog->gvars->vals->data[i];
         printf("%s:\n", gvar->name);
-        printf("  .zero %d\n", gvar->ty->size);
+        printf("  .zero %d\n", gvar->type->size);
     }
 }
 
@@ -277,8 +277,8 @@ void gen_text(Program *prog) {
         int offset = 0;
         for (int i = 0; i < fn->lvars->len; i++) {
             Node *var = vec_get(fn->lvars->vals, i);
-            offset += var->ty->size;
-            offset = roundup(offset, var->ty->align);
+            offset += var->type->size;
+            offset = roundup(offset, var->type->align);
             var->offset = offset;
         }
 

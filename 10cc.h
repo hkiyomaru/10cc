@@ -56,7 +56,7 @@ struct Type {
     int size;
     int align;
 
-    struct Type *base;  // used when ty is TY_PTR or TY_ARY
+    struct Type *base;  // used when type is TY_PTR or TY_ARY
     int array_size;
 };
 
@@ -100,29 +100,35 @@ typedef enum {
 
 typedef struct Node Node;
 struct Node {
-    char *name;
-    NodeKind kind;
+    NodeKind kind;  // Node kind
+    Type *type;     // Type
+    Token *token;   // Representative token
 
-    Type *ty;
-    int val;
+    Node *lhs;  // Left-hand side
+    Node *rhs;  // Right-hand side
 
-    Node *lhs;
-    Node *rhs;
-
+    // "if", "while", or "for" statement
     Node *cond;
     Node *then;
     Node *els;
     Node *init;
     Node *upd;
 
+    // Block statement
     Vector *stmts;
+
+    // Function call
+    char *funcname;
     Vector *args;
 
+    // Variable
+    char *name;
+    int val;
     int offset;
 };
 
 typedef struct {
-    Type *rty;
+    Type *rtype;
     char *name;
     Map *lvars;
     Vector *args;
@@ -136,7 +142,7 @@ typedef struct {
 
 Program *parse();
 
-Type *int_ty();
+Type *int_type();
 Type *ptr_to(Type *base);
 Node *new_node(NodeKind kind);
 Node *new_node_num(int val);
