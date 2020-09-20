@@ -77,7 +77,7 @@ Type *read_type() {
     } else if (consume(TK_RESERVED, "char")) {
         type = char_type();
     } else {
-        error_at(token->loc, "Invalid type");
+        error_at(token->loc, "error: unknown type name '%s'", token->str);
     }
     while ((consume(TK_RESERVED, "*"))) {
         type = ptr_to(type);
@@ -209,7 +209,7 @@ Node *new_node_lvar(Type *type, Token *tok) {
 Node *new_node_func_call(Token *tok) {
     Function *fn_ = find_func(tok->str);
     if (!fn_) {
-        error_at(tok->loc, "Undefined function");
+        error_at(tok->loc, "error: undefined reference to `%s'", tok->str);
     }
     Node *node = new_node(ND_FUNC_CALL, tok);
     node->funcname = tok->str;
@@ -234,7 +234,7 @@ Node *declaration() {
     Type *type = read_type();
     Token *tok = expect(TK_IDENT, NULL);
     if (find_var(tok->str)) {
-        error_at(tok->loc, "Redefinition of '%s'", tok->str);
+        error_at(tok->loc, "error: redeclaration of '%s'", tok->str);
     }
     type = read_array(type);
     return new_node_lvar(type, tok);
@@ -499,7 +499,7 @@ Node *primary() {
         } else {
             Node *var = find_var(tok->str);
             if (!var) {
-                error_at(tok->loc, "Undefined variable");
+                error_at(tok->loc, "error: '%s' undeclared", tok->str);
             }
             return var;
         }
@@ -555,12 +555,12 @@ void top_level() {
     Token *tok = expect(TK_IDENT, NULL);
     if (peek(TK_RESERVED, "(")) {
         if (find_func(tok->str)) {
-            error_at(tok->loc, "Redefinition of %s", tok->str);
+            error_at(tok->loc, "error: redefinition of %s", tok->str);
         }
         new_func(type, tok);
     } else {
         if (find_var(tok->str)) {
-            error_at(tok->loc, "Redefinition of %s", tok->str);
+            error_at(tok->loc, "error: redefinition of %s", tok->str);
         }
         type = read_array(type);
         expect(TK_RESERVED, ";");

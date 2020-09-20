@@ -44,7 +44,8 @@ Token *expect(TokenKind kind, char *str) {
     if (ret) {
         token = token->next;
     } else {
-        error_at(token->loc, "Unexpected token");
+        error_at(token->loc, "error: expected '%s' before '%s' token", str,
+                 token->str);
     }
     return ret;
 }
@@ -184,7 +185,7 @@ Token *tokenize() {
             cur->val = strtol(p, &p, 10);  // strtol increments `p`
             continue;
         }
-        error_at(p, "Failed to tokenize user input");
+        error_at(p, "error: stray '%c' in program", p);
     }
     cur = new_token(TK_EOF, cur, p, 0);
     return head.next;

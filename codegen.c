@@ -8,22 +8,25 @@ int label_cnt = 0;
 
 /**
  * Loads an argument following the function calling convention.
- * @param arg A node representing an argument.
+ * @param node A node representing an argument.
  * @param index The index of the argument.
  */
-void load_arg(Node *arg, int index) {
-    switch (arg->type->size) {
+void load_arg(Node *node, int index) {
+    if (5 < index) {
+        error_at(node->tok->loc, "error: too long arguments");
+    }
+    switch (node->type->size) {
         case 1:
-            printf("  mov [rbp-%d], %s\n", arg->offset, argregs1[index]);
+            printf("  mov [rbp-%d], %s\n", node->offset, argregs1[index]);
             break;
         case 4:
-            printf("  mov [rbp-%d], %s\n", arg->offset, argregs4[index]);
+            printf("  mov [rbp-%d], %s\n", node->offset, argregs4[index]);
             break;
         case 8:
-            printf("  mov [rbp-%d], %s\n", arg->offset, argregs8[index]);
+            printf("  mov [rbp-%d], %s\n", node->offset, argregs8[index]);
             break;
         default:
-            error("Failed to load an argument");
+            error("error: unsupported type");  // won't be called
     }
 }
 
@@ -44,7 +47,7 @@ void load(Type *type) {
             printf("  mov rax, [rax]\n");
             break;
         default:
-            error("Failed to load a variable");
+            error("error: unsupported type");  // won't be called
     }
     printf("  push rax\n");
 }
@@ -68,7 +71,7 @@ void store(Type *type) {
             printf("  mov [rax], rdi\n");
             break;
         default:
-            error("Failed to store a variable");
+            error("error: unsupported type");
     }
     printf("  push rdi\n");
 }

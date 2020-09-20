@@ -6,7 +6,10 @@
  */
 void check_referable(Node *node) {
     NodeKind kind = node->kind;
-    assert(kind == ND_LVAR || kind == ND_GVAR || kind == ND_DEREF);
+    if (kind != ND_LVAR && kind != ND_GVAR && kind != ND_DEREF) {
+        char *loc = node->tok->loc;
+        error_at(loc, "error: lvalue required as left operand of assignment");
+    }
 }
 
 /**
@@ -14,8 +17,11 @@ void check_referable(Node *node) {
  * @param node A node.
  */
 void check_int(Node *node) {
-    TypeKind type = node->type->kind;
-    assert(type == TY_INT || type == TY_CHAR);
+    TypeKind kind = node->type->kind;
+    if (kind != TY_INT && kind != TY_CHAR) {
+        char *loc = node->tok->loc;
+        error_at(loc, "error: not an integer");
+    }
 }
 
 /**
@@ -184,7 +190,7 @@ Node *do_walk(Node *node, bool decay) {
             node->lhs = walk_nodecay(node->lhs);
             return new_node_num(node->lhs->type->size, node->tok);
         default:
-            assert(0 && "Unknown node type");
+            error_at(node->tok->loc, "error: failed to assign type");
     }
 }
 

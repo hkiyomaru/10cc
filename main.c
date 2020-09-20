@@ -1,6 +1,6 @@
 #include "10cc.h"
 
-void usage() { error("Usage: ./10cc <path/to/file>"); }
+void usage() { error("error: no input files"); }
 
 int main(int argc, char **argv) {
     if (argc == 1) {
