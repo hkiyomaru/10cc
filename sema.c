@@ -123,8 +123,13 @@ Node *do_walk(Node *node, bool decay) {
             Type *lty = node->lhs->ty;
             Type *rty = node->rhs->ty;
 
-            if (lty->kind == TY_PTR && rty->kind == TY_PTR) {
-                node = scale_ptr(ND_DIV, node, lty);
+            if (lty->kind == TY_PTR) {
+                if (rty->kind == TY_PTR) {
+                    node = scale_ptr(ND_DIV, node, lty);
+                    node->ty = lty;
+                } else {
+                    node->rhs = scale_ptr(ND_MUL, node->rhs, lty);
+                }
                 node->ty = lty;
             } else {
                 node->ty = int_ty();
