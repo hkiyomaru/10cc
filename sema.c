@@ -15,7 +15,7 @@ void check_referable(Node *node) {
  */
 void check_int(Node *node) {
     TypeKind ty = node->ty->kind;
-    assert(ty == TY_INT);
+    assert(ty == TY_INT || ty == TY_CHAR);
 }
 
 /**
