@@ -96,6 +96,7 @@ typedef enum {
     ND_BLOCK,
     ND_ADDR,
     ND_DEREF,
+    ND_SIZEOF,
     ND_NULL
 } NodeKind;  // AST nodes
 

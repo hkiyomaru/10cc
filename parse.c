@@ -418,6 +418,7 @@ Node *mul() {
 /*
  * Parses tokens to represent an unary operation, where
  *     unary = "sizeof" unary
+ *           | "sizeof" "(" type-name ")"
  *           | ("+" | "-" | "&" | "*")? primary
  * @return A node.
  */
@@ -431,7 +432,17 @@ Node *unary() {
     } else if (consume(TK_RESERVED, "*")) {
         return new_bin_op(ND_DEREF, unary(), NULL);
     } else if (consume(TK_RESERVED, "sizeof")) {
-        return new_node_num(unary()->type->size);
+        Node *node;
+        if (consume(TK_RESERVED, "(")) {
+            if (at_typename()) {
+                node = new_node_num(read_type()->size);
+            } else {
+                node = new_bin_op(ND_SIZEOF, unary(), NULL);
+            }
+            expect(TK_RESERVED, ")");
+            return node;
+        }
+        return new_bin_op(ND_SIZEOF, unary(), NULL);
     } else {
         return suffix();
     }

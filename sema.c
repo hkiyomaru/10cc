@@ -180,6 +180,9 @@ Node *do_walk(Node *node, bool decay) {
                 stmt = walk(stmt);
             }
             return node;
+        case ND_SIZEOF:
+            node->lhs = walk(node->lhs);
+            return new_node_num(node->lhs->type->size);
         default:
             assert(0 && "Unknown node type");
     }
