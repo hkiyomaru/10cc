@@ -243,7 +243,7 @@ void draw_node_tree(Node *node, int depth, char *role) {
  */
 void draw_ast(Program *prog) {
     for (int i = 0; i < prog->fns->len; i++) {
-        Function *fn = vec_get(prog->fns->vals, i);
+        Function *fn = vec_at(prog->fns->vals, i);
         fprintf(stderr, "%s(\n", fn->name);
         for (int j = 0; j < fn->args->len; j++) {
             char *prefix = format("arg%d", j);

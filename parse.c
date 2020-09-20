@@ -110,14 +110,13 @@ Type *read_array(Type *type) {
  * @return A variable.
  */
 Var *find_var(char *name) {
-    Var *var = NULL;
-    if (fn && fn->lvars) {
-        var = map_at(fn->lvars, name);
+    if (fn && fn->lvars && map_count(fn->lvars, name)) {
+        return map_at(fn->lvars, name);
     }
-    if (!var) {
-        var = map_at(prog->gvars, name);
+    if (map_count(prog->gvars, name)) {
+        return map_at(prog->gvars, name);
     }
-    return var;
+    return NULL;
 }
 
 /**
@@ -126,7 +125,13 @@ Var *find_var(char *name) {
  * @param name The name of a function.
  * @return A function.
  */
-Function *find_func(char *name) { return map_at(prog->fns, name); }
+Function *find_func(char *name) {
+    if (map_count(prog->fns, name)) {
+        return map_at(prog->fns, name);
+    } else {
+        return NULL;
+    }
+}
 
 /**
  * Creates a node.
@@ -583,7 +588,7 @@ void top_level() {
         }
         new_func(type, tok);
     } else {
-        if (map_at(prog->gvars, tok->str)) {
+        if (map_count(prog->gvars, tok->str)) {
             error_at(tok->loc, "error: redefinition of %s", tok->str);
         }
         type = read_array(type);

@@ -41,8 +41,6 @@ void load(Type *type) {
         case 8:
             printf("  mov rax, [rax]\n");
             break;
-        default:
-            error("error: unsupported type");  // won't be called
     }
     printf("  push rax\n");
 }
@@ -65,8 +63,6 @@ void store(Type *type) {
         case 8:
             printf("  mov [rax], rdi\n");
             break;
-        default:
-            error("error: unsupported type");
     }
     printf("  push rdi\n");
 }
@@ -118,7 +114,7 @@ void gen(Node *node) {
             return;
         case ND_FUNC_CALL:
             for (int i = 0; i < node->args->len; i++) {
-                gen(vec_get(node->args, i));
+                gen(vec_at(node->args, i));
             }
             for (int i = node->args->len - 1; 0 <= i; i--) {
                 printf("  pop %s\n", argregs8[i]);
@@ -185,7 +181,7 @@ void gen(Node *node) {
             return;
         case ND_BLOCK:
             for (int i = 0; i < node->stmts->len; i++) {
-                gen(vec_get(node->stmts, i));
+                gen(vec_at(node->stmts, i));
             }
             return;
     }
@@ -238,7 +234,7 @@ void gen(Node *node) {
 void gen_data(Program *prog) {
     printf(".data\n");
     for (int i = 0; i < prog->gvars->len; i++) {
-        Var *var = vec_get(prog->gvars->vals, i);
+        Var *var = vec_at(prog->gvars->vals, i);
         printf("%s:\n", var->name);
         printf("  .zero %d\n", var->type->size);
     }
@@ -251,11 +247,11 @@ void gen_data(Program *prog) {
 void gen_text(Program *prog) {
     printf(".text\n");
     for (int i = 0; i < prog->fns->len; i++) {
-        Function *fn = vec_get(prog->fns->vals, i);
+        Function *fn = vec_at(prog->fns->vals, i);
 
         int offset = 0;
         for (int i = 0; i < fn->lvars->len; i++) {
-            Var *var = vec_get(fn->lvars->vals, i);
+            Var *var = vec_at(fn->lvars->vals, i);
             offset += var->type->size;
             offset = roundup(offset, var->type->align);
             var->offset = offset;
@@ -269,7 +265,7 @@ void gen_text(Program *prog) {
         printf("  sub rsp, %d\n", roundup(offset, 16));
 
         for (int i = 0; i < fn->args->len; i++) {
-            load_arg(vec_get(fn->args, i), i);
+            load_arg(vec_at(fn->args, i), i);
         }
 
         gen(fn->body);

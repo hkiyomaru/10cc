@@ -175,13 +175,13 @@ Node *do_walk(Node *node, bool decay) {
             return node;
         case ND_FUNC_CALL:
             for (int i = 0; i < node->args->len; i++) {
-                Node *arg = vec_get(node->args, i);
+                Node *arg = vec_at(node->args, i);
                 arg = walk(arg);
             }
             return node;
         case ND_BLOCK:
             for (int i = 0; i < node->stmts->len; i++) {
-                Node *stmt = vec_get(node->stmts, i);
+                Node *stmt = vec_at(node->stmts, i);
                 stmt = walk(stmt);
             }
             return node;
@@ -198,7 +198,7 @@ Node *do_walk(Node *node, bool decay) {
  */
 void sema(Program *prog) {
     for (int i = 0; i < prog->fns->len; i++) {
-        Function *fn = vec_get(prog->fns->vals, i);
+        Function *fn = vec_at(prog->fns->vals, i);
         fn->body = walk(fn->body);
     }
 }

@@ -33,9 +33,9 @@ void vec_push(Vector *vec, void *item) {
  * @param index An index.
  * @return An item.
  */
-void *vec_get(Vector *vec, int index) {
+void *vec_at(Vector *vec, int index) {
     if (vec->len <= index) {
-        error("IndexError: vector index out of range");
+        error("error: out of range");
     }
     return vec->data[index];
 }
@@ -60,7 +60,7 @@ Map *map_create() {
  */
 void map_insert(Map *map, char *key, void *val) {
     for (int i = 0; i < map->len; i++) {
-        if (!strcmp(vec_get(map->keys, i), key)) {
+        if (!strcmp(vec_at(map->keys, i), key)) {
             map->vals->data[i] = val;
             return;
         }
@@ -79,9 +79,24 @@ void map_insert(Map *map, char *key, void *val) {
  */
 void *map_at(Map *map, char *key) {
     for (int i = 0; i < map->len; i++) {
-        if (!strcmp(vec_get(map->keys, i), key)) {
-            return vec_get(map->vals, i);
+        if (!strcmp(vec_at(map->keys, i), key)) {
+            return vec_at(map->vals, i);
         }
     }
-    return NULL;
+    error("error: out of range");
+}
+
+/**
+ * Returns 1 if there exists an item associated to a given key.
+ * @param map A map.
+ * @param key A key.
+ * @return 1 if there exists an item associated to a given key. Otherwise, 0.
+ */
+int map_count(Map *map, char *key) {
+    for (int i = 0; i < map->len; i++) {
+        if (!strcmp(vec_at(map->keys, i), key)) {
+            return 1;
+        }
+    }
+    return 0;
 }

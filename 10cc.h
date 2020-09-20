@@ -24,10 +24,11 @@ typedef struct {
 
 Vector *vec_create();
 void vec_push(Vector *vec, void *elem);
-void *vec_get(Vector *vec, int key);
+void *vec_at(Vector *vec, int key);
 Map *map_create();
 void map_insert(Map *map, char *key, void *val);
 void *map_at(Map *map, char *key);
+int map_count(Map *map, char *key);
 
 /**
  * tokenize.c
