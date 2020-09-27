@@ -1,5 +1,7 @@
 #include "10cc.h"
 
+int nlabel = 1;
+
 Program *prog;  // The program
 Function *fn;   // The function being parsed
 
@@ -162,29 +164,16 @@ Node *new_node_bin_op(NodeKind kind, Node *lhs, Node *rhs, Token *tok) {
 }
 
 /**
- * Creates a node to represent a number.
- * @param val A number.
- * @param tok A number token.
- * @return A node.
- */
-Node *new_node_num(int val, Token *tok) {
-    Node *node = new_node(ND_NUM, tok);
-    node->type = int_type();
-    node->val = val;
-    return node;
-}
-
-/**
  * Creates a variable.
  * @param type The type of a global variable.
- * @param tok An identifiier token.
+ * @param name A name of a variable.
  * @param is_local If true, creates a local variable.
  * @return A variable.
  */
-Var *new_var(Type *type, Token *tok, bool is_local) {
+Var *new_var(Type *type, char *name, bool is_local) {
     Var *var = calloc(1, sizeof(Var));
     var->type = type;
-    var->name = tok->str;
+    var->name = name;
     var->is_local = is_local;
     return var;
 }
@@ -206,12 +195,14 @@ Node *new_node_varref(Var *var, Token *tok) {
  * Creates a node to represent a global variable.
  * The created variable is added into the list of global variables.
  * @param type The type of a global variable.
+ * @param name The name of a global variable.
  * @param tok An identifiier token.
  * @return A node.
+ * @note `new_node_string` also registers variables to the global variable map.
  */
-Node *new_node_gvar(Type *type, Token *tok) {
-    Var *var = new_var(type, tok, false);
-    map_insert(prog->gvars, var->name, var);
+Node *new_node_gvar(Type *type, char *name, Token *tok) {
+    Var *var = new_var(type, name, false);
+    map_insert(prog->gvars, name, var);
     return new_node_varref(var, tok);
 }
 
@@ -219,13 +210,41 @@ Node *new_node_gvar(Type *type, Token *tok) {
  * Creates a node to represent a local variable.
  * The created variable is added into the list of local variables.
  * @param type The type of a local variable.
+ * @param name The name of a global variable.
  * @param tok An identifiier token.
  * @return A node.
  */
-Node *new_node_lvar(Type *type, Token *tok) {
-    Var *var = new_var(type, tok, true);
-    map_insert(fn->lvars, var->name, var);
+Node *new_node_lvar(Type *type, char *name, Token *tok) {
+    Var *var = new_var(type, name, true);
+    map_insert(fn->lvars, name, var);
     return new_node_varref(var, tok);
+}
+
+/**
+ * Creates a node to represent a number.
+ * @param val A number.
+ * @param tok A number token.
+ * @return A node.
+ */
+Node *new_node_num(int val, Token *tok) {
+    Node *node = new_node(ND_NUM, tok);
+    node->type = int_type();
+    node->val = val;
+    return node;
+}
+
+/**
+ * Creates a node to represent a string literal.
+ * @param str A string literal.
+ * @param tok A string token.
+ * @return A node.
+ */
+Node *new_node_string(char *str, Token *tok) {
+    Type *type = ary_of(char_type(), strlen(str) + 1);
+    char *name = format(".L.str%d", nlabel++);
+    Node *node = new_node_gvar(type, name, tok);
+    node->var->data = tok->cont;
+    return node;
 }
 
 /**
@@ -266,7 +285,7 @@ Node *declaration() {
         error_at(tok->loc, "error: redeclaration of '%s'", tok->str);
     }
     type = read_array(type);
-    return new_node_lvar(type, tok);
+    return new_node_lvar(type, tok->str, tok);
 }
 
 /**
@@ -510,6 +529,7 @@ Node *postfix() {
 /**
  * Parses tokens to represent a primary item, where
  *     primary = num
+ *             | str
  *             | ident ("(" ")")?
  *             | "(" expr ")"
  * @return A node.
@@ -532,6 +552,10 @@ Node *primary() {
             }
             return new_node_varref(var, tok);
         }
+    }
+
+    if (tok = consume(TK_STR, NULL)) {
+        return new_node_string(tok->cont, tok);
     }
 
     tok = expect(TK_NUM, NULL);
@@ -593,7 +617,7 @@ void top_level() {
         }
         type = read_array(type);
         expect(TK_RESERVED, ";");
-        new_node_gvar(type, tok);
+        new_node_gvar(type, tok->str, tok);
     }
 }
 

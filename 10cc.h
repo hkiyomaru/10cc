@@ -37,6 +37,7 @@ typedef enum {
     TK_RESERVED,  // '+', '-', and so on
     TK_IDENT,     // identifier
     TK_NUM,       // number
+    TK_STR,       // string literal
     TK_EOF        // EOF
 } TokenKind;
 
@@ -47,6 +48,7 @@ struct Token {
     int val;
     char *str;
     char *loc;
+    char *cont;  // the content of a string literal
 };
 
 typedef enum { TY_INT, TY_PTR, TY_ARY, TY_CHAR } TypeKind;
@@ -175,6 +177,7 @@ void codegen();
 /**
  * util.c
  */
+char *format(char *fmt, ...);
 void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);
 bool startswith(char *p, char *q);

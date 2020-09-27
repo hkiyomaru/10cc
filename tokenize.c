@@ -110,13 +110,24 @@ char *read_reserved(char *p) {
  * @return A token.
  */
 Token *new_token(TokenKind kind, Token *cur, char *p, int len) {
-    char *str_sliced = calloc(len + 1, sizeof(char));
-    strncpy(str_sliced, p, len);
-    str_sliced[len] = '\0';
+    char *str = calloc(len + 1, sizeof(char));
+    strncpy(str, p, len);
+    str[len] = '\0';
+
+    char *cont;
+    if (kind == TK_STR) {
+        int cont_len = len - 2;  // -2 is to truncate two double-quotes.
+        cont = calloc(cont_len + 1, sizeof(char));
+        strncpy(cont, p + 1, cont_len);
+        cont[cont_len] = '\0';
+    } else {
+        cont = NULL;
+    }
 
     Token *tok = calloc(1, sizeof(Token));
     tok->kind = kind;
-    tok->str = str_sliced;
+    tok->str = str;
+    tok->cont = cont;
     tok->loc = p;
     cur->next = tok;
     return tok;
@@ -140,7 +151,7 @@ Token *tokenize() {
             continue;
         }
 
-        // Skip line comments.
+        // Skip a line comment.
         if (strncmp(p, "//", 2) == 0) {
             p += 2;
             while (*p != '\n') {
@@ -149,7 +160,7 @@ Token *tokenize() {
             continue;
         }
 
-        // Skip block comments.
+        // Skip a block comment.
         if (strncmp(p, "/*", 2) == 0) {
             char *q = strstr(p + 2, "*/");
             if (!q) {
@@ -159,7 +170,7 @@ Token *tokenize() {
             continue;
         }
 
-        // Read reserved keywords.
+        // Read a reserved keyword.
         char *kw = read_reserved(p);
         if (kw) {
             int len = strlen(kw);
@@ -168,7 +179,18 @@ Token *tokenize() {
             continue;
         }
 
-        // Read identifiers.
+        // Read a string literal.
+        if (*p == '"') {
+            int len = 1;
+            while (p[len] != '"') {
+                len++;
+            }
+            cur = new_token(TK_STR, cur, p, len + 1);
+            p += len + 1;
+            continue;
+        }
+
+        // Read an identifier.
         if (isalpha(*p) || *p == '_') {
             int len = 1;
             while (isalnumus(p[len])) {
@@ -179,7 +201,7 @@ Token *tokenize() {
             continue;
         }
 
-        // Read numbers.
+        // Read a number.
         if (isdigit(*p)) {
             cur = new_token(TK_NUM, cur, p, 0);
             cur->val = strtol(p, &p, 10);  // strtol increments `p`
