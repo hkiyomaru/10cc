@@ -587,9 +587,9 @@ Node *unary() {
     } else if (tok = consume(TK_RESERVED, "-")) {
         return new_node_bin_op(ND_SUB, new_node_num(0, NULL), unary(), tok);
     } else if (tok = consume(TK_RESERVED, "&")) {
-        return new_node_bin_op(ND_ADDR, unary(), NULL, tok);
+        return new_node_unary_op(ND_ADDR, unary(), tok);
     } else if (tok = consume(TK_RESERVED, "*")) {
-        return new_node_bin_op(ND_DEREF, unary(), NULL, tok);
+        return new_node_unary_op(ND_DEREF, unary(), tok);
     } else if (tok = consume(TK_RESERVED, "sizeof")) {
         Node *node;
         if (consume(TK_RESERVED, "(")) {
@@ -601,7 +601,7 @@ Node *unary() {
                 token = tok->next;
             }
         }
-        return new_node_bin_op(ND_SIZEOF, unary(), NULL, tok);
+        return new_node_unary_op(ND_SIZEOF, unary(), tok);
     } else {
         return postfix();
     }
@@ -619,7 +619,7 @@ Node *postfix() {
     for (;;) {
         if (tok = consume(TK_RESERVED, "[")) {
             Node *addr = new_node_bin_op(ND_ADD, node, assign(), tok);
-            node = new_node_bin_op(ND_DEREF, addr, NULL, tok);
+            node = new_node_unary_op(ND_DEREF, addr, tok);
             expect(TK_RESERVED, "]");
             continue;
         }
