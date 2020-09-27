@@ -6,8 +6,6 @@
 int printf(char *fmt);
 int assert(int expected, int actual, char *code);
 
-int ret42();
-
 int ret42() {
     return 42;
     return 24;
