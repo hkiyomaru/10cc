@@ -532,7 +532,7 @@ Node *postfix() {
  *     primary = num
  *             | str
  *             | ident ("(" ")")?
- *             | "(" "{" stmt* "}" ")"
+ *             | "(" "{" stmt+ "}" ")"
  *             | "(" expr ")"
  * @return A node.
  */
