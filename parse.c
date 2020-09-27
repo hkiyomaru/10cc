@@ -10,7 +10,7 @@ Node *relational();
 Node *add();
 Node *mul();
 Node *unary();
-Node *suffix();
+Node *postfix();
 Node *primary();
 
 /**
@@ -483,17 +483,17 @@ Node *unary() {
         }
         return new_node_bin_op(ND_SIZEOF, unary(), NULL, tok);
     } else {
-        return suffix();
+        return postfix();
     }
 }
 
 /**
  * Parses tokens to represent a primary item.
- * Then, if possible, parse the suffix, where
- *     suffix = primary ("[" assign "]")*
+ * Then, if possible, parses the postfix, where
+ *     postfix = primary ("[" assign "]")*
  * @return A node.
  */
-Node *suffix() {
+Node *postfix() {
     Node *node = primary();
     Token *tok;
     for (;;) {
