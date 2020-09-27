@@ -179,15 +179,16 @@ Node *do_walk(Node *node, bool decay) {
         case ND_FUNC_CALL:
             for (int i = 0; i < node->args->len; i++) {
                 Node *arg = vec_at(node->args, i);
-                arg = walk(arg);
+                vec_set(node->args, i, walk(arg));
             }
             return node;
         case ND_BLOCK:
         case ND_STMT_EXPR:
             for (int i = 0; i < node->stmts->len; i++) {
                 Node *stmt = vec_at(node->stmts, i);
-                stmt = walk(stmt);
+                vec_set(node->stmts, i, walk(stmt));
             }
+            node->type = ((Node *)vec_back(node->stmts))->type;
             return node;
         case ND_SIZEOF:
             node->lhs = walk_nodecay(node->lhs);

@@ -41,6 +41,21 @@ void *vec_at(Vector *vec, int index) {
 }
 
 /**
+ * Sets an item to a vector.
+ * @param vec A vector.
+ * @param index An index.
+ * @param item An item.
+ * @return An item.
+ */
+void *vec_set(Vector *vec, int index, void *item) {
+    if (vec->len <= index) {
+        error("error: out of range");
+    }
+    vec->data[index] = item;
+    return item;
+}
+
+/**
  * Fetches the last item.
  * @param vec A vector.
  * @return An item.
