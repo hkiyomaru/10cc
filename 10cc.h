@@ -25,6 +25,7 @@ typedef struct {
 Vector *vec_create();
 void vec_push(Vector *vec, void *elem);
 void *vec_at(Vector *vec, int key);
+void *vec_back(Vector *vec);
 Map *map_create();
 void map_insert(Map *map, char *key, void *val);
 void *map_at(Map *map, char *key);
@@ -87,6 +88,8 @@ typedef enum {
     ND_LE,
     ND_LT,
     ND_ASSIGN,
+    ND_EXPR_STMT,
+    ND_STMT_EXPR,
     ND_NUM,
     ND_VARREF,
     ND_RETURN,

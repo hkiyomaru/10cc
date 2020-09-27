@@ -85,6 +85,9 @@ Node *do_walk(Node *node, bool decay) {
             return node;
         case ND_VARREF:
             return maybe_decay(node, decay);
+        case ND_EXPR_STMT:
+            walk(node->lhs);
+            return node;
         case ND_IF:
             node->cond = walk(node->cond);
             node->then = walk(node->then);
@@ -180,6 +183,7 @@ Node *do_walk(Node *node, bool decay) {
             }
             return node;
         case ND_BLOCK:
+        case ND_STMT_EXPR:
             for (int i = 0; i < node->stmts->len; i++) {
                 Node *stmt = vec_at(node->stmts, i);
                 stmt = walk(stmt);

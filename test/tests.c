@@ -22,7 +22,7 @@ int retif() {
 }
 
 int retif2() {
-    if (1) {
+    if (0) {
         return 42;
     } else {
         return 24;
@@ -56,13 +56,13 @@ int main() {
     assert(1, 1 == 1, "1 == 1");
     assert(0, 1 != 1, "1 != 1");
     assert(0, 1 != 1, "1 != 1");
-    // assert(42, ({ int a; a = 42; a; }), "int a; a = 42; a;");
-    // assert(42, ({ int a; a = 21; a = a + 21; }), "int a; a = 21; a = a + 21;");
-    // assert(42, ({ int foo; foo = 21; foo = foo + 21; foo; }), "int foo; foo = 21; foo = foo + 21; return foo;");
-    // assert(42, ret42(), "ret42();");
-    // assert(42, retif(), "retif();");
-    // assert(24, retif2(), "retif2();");
-    // assert(10, ({ int a; a = 0; while (a < 10) a = a + 1; a; }), "int a; a = 0; while (a < 10) a = a + 1; a;");  // TODO
+    assert(42, ({ int a; a = 42; a; }), "int a; a = 42; a;");
+    assert(42, ({ int a; a = 21; a = a + 21; }), "int a; a = 21; a = a + 21;");
+    assert(42, ({ int foo; foo = 21; foo = foo + 21; foo; }), "int foo; foo = 21; foo = foo + 21; foo;");
+    assert(42, ret42(), "ret42();");
+    assert(42, retif(), "retif();");
+    assert(24, retif2(), "retif2();");
+    assert(10, ({ int a; a = 0; while (a < 10) a = a + 1; a; }), "int a; a = 0; while (a < 10) a = a + 1; a;");  // TODO
     // assert(55, ({ int total; int i; total = 0; for (i=1; i <= 10; i=i+1) total = total + i; total; }), "int total; int i; total = 0; for (i=1; i <= 10; i=i+1) total = total + i; total;");
     // assert(13, fibo(6), "fibo(6);");
     // assert(3, ({ int x; int *y; x = 3; y = &x; *y; }), "int x; int *y; x = 3; y = &x; *y;");

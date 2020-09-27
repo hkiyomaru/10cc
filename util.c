@@ -6,10 +6,11 @@
  * @param arg Arguments which will be filled in the message.
  */
 char *format(char *fmt, ...) {
-    char *buff = calloc(512, sizeof(char));
+    size_t size = 2048;
+    char *buff = calloc(size, sizeof(char));
     va_list ap;
     va_start(ap, fmt);
-    vsnprintf(buff, sizeof(buff), fmt, ap);
+    vsnprintf(buff, sizeof(char) * size, fmt, ap);
     va_end(ap);
     return buff;
 }
@@ -206,6 +207,12 @@ void draw_node_tree(Node *node, int depth, char *role) {
                     draw_node_tree(node->stmts->data[i], depth + 1, "");
                 }
                 break;
+            case ND_STMT_EXPR:
+                fprintf(stderr, "STMT_EXPR\n");
+                for (int i = 0; i < node->stmts->len; i++) {
+                    draw_node_tree(node->stmts->data[i], depth + 1, "");
+                }
+                break;
             case ND_FUNC_CALL:
                 fprintf(stderr, "FUNC_CALL(name: %s)\n", node->funcname);
                 for (int i = 0; i < node->args->len; i++) {
@@ -230,6 +237,13 @@ void draw_node_tree(Node *node, int depth, char *role) {
             case ND_DEREF:
                 fprintf(stderr, "DEREF\n");
                 draw_node_tree(node->lhs, depth + 1, "");
+                break;
+            case ND_EXPR_STMT:
+                fprintf(stderr, "EXPR_STMT\n");
+                draw_node_tree(node->lhs, depth + 1, "");
+                break;
+            case ND_NULL:
+                fprintf(stderr, "NULL\n");
                 break;
             default:
                 break;

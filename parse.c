@@ -5,7 +5,10 @@ int nlabel = 1;
 Program *prog;  // The program
 Function *fn;   // The function being parsed
 
+Node *stmt();
 Node *expr();
+Node *expr_stmt();
+Node *stmt_expr();
 Node *assign();
 Node *equality();
 Node *relational();
@@ -136,6 +139,66 @@ Function *find_func(char *name) {
 }
 
 /**
+ * Creates a variable.
+ * @param type The type of a global variable.
+ * @param name A name of a variable.
+ * @param is_local If true, creates a local variable.
+ * @return A variable.
+ */
+Var *new_var(Type *type, char *name, bool is_local) {
+    Var *var = calloc(1, sizeof(Var));
+    var->type = type;
+    var->name = name;
+    var->is_local = is_local;
+    return var;
+}
+
+/**
+ * Creates a node to represent a global variable.
+ * The created variable is added into the list of global variables.
+ * @param type The type of a global variable.
+ * @param name The name of a global variable.
+ * @param tok An identifiier token.
+ * @return A variable.
+ * @note `new_node_string` also registers variables to the global variable map.
+ */
+Var *new_gvar(Type *type, char *name, Token *tok) {
+    Var *var = new_var(type, name, false);
+    map_insert(prog->gvars, name, var);
+    return var;
+}
+
+/**
+ * Creates a node to represent a local variable.
+ * The created variable is added into the list of local variables.
+ * @param type The type of a local variable.
+ * @param name The name of a global variable.
+ * @param tok An identifiier token.
+ * @return A variable.
+ */
+Var *new_lvar(Type *type, char *name, Token *tok) {
+    Var *var = new_var(type, name, true);
+    map_insert(fn->lvars, name, var);
+    return var;
+}
+
+/**
+ * Parses tokens to represent a declaration, where
+ *     declaration = T ident ("[" num? "]")?
+ * @return A variable.
+ */
+Var *declaration() {
+    Type *type = read_type();
+    Token *tok = expect(TK_IDENT, NULL);
+    if (find_var(tok->str)) {
+        // TODO: Resurrect this assertion by implementing variable scope.
+        // error_at(tok->loc, "error: redeclaration of '%s'", tok->str);
+    }
+    type = read_array(type);
+    return new_lvar(type, tok->str, tok);
+}
+
+/**
  * Creates a node.
  * @param kind The kind of a node.
  * @param tok The representative token of a node.
@@ -164,18 +227,16 @@ Node *new_node_bin_op(NodeKind kind, Node *lhs, Node *rhs, Token *tok) {
 }
 
 /**
- * Creates a variable.
- * @param type The type of a global variable.
- * @param name A name of a variable.
- * @param is_local If true, creates a local variable.
- * @return A variable.
+ * Creates a node to represent a unary operation.
+ * @param kind The kind of a node.
+ * @param lhs The input of a unary operation.
+ * @param tok A representative token.
+ * @return A node.
  */
-Var *new_var(Type *type, char *name, bool is_local) {
-    Var *var = calloc(1, sizeof(Var));
-    var->type = type;
-    var->name = name;
-    var->is_local = is_local;
-    return var;
+Node *new_node_unary_op(NodeKind kind, Node *lhs, Token *tok) {
+    Node *node = new_node(kind, tok);
+    node->lhs = lhs;
+    return node;
 }
 
 /**
@@ -189,35 +250,6 @@ Node *new_node_varref(Var *var, Token *tok) {
     node->type = var->type;
     node->var = var;
     return node;
-}
-
-/**
- * Creates a node to represent a global variable.
- * The created variable is added into the list of global variables.
- * @param type The type of a global variable.
- * @param name The name of a global variable.
- * @param tok An identifiier token.
- * @return A node.
- * @note `new_node_string` also registers variables to the global variable map.
- */
-Node *new_node_gvar(Type *type, char *name, Token *tok) {
-    Var *var = new_var(type, name, false);
-    map_insert(prog->gvars, name, var);
-    return new_node_varref(var, tok);
-}
-
-/**
- * Creates a node to represent a local variable.
- * The created variable is added into the list of local variables.
- * @param type The type of a local variable.
- * @param name The name of a global variable.
- * @param tok An identifiier token.
- * @return A node.
- */
-Node *new_node_lvar(Type *type, char *name, Token *tok) {
-    Var *var = new_var(type, name, true);
-    map_insert(fn->lvars, name, var);
-    return new_node_varref(var, tok);
 }
 
 /**
@@ -242,9 +274,10 @@ Node *new_node_num(int val, Token *tok) {
 Node *new_node_string(char *str, Token *tok) {
     Type *type = ary_of(char_type(), strlen(str) + 1);
     char *name = format(".L.str%d", nlabel++);
-    Node *node = new_node_gvar(type, name, tok);
-    node->var->data = tok->cont;
-    return node;
+    fprintf(stderr, "%s\n", name);
+    Var *var = new_gvar(type, name, tok);
+    var->data = tok->cont;
+    return new_node_varref(var, tok);
 }
 
 /**
@@ -271,22 +304,6 @@ Node *new_node_func_call(Token *tok) {
         vec_push(node->args, expr());
     }
     return node;
-}
-
-/**
- * Parses tokens to represent a declaration, where
- *     declaration = T ident ("[" num? "]")?
- * @return A node.
- */
-Node *declaration() {
-    Type *type = read_type();
-    Token *tok = expect(TK_IDENT, NULL);
-    if (find_var(tok->str)) {
-        // TODO: Resurrect this assertion by implementing variable scope.
-        // error_at(tok->loc, "error: redeclaration of '%s'", tok->str);
-    }
-    type = read_array(type);
-    return new_node_lvar(type, tok->str, tok);
 }
 
 /**
@@ -344,14 +361,14 @@ Node *stmt() {
         Node *node = new_node(ND_FOR, tok);
         expect(TK_RESERVED, "(");
         if (!consume(TK_RESERVED, ";")) {
-            node->init = expr();
+            node->init = expr_stmt();
             expect(TK_RESERVED, ";");
         }
         if (!consume(TK_RESERVED, ";")) {
             node->cond = expr();
             expect(TK_RESERVED, ";");
         }
-        if (!consume(TK_RESERVED, ";")) {
+        if (!consume(TK_RESERVED, ")")) {
             node->upd = expr();
         }
         expect(TK_RESERVED, ")");
@@ -360,16 +377,16 @@ Node *stmt() {
     }
 
     if (at_typename()) {
-        Node *node = declaration();
+        declaration();
         expect(TK_RESERVED, ";");
-        return node;
+        return new_node(ND_NULL, tok);
     }
 
     if (tok = consume(TK_RESERVED, ";")) {
         return new_node(ND_NULL, tok);
     }
 
-    Node *node = expr();
+    Node *node = expr_stmt();
     expect(TK_RESERVED, ";");
     return node;
 }
@@ -380,6 +397,36 @@ Node *stmt() {
  * @return A node.
  */
 Node *expr() { return assign(); }
+
+/**
+ * Creates a node to represent an expression statement.
+ * @return A node.
+ */
+Node *expr_stmt() { return new_node_unary_op(ND_EXPR_STMT, expr(), token); }
+
+/**
+ * Parses tokens to represent a statement expression, where
+ *     stmt_expr = "(" "{" stmt+ "}" ")"
+ * @return A node.
+ * @note Parentheses are consumed outside of this function.
+ */
+Node *stmt_expr() {
+    Token *tok = expect(TK_RESERVED, "{");
+
+    Node *node = new_node(ND_STMT_EXPR, tok);
+    node->stmts = vec_create();
+    vec_push(node->stmts, stmt());
+    while (!consume(TK_RESERVED, "}")) {
+        vec_push(node->stmts, stmt());
+    }
+
+    Node *last = vec_back(node->stmts);
+    if (last->kind != ND_EXPR_STMT) {
+        error_at(last->tok->loc, "error: void value not ignored as it ought to be");
+    }
+    memcpy(last, last->lhs, sizeof(Node));
+    return node;
+}
 
 /**
  * Parses tokens to represent an assignment, where
@@ -541,7 +588,7 @@ Node *primary() {
     if (tok = consume(TK_RESERVED, "(")) {
         Node *node;
         if (peek(TK_RESERVED, "{")) {
-            node = stmt();
+            node = stmt_expr();
         } else {
             node = expr();
         }
@@ -590,8 +637,8 @@ Function *new_func(Type *rtype, Token *tok) {
             if (0 < i) {
                 expect(TK_RESERVED, ",");
             }
-            Node *arg = declaration();
-            if (arg->type->kind != ((Node *)vec_at(fn->args, i))->type->kind) {
+            Var *var = declaration();
+            if (var->type->kind != ((Node *)vec_at(fn->args, i))->type->kind) {
                 error_at(tok->loc, "error: conflicting types for '%s'", tok->str);
             }
         }
@@ -609,7 +656,8 @@ Function *new_func(Type *rtype, Token *tok) {
             if (0 < fn->args->len) {
                 expect(TK_RESERVED, ",");
             }
-            vec_push(fn->args, declaration());
+            tok = token;
+            vec_push(fn->args, new_node_varref(declaration(), tok));
         }
 
         // NOTE: functions must be registered before parsing their bodies
@@ -645,8 +693,8 @@ void top_level() {
             error_at(tok->loc, "error: redefinition of %s", tok->str);
         }
         type = read_array(type);
+        new_gvar(type, tok->str, tok);
         expect(TK_RESERVED, ";");
-        new_node_gvar(type, tok->str, tok);
     }
 }
 

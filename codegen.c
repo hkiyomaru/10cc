@@ -180,7 +180,12 @@ void gen(Node *node) {
             printf("  pop rbp\n");
             printf("  ret\n");
             return;
+        case ND_EXPR_STMT:
+            gen(node->lhs);
+            printf("  add rsp, 8\n");
+            return;
         case ND_BLOCK:
+        case ND_STMT_EXPR:
             for (int i = 0; i < node->stmts->len; i++) {
                 gen(vec_at(node->stmts, i));
             }
