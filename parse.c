@@ -274,7 +274,6 @@ Node *new_node_num(int val, Token *tok) {
 Node *new_node_string(char *str, Token *tok) {
     Type *type = ary_of(char_type(), strlen(str) + 1);
     char *name = format(".L.str%d", nlabel++);
-    fprintf(stderr, "%s\n", name);
     Var *var = new_gvar(type, name, tok);
     var->data = tok->cont;
     return new_node_varref(var, tok);
@@ -369,7 +368,7 @@ Node *stmt() {
             expect(TK_RESERVED, ";");
         }
         if (!consume(TK_RESERVED, ")")) {
-            node->upd = expr();
+            node->upd = expr_stmt();
         }
         expect(TK_RESERVED, ")");
         node->then = stmt();

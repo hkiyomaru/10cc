@@ -63,7 +63,7 @@ int main() {
     assert(42, retif(), "retif();");
     assert(24, retif2(), "retif2();");
     assert(10, ({ int a; a = 0; while (a < 10) a = a + 1; a; }), "int a; a = 0; while (a < 10) a = a + 1; a;");  // TODO
-    // assert(55, ({ int total; int i; total = 0; for (i=1; i <= 10; i=i+1) total = total + i; total; }), "int total; int i; total = 0; for (i=1; i <= 10; i=i+1) total = total + i; total;");
+    assert(55, ({ int total; int i; total = 0; for (i=1; i <= 10; i=i+1) total = total + i; total; }), "int total; int i; total = 0; for (i=1; i <= 10; i=i+1) total = total + i; total;");
     // assert(13, fibo(6), "fibo(6);");
     // assert(3, ({ int x; int *y; x = 3; y = &x; *y; }), "int x; int *y; x = 3; y = &x; *y;");
     // assert(1, ({ int a; int b; a = 1; b = 2; int *p; p = &b; int *q; q = p + 1; *q; }), "{int a; int b; a = 1; b = 2; int *p; p = &b; int *q; q = p + 1; *q;");
