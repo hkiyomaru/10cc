@@ -150,14 +150,14 @@ struct Node {
 typedef struct {
     Type *rtype;
     char *name;
-    Map *lvars;
+    Vector *lvars;
     Vector *args;
     Node *body;
 } Function;
 
 typedef struct {
     Map *fns;
-    Map *gvars;
+    Vector *gvars;
 } Program;
 
 Program *parse();

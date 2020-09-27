@@ -1,5 +1,67 @@
 #include "10cc.h"
 
+typedef struct VarScope VarScope;
+struct VarScope {
+    VarScope *next;
+    char *name;
+    int depth;
+    Var *var;
+};
+
+typedef struct {
+    VarScope *var_scope;
+} Scope;
+
+VarScope *var_scope;
+int scope_depth;
+
+/**
+ * Enters scope.
+ * @return A scope.
+ */
+Scope *enter_scope() {
+    Scope *sc = calloc(1, sizeof(Scope));
+    sc->var_scope = var_scope;
+    scope_depth++;
+    return sc;
+}
+
+/**
+ * Leaves scope.
+ * @param sc A scope.
+ */
+void leave_scope(Scope *sc) {
+    var_scope = sc->var_scope;
+    scope_depth--;
+}
+
+/**
+ * Finds a variable.
+ * @param name A variable name.
+ * @return A variable scope.
+ */
+VarScope *find_var(char *name) {
+    for (VarScope *sc = var_scope; sc; sc = sc->next) {
+        if (!strcmp(name, sc->name)) {
+            return sc;
+        }
+    }
+    return NULL;
+}
+
+/**
+ * Pushes a variable scope.
+ * @param name A variable name.
+ */
+VarScope *push_scope(char *name) {
+    VarScope *sc = calloc(1, sizeof(VarScope));
+    sc->name = name;
+    sc->next = var_scope;
+    sc->depth = scope_depth;
+    var_scope = sc;
+    return sc;
+}
+
 int nlabel = 1;
 
 Program *prog;  // The program
@@ -108,23 +170,6 @@ Type *read_array(Type *type) {
 }
 
 /**
- * If there exists a variable whose name matches given conditions,
- * returns it. Otherwise, NULL will be returned. The lookup process
- * priotizes local variables than global variables.
- * @param name The name of a varaible.
- * @return A variable.
- */
-Var *find_var(char *name) {
-    if (fn && fn->lvars && map_count(fn->lvars, name)) {
-        return map_at(fn->lvars, name);
-    }
-    if (map_count(prog->gvars, name)) {
-        return map_at(prog->gvars, name);
-    }
-    return NULL;
-}
-
-/**
  * If there exists a function whose name matches given condition,
  * returns it. Otherwise, NULL will be returned.
  * @param name The name of a function.
@@ -164,7 +209,8 @@ Var *new_var(Type *type, char *name, bool is_local) {
  */
 Var *new_gvar(Type *type, char *name, Token *tok) {
     Var *var = new_var(type, name, false);
-    map_insert(prog->gvars, name, var);
+    push_scope(name)->var = var;
+    vec_push(prog->gvars, var);
     return var;
 }
 
@@ -178,7 +224,8 @@ Var *new_gvar(Type *type, char *name, Token *tok) {
  */
 Var *new_lvar(Type *type, char *name, Token *tok) {
     Var *var = new_var(type, name, true);
-    map_insert(fn->lvars, name, var);
+    push_scope(name)->var = var;
+    vec_push(fn->lvars, var);
     return var;
 }
 
@@ -322,9 +369,11 @@ Node *stmt() {
     if (tok = consume(TK_RESERVED, "{")) {
         Node *node = new_node(ND_BLOCK, tok);
         node->stmts = vec_create();
+        Scope *sc = enter_scope();
         while (!consume(TK_RESERVED, "}")) {
             vec_push(node->stmts, (void *)stmt());
         }
+        leave_scope(sc);
         return node;
     }
 
@@ -359,6 +408,7 @@ Node *stmt() {
     if (tok = consume(TK_RESERVED, "for")) {
         Node *node = new_node(ND_FOR, tok);
         expect(TK_RESERVED, "(");
+        Scope *sc = enter_scope();
         if (!consume(TK_RESERVED, ";")) {
             node->init = expr_stmt();
             expect(TK_RESERVED, ";");
@@ -372,6 +422,7 @@ Node *stmt() {
         }
         expect(TK_RESERVED, ")");
         node->then = stmt();
+        leave_scope(sc);
         return node;
     }
 
@@ -414,10 +465,13 @@ Node *stmt_expr() {
 
     Node *node = new_node(ND_STMT_EXPR, tok);
     node->stmts = vec_create();
+
+    Scope *sc = enter_scope();
     vec_push(node->stmts, stmt());
     while (!consume(TK_RESERVED, "}")) {
         vec_push(node->stmts, stmt());
     }
+    leave_scope(sc);
 
     Node *last = vec_back(node->stmts);
     if (last->kind != ND_EXPR_STMT) {
@@ -599,11 +653,12 @@ Node *primary() {
         if (peek(TK_RESERVED, "(")) {
             return new_node_func_call(tok);
         } else {
-            Var *var = find_var(tok->str);
-            if (!var) {
+            VarScope *sc = find_var(tok->str);
+            if (sc->var) {
+                return new_node_varref(sc->var, tok);
+            } else {
                 error_at(tok->loc, "error: '%s' undeclared", tok->str);
             }
-            return new_node_varref(var, tok);
         }
     }
 
@@ -624,48 +679,38 @@ Node *primary() {
  * @return A function.
  */
 Function *new_func(Type *rtype, Token *tok) {
-    fn = find_func(tok->str);
-    if (fn) {
-        if (fn->body) {
+    Function *fn_ = find_func(tok->str);
+    if (fn_) {
+        if (fn_->body) {
             error_at(tok->loc, "error: redefinition of %s", tok->str);
         }
-
-        // Confirm that arguments' types are correct.
-        expect(TK_RESERVED, "(");
-        for (int i = 0; i < fn->args->len; i++) {
-            if (0 < i) {
-                expect(TK_RESERVED, ",");
-            }
-            Var *var = declaration();
-            if (var->type->kind != ((Node *)vec_at(fn->args, i))->type->kind) {
-                error_at(tok->loc, "error: conflicting types for '%s'", tok->str);
-            }
-        }
-        expect(TK_RESERVED, ")");
-    } else {
-        fn = calloc(1, sizeof(Function));
-        fn->rtype = rtype;
-        fn->name = tok->str;
-        fn->lvars = map_create();
-
-        // Parse the arguments.
-        fn->args = vec_create();
-        expect(TK_RESERVED, "(");
-        while (!consume(TK_RESERVED, ")")) {
-            if (0 < fn->args->len) {
-                expect(TK_RESERVED, ",");
-            }
-            tok = token;
-            vec_push(fn->args, new_node_varref(declaration(), tok));
-        }
-
-        // NOTE: functions must be registered before parsing their bodies
-        // to deal with recursion.
-        map_insert(prog->fns, fn->name, fn);
+        // TODO: Confirm that types are sane.
     }
+
+    fn = calloc(1, sizeof(Function));
+    fn->rtype = rtype;
+    fn->name = tok->str;
+    fn->lvars = vec_create();
+
+    // Parse the arguments.
+    fn->args = vec_create();
+    expect(TK_RESERVED, "(");
+    Scope *sc = enter_scope();
+    while (!consume(TK_RESERVED, ")")) {
+        if (0 < fn->args->len) {
+            expect(TK_RESERVED, ",");
+        }
+        tok = token;
+        vec_push(fn->args, new_node_varref(declaration(), tok));
+    }
+
+    // NOTE: functions must be registered before parsing their bodies
+    // to deal with recursion.
+    map_insert(prog->fns, fn->name, fn);
 
     // If this is a prototype declaration, exit.
     if (consume(TK_RESERVED, ";")) {
+        leave_scope(sc);
         return fn;
     }
 
@@ -676,6 +721,7 @@ Function *new_func(Type *rtype, Token *tok) {
     while (!consume(TK_RESERVED, "}")) {
         vec_push(fn->body->stmts, (void *)stmt());
     }
+    leave_scope(sc);
     return fn;
 }
 
@@ -688,7 +734,7 @@ void top_level() {
     if (peek(TK_RESERVED, "(")) {
         new_func(type, tok);
     } else {
-        if (map_count(prog->gvars, tok->str)) {
+        if (find_var(tok->str)) {
             error_at(tok->loc, "error: redefinition of %s", tok->str);
         }
         type = read_array(type);
@@ -704,7 +750,7 @@ void top_level() {
 Program *parse() {
     prog = calloc(1, sizeof(Program));
     prog->fns = map_create();
-    prog->gvars = map_create();
+    prog->gvars = vec_create();
     while (!at_eof()) {
         top_level();
     }

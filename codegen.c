@@ -240,7 +240,7 @@ void gen(Node *node) {
 void gen_data(Program *prog) {
     printf(".data\n");
     for (int i = 0; i < prog->gvars->len; i++) {
-        Var *var = vec_at(prog->gvars->vals, i);
+        Var *var = vec_at(prog->gvars, i);
         printf("%s:\n", var->name);
         if (var->data) {
             printf("  .string \"%s\"\n", var->data);
@@ -264,7 +264,7 @@ void gen_text(Program *prog) {
 
         int offset = 0;
         for (int i = 0; i < fn->lvars->len; i++) {
-            Var *var = vec_at(fn->lvars->vals, i);
+            Var *var = vec_at(fn->lvars, i);
             offset += var->type->size;
             offset = roundup(offset, var->type->align);
             var->offset = offset;
