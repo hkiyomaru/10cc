@@ -41,6 +41,13 @@ void *vec_at(Vector *vec, int index) {
 }
 
 /**
+ * Fetches the last item.
+ * @param vec A vector.
+ * @return An item.
+ */
+void *vec_back(Vector *vec) { return vec->data[vec->len - 1]; }
+
+/**
  * Creates an empty map.
  * @return A map.
  */
