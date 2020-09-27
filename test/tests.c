@@ -3,6 +3,10 @@
 /**
  * A block comment.
  */
+int printf(char *fmt);
+int assert(int expected, int actual, char *code);
+
+int ret42();
 
 int ret42() {
     return 42;
@@ -24,6 +28,8 @@ int retif2() {
         return 24;
     }
 }
+
+int fibo(int n);
 
 int fibo(int n) {
     if (n < 2) {

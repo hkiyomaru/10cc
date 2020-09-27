@@ -199,6 +199,9 @@ Node *do_walk(Node *node, bool decay) {
 void sema(Program *prog) {
     for (int i = 0; i < prog->fns->len; i++) {
         Function *fn = vec_at(prog->fns->vals, i);
-        fn->body = walk(fn->body);
+        // Skip a function whose body is empty.
+        if (fn->body) {
+            fn->body = walk(fn->body);
+        }
     }
 }

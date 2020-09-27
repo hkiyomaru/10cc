@@ -253,6 +253,9 @@ void gen_text(Program *prog) {
     printf(".text\n");
     for (int i = 0; i < prog->fns->len; i++) {
         Function *fn = vec_at(prog->fns->vals, i);
+        if (!fn->body) {
+            continue;  // Just a prototype declaration.
+        }
 
         int offset = 0;
         for (int i = 0; i < fn->lvars->len; i++) {

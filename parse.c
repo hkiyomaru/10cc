@@ -257,17 +257,11 @@ Node *new_node_string(char *str, Token *tok) {
 Node *new_node_func_call(Token *tok) {
     Function *fn_ = find_func(tok->str);
     if (!fn_) {
-        // TODO: Resurrect this assertion by implementing prototype declaration.
-        // error_at(tok->loc, "error: undefined reference to `%s'", tok->str);
+        error_at(tok->loc, "error: undefined reference to `%s'", tok->str);
     }
     Node *node = new_node(ND_FUNC_CALL, tok);
     node->funcname = tok->str;
-    // TODO: Remove this if statement by implementing prototype declaration.
-    if (fn_ == NULL) {
-        node->type = int_type();
-    } else {
-        node->type = fn_->rtype;
-    }
+    node->type = fn_->rtype;
     node->args = vec_create();
     expect(TK_RESERVED, "(");
     while (!consume(TK_RESERVED, ")")) {
@@ -584,24 +578,49 @@ Node *primary() {
  * @return A function.
  */
 Function *new_func(Type *rtype, Token *tok) {
-    fn = calloc(1, sizeof(Function));
-    fn->rtype = rtype;
-    fn->name = tok->str;
-    fn->lvars = map_create();
-
-    // Parse the arguments.
-    fn->args = vec_create();
-    expect(TK_RESERVED, "(");
-    while (!consume(TK_RESERVED, ")")) {
-        if (0 < fn->args->len) {
-            expect(TK_RESERVED, ",");
+    fn = find_func(tok->str);
+    if (fn) {
+        if (fn->body) {
+            error_at(tok->loc, "error: redefinition of %s", tok->str);
         }
-        vec_push(fn->args, declaration());
+
+        // Confirm that arguments' types are correct.
+        expect(TK_RESERVED, "(");
+        for (int i = 0; i < fn->args->len; i++) {
+            if (0 < i) {
+                expect(TK_RESERVED, ",");
+            }
+            Node *arg = declaration();
+            if (arg->type->kind != ((Node *)vec_at(fn->args, i))->type->kind) {
+                error_at(tok->loc, "error: conflicting types for '%s'", tok->str);
+            }
+        }
+        expect(TK_RESERVED, ")");
+    } else {
+        fn = calloc(1, sizeof(Function));
+        fn->rtype = rtype;
+        fn->name = tok->str;
+        fn->lvars = map_create();
+
+        // Parse the arguments.
+        fn->args = vec_create();
+        expect(TK_RESERVED, "(");
+        while (!consume(TK_RESERVED, ")")) {
+            if (0 < fn->args->len) {
+                expect(TK_RESERVED, ",");
+            }
+            vec_push(fn->args, declaration());
+        }
+
+        // NOTE: functions must be registered before parsing their bodies
+        // to deal with recursion.
+        map_insert(prog->fns, fn->name, fn);
     }
 
-    // NOTE: functions must be registered before parsing their bodies
-    // to deal with recursion.
-    map_insert(prog->fns, fn->name, fn);
+    // If this is a prototype declaration, exit.
+    if (consume(TK_RESERVED, ";")) {
+        return fn;
+    }
 
     // Parse the body.
     tok = expect(TK_RESERVED, "{");
@@ -620,9 +639,6 @@ void top_level() {
     Type *type = read_type();
     Token *tok = expect(TK_IDENT, NULL);
     if (peek(TK_RESERVED, "(")) {
-        if (find_func(tok->str)) {
-            error_at(tok->loc, "error: redefinition of %s", tok->str);
-        }
         new_func(type, tok);
     } else {
         if (map_count(prog->gvars, tok->str)) {
