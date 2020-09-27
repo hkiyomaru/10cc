@@ -257,11 +257,17 @@ Node *new_node_string(char *str, Token *tok) {
 Node *new_node_func_call(Token *tok) {
     Function *fn_ = find_func(tok->str);
     if (!fn_) {
-        error_at(tok->loc, "error: undefined reference to `%s'", tok->str);
+        // TODO: Resurrect this assertion by implementing prototype declaration.
+        // error_at(tok->loc, "error: undefined reference to `%s'", tok->str);
     }
     Node *node = new_node(ND_FUNC_CALL, tok);
     node->funcname = tok->str;
-    node->type = fn_->rtype;
+    // TODO: Remove this if statement by implementing prototype declaration.
+    if (fn_ == NULL) {
+        node->type = int_type();
+    } else {
+        node->type = fn_->rtype;
+    }
     node->args = vec_create();
     expect(TK_RESERVED, "(");
     while (!consume(TK_RESERVED, ")")) {
@@ -282,7 +288,8 @@ Node *declaration() {
     Type *type = read_type();
     Token *tok = expect(TK_IDENT, NULL);
     if (find_var(tok->str)) {
-        error_at(tok->loc, "error: redeclaration of '%s'", tok->str);
+        // TODO: Resurrect this assertion by implementing variable scope.
+        // error_at(tok->loc, "error: redeclaration of '%s'", tok->str);
     }
     type = read_array(type);
     return new_node_lvar(type, tok->str, tok);
@@ -531,13 +538,19 @@ Node *postfix() {
  *     primary = num
  *             | str
  *             | ident ("(" ")")?
+ *             | "(" "{" stmt* "}" ")"
  *             | "(" expr ")"
  * @return A node.
  */
 Node *primary() {
     Token *tok;
     if (tok = consume(TK_RESERVED, "(")) {
-        Node *node = expr();
+        Node *node;
+        if (peek(TK_RESERVED, "{")) {
+            node = stmt();
+        } else {
+            node = expr();
+        }
         expect(TK_RESERVED, ")");
         return node;
     }

@@ -238,7 +238,7 @@ void gen_data(Program *prog) {
         Var *var = vec_at(prog->gvars->vals, i);
         printf("%s:\n", var->name);
         if (var->data) {
-            printf("  .ascii \"%s\"\n", var->data);
+            printf("  .string \"%s\"\n", var->data);
         } else {
             printf("  .zero %d\n", var->type->size);
         }
