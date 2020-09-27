@@ -119,6 +119,7 @@ void gen(Node *node) {
             for (int i = node->args->len - 1; 0 <= i; i--) {
                 printf("  pop %s\n", argregs8[i]);
             }
+            printf("  mov al, 0\n");
             printf("  call %s\n", node->funcname);
             printf("  push rax\n");
             return;
