@@ -222,9 +222,9 @@ void draw_node_tree(Node *node, int depth, char *role) {
                 break;
             case ND_VARREF:
                 if (node->var->is_local) {
-                    fprintf(stderr, "LVAR(name: %s)\n", node->var->name);
+                    fprintf(stderr, "VARREF(name: %s, local)\n", node->var->name);
                 } else {
-                    fprintf(stderr, "GVAR(name: %s)\n", node->var->name);
+                    fprintf(stderr, "VARREF(name: %s, global)\n", node->var->name);
                 }
                 break;
             case ND_NUM:
