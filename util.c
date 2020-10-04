@@ -242,6 +242,9 @@ void draw_node_tree(Node *node, int depth, char *role) {
                 fprintf(stderr, "EXPR_STMT\n");
                 draw_node_tree(node->lhs, depth + 1, "");
                 break;
+            case ND_SIZEOF:
+                fprintf(stderr, "SIZEOF\n");
+                draw_node_tree(node->lhs, depth + 1, "");
             case ND_NULL:
                 fprintf(stderr, "NULL\n");
                 break;
