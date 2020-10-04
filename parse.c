@@ -158,13 +158,9 @@ Type *read_type() {
  * @return A type.
  */
 Type *read_array(Type *type) {
-    if (consume(TK_RESERVED, "[")) {
-        if (consume(TK_RESERVED, "]")) {
-            type = ary_of(type, 0);
-        } else {
-            type = ary_of(type, expect(TK_NUM, NULL)->val);
-            expect(TK_RESERVED, "]");
-        }
+    while (consume(TK_RESERVED, "[")) {
+        type = ary_of(type, expect(TK_NUM, NULL)->val);
+        expect(TK_RESERVED, "]");
     }
     return type;
 }
