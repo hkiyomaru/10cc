@@ -158,9 +158,14 @@ Type *read_type() {
  * @return A type.
  */
 Type *read_array(Type *type) {
+    int dims = 0;
+    int lens[128];
     while (consume(TK_RESERVED, "[")) {
-        type = ary_of(type, expect(TK_NUM, NULL)->val);
+        lens[dims++] = expect(TK_NUM, NULL)->val;
         expect(TK_RESERVED, "]");
+    }
+    for (int i = dims - 1; 0 <= i; i--) {
+        type = ary_of(type, lens[i]);
     }
     return type;
 }
