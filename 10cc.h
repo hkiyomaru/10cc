@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,8 +24,10 @@ typedef struct {
 } Map;
 
 Vector *vec_create();
-void vec_push(Vector *vec, void *elem);
+void vec_push(Vector *vec, void *item);
+void vec_pushi(Vector *vec, int item);
 void *vec_at(Vector *vec, int key);
+int vec_ati(Vector *vec, int index);
 void *vec_set(Vector *vec, int index, void *item);
 void *vec_back(Vector *vec);
 Map *map_create();

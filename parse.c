@@ -157,14 +157,14 @@ Type *read_type() {
  * @return A type.
  */
 Type *read_array(Type *type) {
-    int dims = 0;
-    int lens[128];
+    Vector *sizes = vec_create();
     while (consume(TK_RESERVED, "[")) {
-        lens[dims++] = expect(TK_NUM, NULL)->val;
+        Token *tok = consume(TK_NUM, NULL);
+        vec_pushi(sizes, tok ? tok->val : -1);  // TODO
         expect(TK_RESERVED, "]");
     }
-    for (int i = dims - 1; 0 <= i; i--) {
-        type = ary_of(type, lens[i]);
+    for (int i = sizes->len - 1; i >= 0; i--) {
+        type = ary_of(type, vec_ati(sizes, i));
     }
     return type;
 }

@@ -28,6 +28,13 @@ void vec_push(Vector *vec, void *item) {
 }
 
 /**
+ * Pushes an iteger to a vector.
+ * @param vec A vector.
+ * @param item An item to be registered.
+ */
+void vec_pushi(Vector *vec, int item) { vec_push(vec, (void *)(intptr_t)item); }
+
+/**
  * Gets an item from a vector.
  * @param vec A vector.
  * @param index An index.
@@ -38,6 +45,19 @@ void *vec_at(Vector *vec, int index) {
         error("error: out of range");
     }
     return vec->data[index];
+}
+
+/**
+ * Gets an iteger from a vector.
+ * @param vec A vector.
+ * @param index An index.
+ * @return An item.
+ */
+int vec_ati(Vector *vec, int index) {
+    if (vec->len <= index) {
+        error("error: out of range");
+    }
+    return (intptr_t)(vec_at(vec, index));
 }
 
 /**
