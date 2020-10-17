@@ -28,16 +28,14 @@ void check_int(Node *node) {
  * If the given node is an array, decays it to a pointer.
  * Otherwise, does nothing.
  * @param base A node.
- * @param decay If True, does nothing.
  * @return A node.
  */
-Node *maybe_decay(Node *base, bool decay) {
-    if (!decay || base->type->kind != TY_ARY) {
+Node *decay_array(Node *base) {
+    if (base->type->kind != TY_ARY) {
         return base;
     }
-    Node *node = new_node(ND_ADDR, base->tok);
+    Node *node = new_node_unary_op(ND_ADDR, base, base->tok);
     node->type = ptr_to(base->type->base);
-    node->lhs = base;
     return node;
 }
 
@@ -49,10 +47,7 @@ Node *maybe_decay(Node *base, bool decay) {
  * @return A node.
  */
 Node *scale_ptr(NodeKind kind, Node *base, Type *type) {
-    Node *node = new_node(kind, base->tok);
-    node->lhs = base;
-    node->rhs = new_node_num(type->base->size, base->tok);
-    return node;
+    return new_node_bin_op(kind, base, new_node_num(type->base->size, base->tok), base->tok);
 }
 
 Node *do_walk(Node *node, bool decay);
@@ -84,7 +79,10 @@ Node *do_walk(Node *node, bool decay) {
         case ND_NUM:
             return node;
         case ND_VARREF:
-            return maybe_decay(node, decay);
+            if (decay) {
+                node = decay_array(node);
+            }
+            return node;
         case ND_EXPR_STMT:
             walk(node->lhs);
             return node;
@@ -172,7 +170,10 @@ Node *do_walk(Node *node, bool decay) {
             node->lhs = walk(node->lhs);
             assert(node->lhs->type->kind == TY_PTR);
             node->type = node->lhs->type->base;
-            return maybe_decay(node, decay);
+            if (decay) {
+                node = decay_array(node);
+            }
+            return node;
         case ND_RETURN:
             node->lhs = walk(node->lhs);
             return node;

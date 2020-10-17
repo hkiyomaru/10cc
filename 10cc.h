@@ -165,6 +165,8 @@ Program *parse();
 Type *int_type();
 Type *ptr_to(Type *base);
 Node *new_node(NodeKind kind, Token *tok);
+Node *new_node_bin_op(NodeKind kind, Node *lhs, Node *rhs, Token *tok);
+Node *new_node_unary_op(NodeKind kind, Node *lhs, Token *tok);
 Node *new_node_num(int val, Token *tok);
 
 /**
