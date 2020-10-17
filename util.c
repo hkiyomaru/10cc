@@ -86,40 +86,6 @@ bool startswith(char *p, char *q) { return memcmp(p, q, strlen(q)) == 0; }
 bool isalnumus(char c) { return isalnum(c) || c == '_'; }
 
 /**
- * Returns the contents of a given file.
- * @param path Path to a file.
- * @return Contents.
- */
-char *read_file(char *path) {
-    // Open the file.
-    FILE *fp = fopen(path, "r");
-    if (!fp) {
-        error("cannot open %s: %s", path, strerror(errno));
-    }
-
-    // Investigate the file size.
-    if (fseek(fp, 0, SEEK_END) == -1) {
-        error("%s: fseek: %s", path, strerror(errno));
-    }
-    size_t size = ftell(fp);
-    if (fseek(fp, 0, SEEK_SET) == -1) {
-        error("%s: fseek: %s", path, strerror(errno));
-    }
-
-    // Read the file.
-    char *buff = calloc(1, size + 2);
-    fread(buff, size, 1, fp);
-    fclose(fp);
-
-    // Make sure that the file ends with a new line.
-    if (size == 0 || buff[size - 1] != '\n') {
-        buff[size++] = '\n';
-    }
-    buff[size] = '\0';
-    return buff;
-}
-
-/**
  * Draws the abstract syntax tree of a node.
  * @param node A node.
  * @param depth The depth of the node.
