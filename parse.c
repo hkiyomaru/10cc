@@ -62,7 +62,7 @@ VarScope *push_scope(char *name) {
     return sc;
 }
 
-int nlabel = 1;
+int str_label_cnt = 1;
 
 Program *prog;  // The program
 Function *fn;   // The function being parsed
@@ -321,9 +321,9 @@ Node *new_node_num(int val, Token *tok) {
  */
 Node *new_node_string(char *str, Token *tok) {
     Type *type = ary_of(char_type(), strlen(str) + 1);
-    char *name = format(".L.str%d", nlabel++);
+    char *name = format(".L.str%d", str_label_cnt++);
     Var *var = new_gvar(type, name, tok);
-    var->data = tok->cont;
+    var->data = tok->str;
     return new_node_varref(var, tok);
 }
 
@@ -663,8 +663,10 @@ Node *primary() {
         }
     }
 
-    if (tok = consume(TK_STR, NULL)) {
-        return new_node_string(tok->cont, tok);
+    if (tok = consume(TK_RESERVED, "\"")) {
+        tok = expect(TK_STR, NULL);
+        expect(TK_RESERVED, "\"");
+        return new_node_string(tok->str, tok);
     }
 
     tok = expect(TK_NUM, NULL);

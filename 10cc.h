@@ -50,7 +50,6 @@ struct Token {
     int val;
     char *str;
     char *loc;
-    char *cont;  // the content of a string literal
 };
 
 typedef enum { TY_INT, TY_PTR, TY_ARY, TY_CHAR } TypeKind;

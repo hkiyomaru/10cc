@@ -44,8 +44,7 @@ Token *expect(TokenKind kind, char *str) {
     if (ret) {
         token = token->next;
     } else {
-        error_at(token->loc, "error: expected '%s' before '%s' token", str,
-                 token->str);
+        error_at(token->loc, "error: expected '%s' before '%s' token", str, token->str);
     }
     return ret;
 }
@@ -76,8 +75,7 @@ bool at_typename() {
  * @return A reserved keyword.
  */
 char *read_reserved(char *p) {
-    char *kws[] = {"return", "if",     "else", "while",
-                   "for",    "sizeof", "int",  "char"};
+    char *kws[] = {"return", "if", "else", "while", "for", "sizeof", "int", "char"};
     for (int i = 0; i < sizeof(kws) / sizeof(kws[0]); i++) {
         int len = strlen(kws[i]);
         if (startswith(p, kws[i]) && !isalnumus(p[len])) {
@@ -92,8 +90,7 @@ char *read_reserved(char *p) {
         }
     }
 
-    char *single_ops[] = {"+", "-", "*", "/", "(", ")", "<", ">",
-                          "=", ";", "{", "}", ",", "[", "]", "&"};
+    char *single_ops[] = {"+", "-", "*", "/", "(", ")", "<", ">", "=", ";", "{", "}", ",", "[", "]", "&"};
     for (int i = 0; i < sizeof(single_ops) / sizeof(single_ops[0]); i++) {
         if (startswith(p, single_ops[i])) {
             return single_ops[i];
@@ -114,20 +111,9 @@ Token *new_token(TokenKind kind, Token *cur, char *p, int len) {
     strncpy(str, p, len);
     str[len] = '\0';
 
-    char *cont;
-    if (kind == TK_STR) {
-        int cont_len = len - 2;  // -2 is to truncate two double-quotes.
-        cont = calloc(cont_len + 1, sizeof(char));
-        strncpy(cont, p + 1, cont_len);
-        cont[cont_len] = '\0';
-    } else {
-        cont = NULL;
-    }
-
     Token *tok = calloc(1, sizeof(Token));
     tok->kind = kind;
     tok->str = str;
-    tok->cont = cont;
     tok->loc = p;
     cur->next = tok;
     return tok;
@@ -181,12 +167,16 @@ Token *tokenize() {
 
         // Read a string literal.
         if (*p == '"') {
-            int len = 1;
-            while (p[len] != '"') {
+            cur = new_token(TK_RESERVED, cur, p, 1);
+            p++;
+            int len = 0;
+            while (p[len] && p[len] != '"') {
                 len++;
             }
-            cur = new_token(TK_STR, cur, p, len + 1);
-            p += len + 1;
+            cur = new_token(TK_STR, cur, p, len);
+            p += len;
+            cur = new_token(TK_RESERVED, cur, p, 1);
+            p++;
             continue;
         }
 
