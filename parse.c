@@ -3,7 +3,6 @@
 typedef struct VarScope VarScope;
 struct VarScope {
     VarScope *next;
-    char *name;
     int depth;
     Var *var;
 };
@@ -42,7 +41,7 @@ void leave_scope(Scope *sc) {
  */
 VarScope *find_var(char *name) {
     for (VarScope *sc = var_scope; sc; sc = sc->next) {
-        if (!strcmp(name, sc->name)) {
+        if (!strcmp(name, sc->var->name)) {
             return sc;
         }
     }
@@ -51,13 +50,13 @@ VarScope *find_var(char *name) {
 
 /**
  * Pushes a variable scope.
- * @param name A variable name.
+ * @param var A variable.
  */
-VarScope *push_scope(char *name) {
+VarScope *push_scope(Var *var) {
     VarScope *sc = calloc(1, sizeof(VarScope));
-    sc->name = name;
     sc->next = var_scope;
     sc->depth = scope_depth;
+    sc->var = var;
     var_scope = sc;
     return sc;
 }
@@ -210,8 +209,8 @@ Var *new_var(Type *type, char *name, bool is_local) {
  */
 Var *new_gvar(Type *type, char *name, Token *tok) {
     Var *var = new_var(type, name, false);
-    push_scope(name)->var = var;
     vec_push(prog->gvars, var);
+    push_scope(var);
     return var;
 }
 
@@ -225,8 +224,8 @@ Var *new_gvar(Type *type, char *name, Token *tok) {
  */
 Var *new_lvar(Type *type, char *name, Token *tok) {
     Var *var = new_var(type, name, true);
-    push_scope(name)->var = var;
     vec_push(fn->lvars, var);
+    push_scope(var);
     return var;
 }
 
