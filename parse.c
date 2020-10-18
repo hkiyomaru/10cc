@@ -42,7 +42,7 @@ Node *new_node_string(char *str, Token *tok);
 Node *new_node_varref(Var *var, Token *tok);
 Node *new_node_func_call(Token *tok);
 Node *lvar_init(Var *var, Token *tok);
-Node *int_init(Var *var, Token *tok);
+Node *init(Var *var, Token *tok);
 Node *ary_init(Var *var, Token *tok);
 
 Var *new_gvar(Type *type, char *name, Token *tok);
@@ -625,19 +625,20 @@ Node *lvar_init(Var *var, Token *tok) {
         case TY_ARY:
             return ary_init(var, tok);
         default:
-            return int_init(var, tok);
+            return init(var, tok);
     }
 }
 
 /**
- * Creates a node to assign an initial value to a given integer variable.
+ * Creates a node to assign an initial value to a given variable.
  * @param var A variable to be refered.
  * @param tok An representative token.
  * @return A node.
  */
-Node *int_init(Var *var, Token *tok) {
+Node *init(Var *var, Token *tok) {
     Node *lvar = new_node_varref(var, tok);
-    return new_node_bin_op(ND_ASSIGN, lvar, expr(), tok);
+    Node *asgn = new_node_bin_op(ND_ASSIGN, lvar, expr(), tok);
+    return new_node_unary_op(ND_EXPR_STMT, asgn, NULL);
 }
 
 /**
