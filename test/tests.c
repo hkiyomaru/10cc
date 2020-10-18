@@ -100,5 +100,15 @@ int main() {
     assert(0, ({ int x[2][3]; int *y; y=*x; *y=0; 0; }), "int x[2][3]; int *y; y=*x; *y=0; 0;");
     assert(3, ({ int a = 3; a; }), "int a = 3; a;");
     assert(3, ({ char a = 3; a; }), "int a = 3; a;");
+    assert(0, ({ int a[3] = {0, 1, 2}; a[0]; }), "int a[3] = {0, 1, 2}; a[0];");
+    assert(0, ({ int a[3] = {0}; a[0]; }), "int a[3] = {0}; a[0];");
+    assert(0, ({ int a[3] = {0}; a[1]; }), "int a[3] = {0}; a[1];");
+    assert(0, ({ int a[3] = {0}; a[2]; }), "int a[3] = {0}; a[2];");
+    assert(0, ({ int a[3] = {0, 1}; a[0]; }), "int a[3] = {0, 1}; a[0];");
+    assert(1, ({ int a[3] = {0, 1}; a[1]; }), "int a[3] = {0, 1}; a[1];");
+    assert(0, ({ int a[3] = {0, 1}; a[2]; }), "int a[3] = {0, 1}; a[2];");
+    assert(0, ({ int a[3] = {0, 1, 2}; a[0]; }), "int a[3] = {0, 1, 2}; a[0];");
+    assert(1, ({ int a[3] = {0, 1, 2}; a[1]; }), "int a[3] = {0, 1, 2}; a[1];");
+    assert(2, ({ int a[3] = {0, 1, 2}; a[2]; }), "int a[3] = {0, 1, 2}; a[2];");
     return 0;
 }

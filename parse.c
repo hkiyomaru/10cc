@@ -41,7 +41,9 @@ Node *new_node_num(int val, Token *tok);
 Node *new_node_string(char *str, Token *tok);
 Node *new_node_varref(Var *var, Token *tok);
 Node *new_node_func_call(Token *tok);
-Node *lvar_initialization(Var *var, Token *tok);
+Node *lvar_init(Var *var, Token *tok);
+Node *int_init(Var *var, Token *tok);
+Node *ary_init(Var *var, Token *tok);
 
 Var *new_gvar(Type *type, char *name, Token *tok);
 Var *new_lvar(Type *type, char *name, Token *tok);
@@ -220,7 +222,7 @@ Node *stmt() {
         tok = token;
         Var *var = declaration();
         if (tok = consume(TK_RESERVED, "=")) {
-            node = lvar_initialization(var, tok);
+            node = lvar_init(var, tok);
         } else {
             node = new_node(ND_NULL, tok);
         }
@@ -496,7 +498,7 @@ Type *read_array(Type *type) {
     Vector *sizes = vec_create();
     while (consume(TK_RESERVED, "[")) {
         Token *tok = consume(TK_NUM, NULL);
-        vec_pushi(sizes, tok ? tok->val : -1);  // TODO
+        vec_pushi(sizes, tok ? tok->val : -1);
         expect(TK_RESERVED, "]");
     }
     for (int i = sizes->len - 1; i >= 0; i--) {
@@ -618,13 +620,71 @@ Node *new_node_func_call(Token *tok) {
  * @param tok An representative token.
  * @return A node.
  */
-Node *lvar_initialization(Var *var, Token *tok) {
-    Node *lvar = new_node_varref(var, tok);
+Node *lvar_init(Var *var, Token *tok) {
     switch (var->type->kind) {
         case TY_ARY:
-            break;  // TODO
+            return ary_init(var, tok);
         default:
-            return new_node_bin_op(ND_ASSIGN, lvar, expr(), tok);
+            return int_init(var, tok);
+    }
+}
+
+/**
+ * Creates a node to assign an initial value to a given integer variable.
+ * @param var A variable to be refered.
+ * @param tok An representative token.
+ * @return A node.
+ */
+Node *int_init(Var *var, Token *tok) {
+    Node *lvar = new_node_varref(var, tok);
+    return new_node_bin_op(ND_ASSIGN, lvar, expr(), tok);
+}
+
+/**
+ * Creates a node to assign an initial value to a given array variable.
+ * @param var A variable to be refered.
+ * @param tok An representative token.
+ * @return A node.
+ */
+Node *ary_init(Var *var, Token *tok) {
+    assert(var->type->kind == TY_ARY);
+
+    Node *lvar = new_node_varref(var, tok);
+
+    if (tok = consume(TK_RESERVED, "{")) {
+        // {expr, ...}
+        Node *node = new_node(ND_BLOCK, tok);
+        node->stmts = vec_create();
+        for (int i = 0;; i++) {
+            if (consume(TK_RESERVED, "}")) {
+                break;
+            }
+            if (node->stmts->len > 0) {
+                tok = expect(TK_RESERVED, ",");
+            }
+            if (var->type->array_size != -1 && i >= var->type->array_size) {
+                error_at(tok->loc, "error: excess elements in array initializer");
+            }
+            Node *index = new_node_num(i, NULL);
+            Node *addr = new_node_bin_op(ND_ADD, lvar, index, NULL);
+            Node *lval = new_node_unary_op(ND_DEREF, addr, NULL);
+            Node *asgn = new_node_bin_op(ND_ASSIGN, lval, expr(), NULL);
+            vec_push(node->stmts, new_node_unary_op(ND_EXPR_STMT, asgn, NULL));
+        }
+        if (lvar->type->array_size == -1) {
+            lvar->type->array_size = node->stmts->len;
+            lvar->type->size = lvar->type->base->size * node->stmts->len;
+        }
+        for (int i = node->stmts->len; i < lvar->type->array_size; i++) {
+            Node *index = new_node_num(i, NULL);
+            Node *addr = new_node_bin_op(ND_ADD, lvar, index, NULL);
+            Node *lval = new_node_unary_op(ND_DEREF, addr, NULL);
+            Node *asgn = new_node_bin_op(ND_ASSIGN, lval, new_node_num(0, NULL), NULL);
+            vec_push(node->stmts, new_node_unary_op(ND_EXPR_STMT, asgn, NULL));
+        }
+        return node;
+    } else if (tok = consume(TK_RESERVED, "\"")) {
+        // string literal
     }
 }
 
