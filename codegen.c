@@ -226,7 +226,7 @@ void gen(Node *node) {
 
 /**
  * Generates a code to push an address to a variable to the stack.
- * @param node A node representing a local variable.
+ * @param node A node representing a left variable.
  */
 void gen_lval(Node *node) {
     switch (node->kind) {
