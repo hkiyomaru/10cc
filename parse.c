@@ -33,7 +33,7 @@ Node *postfix();
 Node *primary();
 
 Type *read_type();
-Type *read_array(Type *type);
+Type *read_ary(Type *type);
 
 Node *new_node_bin_op(NodeKind kind, Node *lhs, Node *rhs, Token *tok);
 Node *new_node_unary_op(NodeKind kind, Node *lhs, Token *tok);
@@ -47,7 +47,7 @@ Node *ary_init(Var *var, Token *tok);
 Var *new_gvar(Type *type, char *name, Token *tok);
 Var *new_lvar(Type *type, char *name, Token *tok);
 Var *new_strl(char *str, Token *tok);
-Var *declaration();
+Var *decl();
 
 Function *find_func(char *name);
 
@@ -82,7 +82,7 @@ void top_level() {
         if (find_var(tok->str)) {
             error_at(tok->loc, "error: redefinition of %s\n", tok->str);
         }
-        type = read_array(type);
+        type = read_ary(type);
         new_gvar(type, tok->str, tok);
         expect(TK_RESERVED, ";");
     }
@@ -119,7 +119,7 @@ Function *func(Type *rtype, Token *tok) {
             expect(TK_RESERVED, ",");
         }
         tok = token;
-        vec_push(fn->args, new_node_varref(declaration(), tok));
+        vec_push(fn->args, new_node_varref(decl(), tok));
     }
 
     // NOTE: functions must be registered before parsing their bodies
@@ -220,7 +220,7 @@ Node *stmt() {
     if (at_typename()) {
         Node *node;
         tok = token;
-        Var *var = declaration();
+        Var *var = decl();
         if (tok = consume(TK_RESERVED, "=")) {
             node = lvar_init(var, tok);
         } else {
@@ -494,7 +494,7 @@ Type *read_type() {
  * @param type The type of each item.
  * @return A type.
  */
-Type *read_array(Type *type) {
+Type *read_ary(Type *type) {
     Vector *sizes = vec_create();
     while (consume(TK_RESERVED, "[")) {
         Token *tok = consume(TK_NUM, NULL);
@@ -760,14 +760,14 @@ Var *new_strl(char *str, Token *tok) {
  *     declaration = T ident ("[" num? "]")?
  * @return A variable.
  */
-Var *declaration() {
+Var *decl() {
     Type *type = read_type();
     Token *tok = expect(TK_IDENT, NULL);
     if (find_var(tok->str)) {
         // TODO: Resurrect this assertion by implementing variable scope.
         // error_at(tok->loc, "error: redeclaration of '%s'", tok->str);
     }
-    type = read_array(type);
+    type = read_ary(type);
     return new_lvar(type, tok->str, tok);
 }
 
