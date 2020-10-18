@@ -98,5 +98,7 @@ int main() {
     assert(4, ({ int x[3][3]; sizeof(x[0][0]); }), "int x[3][3]; sizeof(x[0][0]);");
     assert(3, ({ int x[2][3]; x[0][0] = 3; x[0][0]; }), "int x[2][3]; x[0][0] = 3; x[0][0];");
     assert(0, ({ int x[2][3]; int *y; y=*x; *y=0; 0; }), "int x[2][3]; int *y; y=*x; *y=0; 0;");
+    assert(3, ({ int a = 3; a; }), "int a = 3; a;");
+    assert(3, ({ char a = 3; a; }), "int a = 3; a;");
     return 0;
 }

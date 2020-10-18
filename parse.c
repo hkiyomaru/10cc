@@ -41,6 +41,7 @@ Node *new_node_num(int val, Token *tok);
 Node *new_node_string(char *str, Token *tok);
 Node *new_node_varref(Var *var, Token *tok);
 Node *new_node_func_call(Token *tok);
+Node *lvar_initialization(Var *var, Token *tok);
 
 Var *new_gvar(Type *type, char *name, Token *tok);
 Var *new_lvar(Type *type, char *name, Token *tok);
@@ -148,7 +149,7 @@ Function *func(Type *rtype, Token *tok) {
  *          | "while" "(" expr ")" stmt
  *          | "for" "(" expr? ";" expr? ";" expr? ")" stmt
  *          | "return" expr ";"
- *          | T ident ";"
+ *          | T ident ("=" expr)? ";"
  *          | ";"
  * @return A node.
  */
@@ -215,9 +216,16 @@ Node *stmt() {
     }
 
     if (at_typename()) {
-        declaration();
+        Node *node;
+        tok = token;
+        Var *var = declaration();
+        if (tok = consume(TK_RESERVED, "=")) {
+            node = lvar_initialization(var, tok);
+        } else {
+            node = new_node(ND_NULL, tok);
+        }
         expect(TK_RESERVED, ";");
-        return new_node(ND_NULL, tok);
+        return node;
     }
 
     if (tok = consume(TK_RESERVED, ";")) {
@@ -602,6 +610,22 @@ Node *new_node_func_call(Token *tok) {
         vec_push(node->args, expr());
     }
     return node;
+}
+
+/**
+ * Creates a node to assign an initial value to a given variable.
+ * @param var A variable to be refered.
+ * @param tok An representative token.
+ * @return A node.
+ */
+Node *lvar_initialization(Var *var, Token *tok) {
+    Node *lvar = new_node_varref(var, tok);
+    switch (var->type->kind) {
+        case TY_ARY:
+            break;  // TODO
+        default:
+            return new_node_bin_op(ND_ASSIGN, lvar, expr(), tok);
+    }
 }
 
 /**
