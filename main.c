@@ -1,6 +1,9 @@
 #include "10cc.h"
 
-void usage() { error("error: no input files"); }
+char *filename;
+char *user_input;
+
+void usage() { error("error: no input files\n"); }
 
 /**
  * Returns the contents of a given file.
@@ -11,16 +14,16 @@ char *read_file(char *path) {
     // Open the file.
     FILE *fp = fopen(path, "r");
     if (!fp) {
-        error("cannot open %s: %s", path, strerror(errno));
+        error("cannot open %s: %s\n", path, strerror(errno));
     }
 
     // Investigate the file size.
     if (fseek(fp, 0, SEEK_END) == -1) {
-        error("%s: fseek: %s", path, strerror(errno));
+        error("%s: fseek: %s\n", path, strerror(errno));
     }
     size_t size = ftell(fp);
     if (fseek(fp, 0, SEEK_SET) == -1) {
-        error("%s: fseek: %s", path, strerror(errno));
+        error("%s: fseek: %s\n", path, strerror(errno));
     }
 
     // Read the file.
@@ -44,7 +47,7 @@ int main(int argc, char **argv) {
     user_input = read_file(filename);
     token = tokenize();
     Program *prog = parse();
-    sema(prog);
+    prog = assign_type(prog);
     // draw_ast(prog);
     codegen(prog);
     return 0;

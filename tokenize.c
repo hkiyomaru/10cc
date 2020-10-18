@@ -1,7 +1,5 @@
 #include "10cc.h"
 
-char *filename;
-char *user_input;
 Token *token;
 
 /**
@@ -44,7 +42,7 @@ Token *expect(TokenKind kind, char *str) {
     if (ret) {
         token = token->next;
     } else {
-        error_at(token->loc, "error: expected '%s' before '%s' token", str, token->str);
+        error_at(token->loc, "error: expected '%s' before '%s' token\n", str, token->str);
     }
     return ret;
 }
@@ -150,7 +148,7 @@ Token *tokenize() {
         if (strncmp(p, "/*", 2) == 0) {
             char *q = strstr(p + 2, "*/");
             if (!q) {
-                error_at(p, "Unclosed block comment");
+                error_at(p, "Unclosed block comment\n");
             }
             p = q + 2;
             continue;
@@ -200,7 +198,7 @@ Token *tokenize() {
             cur->val = strtol(p, &p, 10);  // strtol increments `p`
             continue;
         }
-        error_at(p, "error: stray '%c' in program", p);
+        error_at(p, "error: stray '%c' in program\n", p);
     }
     cur = new_token(TK_EOF, cur, p, 0);
     return head.next;

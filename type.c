@@ -1,75 +1,24 @@
 #include "10cc.h"
 
-/**
- * Ensures the node is referable.
- * @param node A node.
- */
-void check_referable(Node *node) {
-    NodeKind kind = node->kind;
-    if (kind != ND_VARREF && kind != ND_DEREF) {
-        char *loc = node->tok->loc;
-        error_at(loc, "error: lvalue required as left operand of assignment");
-    }
-}
-
-/**
- * Ensures the node is an integer.
- * @param node A node.
- */
-void check_int(Node *node) {
-    TypeKind kind = node->type->kind;
-    if (kind != TY_INT && kind != TY_CHAR) {
-        char *loc = node->tok->loc;
-        error_at(loc, "error: not an integer");
-    }
-}
-
-/**
- * If the given node is an array, decays it to a pointer.
- * Otherwise, does nothing.
- * @param base A node.
- * @return A node.
- */
-Node *decay_array(Node *base) {
-    if (base->type->kind != TY_ARY) {
-        return base;
-    }
-    Node *node = new_node_unary_op(ND_ADDR, base, base->tok);
-    node->type = ptr_to(base->type->base);
-    return node;
-}
-
-/**
- * Scales the number by referring to the given type.
- * @param kind The kind of a node.
- * @param base A node to be scaled.
- * @param type A type to specify the scale.
- * @return A node.
- */
-Node *scale_ptr(NodeKind kind, Node *base, Type *type) {
-    return new_node_bin_op(kind, base, new_node_num(type->base->size, base->tok), base->tok);
-}
-
 Node *do_walk(Node *node, bool decay);
+Node *walk(Node *node);
+Node *walk_nodecay(Node *node);
+
+Type *int_type();
+Type *char_type();
+Type *ptr_to(Type *base);
+Type *ary_of(Type *base, int len);
+Node *decay_array(Node *base);
+
+void ensure_referable(Node *node);
+void ensure_int(Node *node);
+
+Node *scale_ptr(NodeKind kind, Node *base, Type *type);
 
 /**
- * Semantically parses a node.
+ * Assigns types to nodes recursively.
  * @param node A node.
- * @return A node.
- */
-Node *walk(Node *node) { return do_walk(node, true); }
-
-/**
- * Semantically parses a node without decay.
- * @param node A node.
- * @return A node.
- */
-Node *walk_nodecay(Node *node) { return do_walk(node, false); }
-
-/**
- * Semantically parses a node.
- * @param node A node.
- * @param decay If True, the node may be decayed to a pointer.
+ * @param decay If true, the node may be decayed to a pointer.
  * @return A node.
  */
 Node *do_walk(Node *node, bool decay) {
@@ -145,7 +94,7 @@ Node *do_walk(Node *node, bool decay) {
             return node;
         case ND_ASSIGN:
             node->lhs = walk_nodecay(node->lhs);
-            check_referable(node->lhs);
+            ensure_referable(node->lhs);
             node->rhs = walk(node->rhs);
             node->type = node->lhs->type;
             return node;
@@ -157,13 +106,13 @@ Node *do_walk(Node *node, bool decay) {
         case ND_LT:
             node->lhs = walk(node->lhs);
             node->rhs = walk(node->rhs);
-            check_int(node->lhs);
-            check_int(node->rhs);
+            ensure_int(node->lhs);
+            ensure_int(node->rhs);
             node->type = int_type();
             return node;
         case ND_ADDR:
             node->lhs = walk(node->lhs);
-            check_referable(node->lhs);
+            ensure_referable(node->lhs);
             node->type = ptr_to(node->lhs->type);
             return node;
         case ND_DEREF:
@@ -195,19 +144,136 @@ Node *do_walk(Node *node, bool decay) {
             node->lhs = walk_nodecay(node->lhs);
             return new_node_num(node->lhs->type->size, node->tok);
         default:
-            error_at(node->tok->loc, "error: failed to assign type");
+            error_at(node->tok->loc, "error: failed to assign type\n");
     }
 }
 
 /**
- * Semantically parses a program.
+ * Semantically parses a node.
+ * @param node A node.
+ * @return A node.
  */
-void sema(Program *prog) {
+Node *walk(Node *node) { return do_walk(node, true); }
+
+/**
+ * Semantically parses a node without decay.
+ * @param node A node.
+ * @return A node.
+ */
+Node *walk_nodecay(Node *node) { return do_walk(node, false); }
+
+/**
+ * Assign a type to each nodes in a given program.
+ */
+Program *assign_type(Program *prog) {
     for (int i = 0; i < prog->fns->len; i++) {
         Function *fn = vec_at(prog->fns->vals, i);
-        // Skip a function whose body is empty.
         if (fn->body) {
             fn->body = walk(fn->body);
         }
     }
+    return prog;
+}
+
+/**
+ * Creates a type.
+ * @param type A type ID.
+ * @param size Required bytes to represent the type.
+ * @return A type.
+ */
+Type *new_type(TypeKind type, int size) {
+    Type *ret = calloc(1, sizeof(Type));
+    ret->kind = type;
+    ret->size = size;
+    ret->align = size;
+    return ret;
+}
+
+/**
+ * Creates an INT type.
+ * @return An INT type.
+ */
+Type *int_type() { return new_type(TY_INT, 4); }
+
+/**
+ * Creates a CHAR type.
+ * @return A CHAR type.
+ */
+Type *char_type() { return new_type(TY_CHAR, 1); }
+
+/**
+ * Creates a PTR type.
+ * @param base The type to be pointed.
+ * @return A PTR type.
+ */
+Type *ptr_to(Type *base) {
+    Type *type = new_type(TY_PTR, 8);
+    type->base = base;
+    return type;
+}
+
+/**
+ * Creates an ARY type.
+ * @param base The type of each item.
+ * @param size The number of items.
+ * @return An ARY type.
+ */
+Type *ary_of(Type *base, int len) {
+    Type *type = calloc(1, sizeof(Type));
+    type->kind = TY_ARY;
+    type->size = base->size * len;
+    type->align = base->align;
+    type->base = base;
+    type->array_size = len;
+    return type;
+}
+
+/**
+ * If the given node is an array, decays it to a pointer.
+ * Otherwise, does nothing.
+ * @param base A node.
+ * @return A node.
+ */
+Node *decay_array(Node *base) {
+    if (base->type->kind != TY_ARY) {
+        return base;
+    }
+    Node *node = new_node_unary_op(ND_ADDR, base, base->tok);
+    node->type = ptr_to(base->type->base);
+    return node;
+}
+
+/**
+ * Ensures the node is referable.
+ * @param node A node.
+ */
+void ensure_referable(Node *node) {
+    NodeKind kind = node->kind;
+    if (kind != ND_VARREF && kind != ND_DEREF) {
+        char *loc = node->tok->loc;
+        error_at(loc, "error: lvalue required as left operand of assignment\n");
+    }
+}
+
+/**
+ * Ensures the node is an integer.
+ * @param node A node.
+ */
+void ensure_int(Node *node) {
+    TypeKind kind = node->type->kind;
+    if (kind != TY_INT && kind != TY_CHAR) {
+        char *loc = node->tok->loc;
+        error_at(loc, "error: not an integer\n");
+    }
+}
+
+/**
+ * Scales the number by referring to the given type.
+ * @param kind The kind of a node.
+ * @param base A node to be scaled.
+ * @param type A type to specify the scale.
+ * @return A node.
+ */
+Node *scale_ptr(NodeKind kind, Node *base, Type *type) {
+    return new_node_bin_op(kind, base, new_node_num(type->base->size, base->tok), base->tok);
 }

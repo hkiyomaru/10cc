@@ -8,36 +8,26 @@
 #include <stdlib.h>
 #include <string.h>
 
+typedef struct Token Token;
+typedef struct Type Type;
+typedef struct Node Node;
+typedef struct Var Var;
+typedef struct Function Function;
+typedef struct Program Program;
+typedef struct Vector Vector;
+typedef struct Map Map;
+
 /**
- * container.c
+ * main.c
  */
-typedef struct {
-    void **data;
-    int capacity;
-    int len;
-} Vector;
-
-typedef struct {
-    Vector *keys;
-    Vector *vals;
-    int len;
-} Map;
-
-Vector *vec_create();
-void vec_push(Vector *vec, void *item);
-void vec_pushi(Vector *vec, int item);
-void *vec_at(Vector *vec, int key);
-int vec_ati(Vector *vec, int index);
-void *vec_set(Vector *vec, int index, void *item);
-void *vec_back(Vector *vec);
-Map *map_create();
-void map_insert(Map *map, char *key, void *val);
-void *map_at(Map *map, char *key);
-int map_count(Map *map, char *key);
+extern char *filename;
+extern char *user_input;
 
 /**
  * tokenize.c
  */
+extern Token *token;
+
 typedef enum {
     TK_RESERVED,  // '+', '-', and so on
     TK_IDENT,     // identifier
@@ -46,7 +36,6 @@ typedef enum {
     TK_EOF        // EOF
 } TokenKind;
 
-typedef struct Token Token;
 struct Token {
     TokenKind kind;
     Token *next;
@@ -55,28 +44,14 @@ struct Token {
     char *loc;
 };
 
-typedef enum { TY_INT, TY_PTR, TY_ARY, TY_CHAR } TypeKind;
-
-typedef struct Type Type;
-struct Type {
-    TypeKind kind;
-    int size;
-    int align;
-
-    struct Type *base;  // used when type is TY_PTR or TY_ARY
-    int array_size;
-};
-
-extern char *filename;
-extern char *user_input;
-extern Token *token;
+Token *tokenize();
 
 Token *peek(TokenKind kind, char *str);
 Token *consume(TokenKind kind, char *str);
 Token *expect(TokenKind kind, char *str);
+
 bool at_eof();
 bool at_typename();
-Token *tokenize();
 
 /**
  * parse.c
@@ -108,19 +83,19 @@ typedef enum {
     ND_NULL
 } NodeKind;  // AST nodes
 
-typedef struct Var {
+struct Program {
+    Map *fns;
+    Vector *gvars;
+};
+
+struct Function {
+    Type *rtype;
     char *name;
-    Type *type;
-    bool is_local;
+    Vector *lvars;
+    Vector *args;
+    Node *body;
+};
 
-    // Local variables
-    int offset;
-
-    // Global variables
-    char *data;
-} Var;
-
-typedef struct Node Node;
 struct Node {
     NodeKind kind;  // Node kind
     Type *type;     // Type
@@ -150,32 +125,72 @@ struct Node {
     int val;
 };
 
-typedef struct {
-    Type *rtype;
+struct Var {
     char *name;
-    Vector *lvars;
-    Vector *args;
-    Node *body;
-} Function;
+    Type *type;
+    bool is_local;
 
-typedef struct {
-    Map *fns;
-    Vector *gvars;
-} Program;
+    // Local variables
+    int offset;
+
+    // Global variables
+    char *data;
+};
 
 Program *parse();
 
-Type *int_type();
-Type *ptr_to(Type *base);
 Node *new_node(NodeKind kind, Token *tok);
 Node *new_node_bin_op(NodeKind kind, Node *lhs, Node *rhs, Token *tok);
 Node *new_node_unary_op(NodeKind kind, Node *lhs, Token *tok);
 Node *new_node_num(int val, Token *tok);
 
 /**
- * sema.c
+ * type.c
  */
-void sema(Program *prog);
+typedef enum { TY_INT, TY_PTR, TY_ARY, TY_CHAR } TypeKind;
+
+struct Type {
+    TypeKind kind;
+    int size;
+    int align;
+    struct Type *base;  // used when type is TY_PTR or TY_ARY
+    int array_size;
+};
+
+Program *assign_type(Program *prog);
+
+Type *int_type();
+Type *char_type();
+Type *ptr_to(Type *base);
+Type *ary_of(Type *base, int len);
+
+/**
+ * container.c
+ */
+struct Vector {
+    void **data;
+    int capacity;
+    int len;
+};
+
+struct Map {
+    Vector *keys;
+    Vector *vals;
+    int len;
+};
+
+Vector *vec_create();
+void vec_push(Vector *vec, void *item);
+void vec_pushi(Vector *vec, int item);
+void *vec_at(Vector *vec, int key);
+int vec_ati(Vector *vec, int index);
+void *vec_set(Vector *vec, int index, void *item);
+void *vec_back(Vector *vec);
+
+Map *map_create();
+void map_insert(Map *map, char *key, void *val);
+void *map_at(Map *map, char *key);
+int map_count(Map *map, char *key);
 
 /**
  * codegen.c
@@ -186,6 +201,7 @@ void codegen();
  * util.c
  */
 char *format(char *fmt, ...);
+void debug(char *fmt, ...);
 void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);
 bool startswith(char *p, char *q);

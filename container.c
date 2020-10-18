@@ -42,7 +42,7 @@ void vec_pushi(Vector *vec, int item) { vec_push(vec, (void *)(intptr_t)item); }
  */
 void *vec_at(Vector *vec, int index) {
     if (vec->len <= index) {
-        error("error: out of range");
+        error("error: out of range\n");
     }
     return vec->data[index];
 }
@@ -55,7 +55,7 @@ void *vec_at(Vector *vec, int index) {
  */
 int vec_ati(Vector *vec, int index) {
     if (vec->len <= index) {
-        error("error: out of range");
+        error("error: out of range\n");
     }
     return (intptr_t)(vec_at(vec, index));
 }
@@ -69,7 +69,7 @@ int vec_ati(Vector *vec, int index) {
  */
 void *vec_set(Vector *vec, int index, void *item) {
     if (vec->len <= index) {
-        error("error: out of range");
+        error("error: out of range\n");
     }
     vec->data[index] = item;
     return item;
@@ -125,7 +125,7 @@ void *map_at(Map *map, char *key) {
             return vec_at(map->vals, i);
         }
     }
-    error("error: out of range");
+    error("error: out of range\n");
 }
 
 /**

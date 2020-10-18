@@ -3,7 +3,6 @@
 typedef struct VarScope VarScope;
 struct VarScope {
     VarScope *next;
-    int depth;
     Var *var;
 };
 
@@ -11,61 +10,15 @@ typedef struct {
     VarScope *var_scope;
 } Scope;
 
-VarScope *var_scope;
-int scope_depth;
-
-/**
- * Enters scope.
- * @return A scope.
- */
-Scope *enter_scope() {
-    Scope *sc = calloc(1, sizeof(Scope));
-    sc->var_scope = var_scope;
-    scope_depth++;
-    return sc;
-}
-
-/**
- * Leaves scope.
- * @param sc A scope.
- */
-void leave_scope(Scope *sc) {
-    var_scope = sc->var_scope;
-    scope_depth--;
-}
-
-/**
- * Finds a variable.
- * @param name A variable name.
- * @return A variable scope.
- */
-VarScope *find_var(char *name) {
-    for (VarScope *sc = var_scope; sc; sc = sc->next) {
-        if (!strcmp(name, sc->var->name)) {
-            return sc;
-        }
-    }
-    return NULL;
-}
-
-/**
- * Pushes a variable scope.
- * @param var A variable.
- */
-VarScope *push_scope(Var *var) {
-    VarScope *sc = calloc(1, sizeof(VarScope));
-    sc->next = var_scope;
-    sc->depth = scope_depth;
-    sc->var = var;
-    var_scope = sc;
-    return sc;
-}
-
-int str_label_cnt = 1;
-
 Program *prog;  // The program
 Function *fn;   // The function being parsed
 
+VarScope *var_scope;
+
+int str_label_cnt = 1;
+
+void top_level();
+Function *func(Type *rtype, Token *tok);
 Node *stmt();
 Node *expr();
 Node *expr_stmt();
@@ -79,277 +32,112 @@ Node *unary();
 Node *postfix();
 Node *primary();
 
-/**
- * Creates a type.
- * @param type A type ID.
- * @param size Required bytes to represent the type.
- * @return A type.
- */
-Type *new_type(TypeKind type, int size) {
-    Type *ret = calloc(1, sizeof(Type));
-    ret->kind = type;
-    ret->size = size;
-    ret->align = size;
-    return ret;
-}
+Type *read_type();
+Type *read_array(Type *type);
+
+Node *new_node_bin_op(NodeKind kind, Node *lhs, Node *rhs, Token *tok);
+Node *new_node_unary_op(NodeKind kind, Node *lhs, Token *tok);
+Node *new_node_num(int val, Token *tok);
+Node *new_node_string(char *str, Token *tok);
+Node *new_node_varref(Var *var, Token *tok);
+Node *new_node_func_call(Token *tok);
+
+Var *new_gvar(Type *type, char *name, Token *tok);
+Var *new_lvar(Type *type, char *name, Token *tok);
+Var *declaration();
+
+Function *find_func(char *name);
+
+Scope *enter_scope();
+void leave_scope(Scope *sc);
+VarScope *push_scope(Var *var);
+VarScope *find_var(char *name);
 
 /**
- * Creates an INT type.
- * @return An INT type.
+ * Parses tokens syntactically.
+ * @return A program.
  */
-Type *int_type() { return new_type(TY_INT, 4); }
-
-/**
- * Creates a CHAR type.
- * @return A CHAR type.
- */
-Type *char_type() { return new_type(TY_CHAR, 1); }
-
-/**
- * Creates a PTR type.
- * @param base The type to be pointed.
- * @return A PTR type.
- */
-Type *ptr_to(Type *base) {
-    Type *type = new_type(TY_PTR, 8);
-    type->base = base;
-    return type;
-}
-
-/**
- * Creates an ARY type.
- * @param base The type of each item.
- * @param size The number of items.
- * @return An ARY type.
- */
-Type *ary_of(Type *base, int len) {
-    Type *type = calloc(1, sizeof(Type));
-    type->kind = TY_ARY;
-    type->size = base->size * len;
-    type->align = base->align;
-    type->base = base;
-    type->array_size = len;
-    return type;
-}
-
-/**
- * Parses tokens to represent a type.
- * @return A type.
- */
-Type *read_type() {
-    Type *type;
-    if (consume(TK_RESERVED, "int")) {
-        type = int_type();
-    } else if (consume(TK_RESERVED, "char")) {
-        type = char_type();
-    } else {
-        error_at(token->loc, "error: unknown type name '%s'", token->str);
+Program *parse() {
+    prog = calloc(1, sizeof(Program));
+    prog->fns = map_create();
+    prog->gvars = vec_create();
+    while (!at_eof()) {
+        top_level();
     }
-    while ((consume(TK_RESERVED, "*"))) {
-        type = ptr_to(type);
-    }
-    return type;
+    return prog;
 }
 
 /**
- * Parses tokens to represent an array.
- * @param type The type of each item.
- * @return A type.
+ * Parses tokens at the top level of a program.
  */
-Type *read_array(Type *type) {
-    Vector *sizes = vec_create();
-    while (consume(TK_RESERVED, "[")) {
-        Token *tok = consume(TK_NUM, NULL);
-        vec_pushi(sizes, tok ? tok->val : -1);  // TODO
-        expect(TK_RESERVED, "]");
-    }
-    for (int i = sizes->len - 1; i >= 0; i--) {
-        type = ary_of(type, vec_ati(sizes, i));
-    }
-    return type;
-}
-
-/**
- * If there exists a function whose name matches given condition,
- * returns it. Otherwise, NULL will be returned.
- * @param name The name of a function.
- * @return A function.
- */
-Function *find_func(char *name) {
-    if (map_count(prog->fns, name)) {
-        return map_at(prog->fns, name);
-    } else {
-        return NULL;
-    }
-}
-
-/**
- * Creates a variable.
- * @param type The type of a global variable.
- * @param name A name of a variable.
- * @param is_local If true, creates a local variable.
- * @return A variable.
- */
-Var *new_var(Type *type, char *name, bool is_local) {
-    Var *var = calloc(1, sizeof(Var));
-    var->type = type;
-    var->name = name;
-    var->is_local = is_local;
-    return var;
-}
-
-/**
- * Creates a node to represent a global variable.
- * The created variable is added into the list of global variables.
- * @param type The type of a global variable.
- * @param name The name of a global variable.
- * @param tok An identifiier token.
- * @return A variable.
- * @note `new_node_string` also registers variables to the global variable map.
- */
-Var *new_gvar(Type *type, char *name, Token *tok) {
-    Var *var = new_var(type, name, false);
-    vec_push(prog->gvars, var);
-    push_scope(var);
-    return var;
-}
-
-/**
- * Creates a node to represent a local variable.
- * The created variable is added into the list of local variables.
- * @param type The type of a local variable.
- * @param name The name of a global variable.
- * @param tok An identifiier token.
- * @return A variable.
- */
-Var *new_lvar(Type *type, char *name, Token *tok) {
-    Var *var = new_var(type, name, true);
-    vec_push(fn->lvars, var);
-    push_scope(var);
-    return var;
-}
-
-/**
- * Parses tokens to represent a declaration, where
- *     declaration = T ident ("[" num? "]")?
- * @return A variable.
- */
-Var *declaration() {
+void top_level() {
     Type *type = read_type();
     Token *tok = expect(TK_IDENT, NULL);
-    if (find_var(tok->str)) {
-        // TODO: Resurrect this assertion by implementing variable scope.
-        // error_at(tok->loc, "error: redeclaration of '%s'", tok->str);
+    if (peek(TK_RESERVED, "(")) {
+        func(type, tok);
+    } else {
+        if (find_var(tok->str)) {
+            error_at(tok->loc, "error: redefinition of %s\n", tok->str);
+        }
+        type = read_array(type);
+        new_gvar(type, tok->str, tok);
+        expect(TK_RESERVED, ";");
     }
-    type = read_array(type);
-    return new_lvar(type, tok->str, tok);
 }
 
 /**
- * Creates a node.
- * @param kind The kind of a node.
- * @param tok The representative token of a node.
- * @return A node.
- */
-Node *new_node(NodeKind kind, Token *tok) {
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = kind;
-    node->tok = tok;
-    return node;
-}
-
-/**
- * Creates a node to represent a binary operation.
- * @param kind The kind of a node.
- * @param lhs The left-hand side of a binary operation.
- * @param rhs The right-hand side of a binary operation.
- * @param tok A binary operator token.
- * @return A node.
- */
-Node *new_node_bin_op(NodeKind kind, Node *lhs, Node *rhs, Token *tok) {
-    Node *node = new_node(kind, tok);
-    node->lhs = lhs;
-    node->rhs = rhs;
-    return node;
-}
-
-/**
- * Creates a node to represent a unary operation.
- * @param kind The kind of a node.
- * @param lhs The input of a unary operation.
- * @param tok A representative token.
- * @return A node.
- */
-Node *new_node_unary_op(NodeKind kind, Node *lhs, Token *tok) {
-    Node *node = new_node(kind, tok);
-    node->lhs = lhs;
-    return node;
-}
-
-/**
- * Creates a node to refer a variable.
- * @param var A variable to be refered.
- * @param tok An representative token.
- * @return A node.
- */
-Node *new_node_varref(Var *var, Token *tok) {
-    Node *node = new_node(ND_VARREF, NULL);
-    node->type = var->type;
-    node->var = var;
-    return node;
-}
-
-/**
- * Creates a node to represent a number.
- * @param val A number.
- * @param tok A number token.
- * @return A node.
- */
-Node *new_node_num(int val, Token *tok) {
-    Node *node = new_node(ND_NUM, tok);
-    node->type = int_type();
-    node->val = val;
-    return node;
-}
-
-/**
- * Creates a node to represent a string literal.
- * @param str A string literal.
- * @param tok A string token.
- * @return A node.
- */
-Node *new_node_string(char *str, Token *tok) {
-    Type *type = ary_of(char_type(), strlen(str) + 1);
-    char *name = format(".L.str%d", str_label_cnt++);
-    Var *var = new_gvar(type, name, tok);
-    var->data = tok->str;
-    return new_node_varref(var, tok);
-}
-
-/**
- * Creates a node to represent a function call.
+ * Parses a function and registers it to the program.
  * Here, the function name has already been consumed.
  * So, the current token must be '('.
- * @param tok An identifiier token.
- * @return A node.
+ * @param type The type of a return variable.
+ * @param tok The name of a function.
+ * @return A function.
  */
-Node *new_node_func_call(Token *tok) {
+Function *func(Type *rtype, Token *tok) {
     Function *fn_ = find_func(tok->str);
-    if (!fn_) {
-        error_at(tok->loc, "error: undefined reference to `%s'", tok->str);
+    if (fn_) {
+        if (fn_->body) {
+            error_at(tok->loc, "error: redefinition of %s\n", tok->str);
+        }
+        // TODO: Confirm that types are sane.
     }
-    Node *node = new_node(ND_FUNC_CALL, tok);
-    node->funcname = tok->str;
-    node->type = fn_->rtype;
-    node->args = vec_create();
+
+    fn = calloc(1, sizeof(Function));
+    fn->rtype = rtype;
+    fn->name = tok->str;
+    fn->lvars = vec_create();
+
+    // Parse the arguments.
+    fn->args = vec_create();
     expect(TK_RESERVED, "(");
+    Scope *sc = enter_scope();
     while (!consume(TK_RESERVED, ")")) {
-        if (0 < node->args->len) {
+        if (0 < fn->args->len) {
             expect(TK_RESERVED, ",");
         }
-        vec_push(node->args, expr());
+        tok = token;
+        vec_push(fn->args, new_node_varref(declaration(), tok));
     }
-    return node;
+
+    // NOTE: functions must be registered before parsing their bodies
+    // to deal with recursion.
+    map_insert(prog->fns, fn->name, fn);
+
+    // If this is a prototype declaration, exit.
+    if (consume(TK_RESERVED, ";")) {
+        leave_scope(sc);
+        return fn;
+    }
+
+    // Parse the body.
+    tok = expect(TK_RESERVED, "{");
+    fn->body = new_node(ND_BLOCK, tok);
+    fn->body->stmts = vec_create();
+    while (!consume(TK_RESERVED, "}")) {
+        vec_push(fn->body->stmts, (void *)stmt());
+    }
+    leave_scope(sc);
+    return fn;
 }
 
 /**
@@ -475,7 +263,7 @@ Node *stmt_expr() {
 
     Node *last = vec_back(node->stmts);
     if (last->kind != ND_EXPR_STMT) {
-        error_at(last->tok->loc, "error: void value not ignored as it ought to be");
+        error_at(last->tok->loc, "error: void value not ignored as it ought to be\n");
     }
     memcpy(last, last->lhs, sizeof(Node));
     return node;
@@ -657,7 +445,7 @@ Node *primary() {
             if (sc->var) {
                 return new_node_varref(sc->var, tok);
             } else {
-                error_at(tok->loc, "error: '%s' undeclared", tok->str);
+                error_at(tok->loc, "error: '%s' undeclared\n", tok->str);
             }
         }
     }
@@ -673,88 +461,263 @@ Node *primary() {
 }
 
 /**
- * Parses a function and registers it to the program.
+ * Parses tokens to represent a type.
+ * @return A type.
+ */
+Type *read_type() {
+    Type *type;
+    if (consume(TK_RESERVED, "int")) {
+        type = int_type();
+    } else if (consume(TK_RESERVED, "char")) {
+        type = char_type();
+    } else {
+        error_at(token->loc, "error: unknown type name '%s'\n", token->str);
+    }
+    while ((consume(TK_RESERVED, "*"))) {
+        type = ptr_to(type);
+    }
+    return type;
+}
+
+/**
+ * Parses tokens to represent an array.
+ * @param type The type of each item.
+ * @return A type.
+ */
+Type *read_array(Type *type) {
+    Vector *sizes = vec_create();
+    while (consume(TK_RESERVED, "[")) {
+        Token *tok = consume(TK_NUM, NULL);
+        vec_pushi(sizes, tok ? tok->val : -1);  // TODO
+        expect(TK_RESERVED, "]");
+    }
+    for (int i = sizes->len - 1; i >= 0; i--) {
+        type = ary_of(type, vec_ati(sizes, i));
+    }
+    return type;
+}
+
+/**
+ * Creates a node.
+ * @param kind The kind of a node.
+ * @param tok The representative token of a node.
+ * @return A node.
+ */
+Node *new_node(NodeKind kind, Token *tok) {
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = kind;
+    node->tok = tok;
+    return node;
+}
+
+/**
+ * Creates a node to represent a binary operation.
+ * @param kind The kind of a node.
+ * @param lhs The left-hand side of a binary operation.
+ * @param rhs The right-hand side of a binary operation.
+ * @param tok A binary operator token.
+ * @return A node.
+ */
+Node *new_node_bin_op(NodeKind kind, Node *lhs, Node *rhs, Token *tok) {
+    Node *node = new_node(kind, tok);
+    node->lhs = lhs;
+    node->rhs = rhs;
+    return node;
+}
+
+/**
+ * Creates a node to represent a unary operation.
+ * @param kind The kind of a node.
+ * @param lhs The input of a unary operation.
+ * @param tok A representative token.
+ * @return A node.
+ */
+Node *new_node_unary_op(NodeKind kind, Node *lhs, Token *tok) {
+    Node *node = new_node(kind, tok);
+    node->lhs = lhs;
+    return node;
+}
+
+/**
+ * Creates a node to represent a number.
+ * @param val A number.
+ * @param tok A number token.
+ * @return A node.
+ */
+Node *new_node_num(int val, Token *tok) {
+    Node *node = new_node(ND_NUM, tok);
+    node->type = int_type();
+    node->val = val;
+    return node;
+}
+
+/**
+ * Creates a node to represent a string literal.
+ * @param str A string literal.
+ * @param tok A string token.
+ * @return A node.
+ */
+Node *new_node_string(char *str, Token *tok) {
+    Type *type = ary_of(char_type(), strlen(str) + 1);
+    char *name = format(".L.str%d", str_label_cnt++);
+    Var *var = new_gvar(type, name, tok);
+    var->data = tok->str;
+    return new_node_varref(var, tok);
+}
+
+/**
+ * Creates a node to refer a variable.
+ * @param var A variable to be refered.
+ * @param tok An representative token.
+ * @return A node.
+ */
+Node *new_node_varref(Var *var, Token *tok) {
+    Node *node = new_node(ND_VARREF, NULL);
+    node->type = var->type;
+    node->var = var;
+    return node;
+}
+
+/**
+ * Creates a node to represent a function call.
  * Here, the function name has already been consumed.
  * So, the current token must be '('.
- * @param type The type of a return variable.
- * @param tok The name of a function.
- * @return A function.
+ * @param tok An identifiier token.
+ * @return A node.
  */
-Function *new_func(Type *rtype, Token *tok) {
+Node *new_node_func_call(Token *tok) {
     Function *fn_ = find_func(tok->str);
-    if (fn_) {
-        if (fn_->body) {
-            error_at(tok->loc, "error: redefinition of %s", tok->str);
-        }
-        // TODO: Confirm that types are sane.
+    if (!fn_) {
+        error_at(tok->loc, "error: undefined reference to `%s'\n", tok->str);
     }
-
-    fn = calloc(1, sizeof(Function));
-    fn->rtype = rtype;
-    fn->name = tok->str;
-    fn->lvars = vec_create();
-
-    // Parse the arguments.
-    fn->args = vec_create();
+    Node *node = new_node(ND_FUNC_CALL, tok);
+    node->funcname = tok->str;
+    node->type = fn_->rtype;
+    node->args = vec_create();
     expect(TK_RESERVED, "(");
-    Scope *sc = enter_scope();
     while (!consume(TK_RESERVED, ")")) {
-        if (0 < fn->args->len) {
+        if (0 < node->args->len) {
             expect(TK_RESERVED, ",");
         }
-        tok = token;
-        vec_push(fn->args, new_node_varref(declaration(), tok));
+        vec_push(node->args, expr());
     }
-
-    // NOTE: functions must be registered before parsing their bodies
-    // to deal with recursion.
-    map_insert(prog->fns, fn->name, fn);
-
-    // If this is a prototype declaration, exit.
-    if (consume(TK_RESERVED, ";")) {
-        leave_scope(sc);
-        return fn;
-    }
-
-    // Parse the body.
-    tok = expect(TK_RESERVED, "{");
-    fn->body = new_node(ND_BLOCK, tok);
-    fn->body->stmts = vec_create();
-    while (!consume(TK_RESERVED, "}")) {
-        vec_push(fn->body->stmts, (void *)stmt());
-    }
-    leave_scope(sc);
-    return fn;
+    return node;
 }
 
 /**
- * Parses tokens at the top level of a program.
+ * Creates a variable.
+ * @param type The type of a global variable.
+ * @param name A name of a variable.
+ * @param is_local If true, creates a local variable.
+ * @return A variable.
  */
-void top_level() {
+Var *new_var(Type *type, char *name, bool is_local) {
+    Var *var = calloc(1, sizeof(Var));
+    var->type = type;
+    var->name = name;
+    var->is_local = is_local;
+    return var;
+}
+
+/**
+ * Creates a node to represent a global variable.
+ * The created variable is added into the list of global variables.
+ * @param type The type of a global variable.
+ * @param name The name of a global variable.
+ * @param tok An identifiier token.
+ * @return A variable.
+ * @note `new_node_string` also registers variables to the global variable map.
+ */
+Var *new_gvar(Type *type, char *name, Token *tok) {
+    Var *var = new_var(type, name, false);
+    vec_push(prog->gvars, var);
+    push_scope(var);
+    return var;
+}
+
+/**
+ * Creates a node to represent a local variable.
+ * The created variable is added into the list of local variables.
+ * @param type The type of a local variable.
+ * @param name The name of a global variable.
+ * @param tok An identifiier token.
+ * @return A variable.
+ */
+Var *new_lvar(Type *type, char *name, Token *tok) {
+    Var *var = new_var(type, name, true);
+    vec_push(fn->lvars, var);
+    push_scope(var);
+    return var;
+}
+
+/**
+ * Parses tokens to represent a declaration, where
+ *     declaration = T ident ("[" num? "]")?
+ * @return A variable.
+ */
+Var *declaration() {
     Type *type = read_type();
     Token *tok = expect(TK_IDENT, NULL);
-    if (peek(TK_RESERVED, "(")) {
-        new_func(type, tok);
+    if (find_var(tok->str)) {
+        // TODO: Resurrect this assertion by implementing variable scope.
+        // error_at(tok->loc, "error: redeclaration of '%s'", tok->str);
+    }
+    type = read_array(type);
+    return new_lvar(type, tok->str, tok);
+}
+
+/**
+ * If there exists a function whose name matches given condition,
+ * returns it. Otherwise, NULL will be returned.
+ * @param name The name of a function.
+ * @return A function.
+ */
+Function *find_func(char *name) {
+    if (map_count(prog->fns, name)) {
+        return map_at(prog->fns, name);
     } else {
-        if (find_var(tok->str)) {
-            error_at(tok->loc, "error: redefinition of %s", tok->str);
-        }
-        type = read_array(type);
-        new_gvar(type, tok->str, tok);
-        expect(TK_RESERVED, ";");
+        return NULL;
     }
 }
 
 /**
- * Parses tokens syntactically.
- * @return A program.
+ * Enters scope.
+ * @return A scope.
  */
-Program *parse() {
-    prog = calloc(1, sizeof(Program));
-    prog->fns = map_create();
-    prog->gvars = vec_create();
-    while (!at_eof()) {
-        top_level();
+Scope *enter_scope() {
+    Scope *sc = calloc(1, sizeof(Scope));
+    sc->var_scope = var_scope;
+    return sc;
+}
+
+/**
+ * Leaves scope.
+ * @param sc A scope.
+ */
+void leave_scope(Scope *sc) { var_scope = sc->var_scope; }
+
+/**
+ * Pushes a variable scope.
+ * @param var A variable.
+ */
+VarScope *push_scope(Var *var) {
+    VarScope *sc = calloc(1, sizeof(VarScope));
+    sc->next = var_scope;
+    sc->var = var;
+    var_scope = sc;
+    return sc;
+}
+
+/**
+ * Finds a variable.
+ * @param name A variable name.
+ * @return A variable scope.
+ */
+VarScope *find_var(char *name) {
+    for (VarScope *sc = var_scope; sc; sc = sc->next) {
+        if (!strcmp(name, sc->var->name)) {
+            return sc;
+        }
     }
-    return prog;
+    return NULL;
 }
