@@ -38,7 +38,6 @@ Type *read_array(Type *type);
 Node *new_node_bin_op(NodeKind kind, Node *lhs, Node *rhs, Token *tok);
 Node *new_node_unary_op(NodeKind kind, Node *lhs, Token *tok);
 Node *new_node_num(int val, Token *tok);
-Node *new_node_string(char *str, Token *tok);
 Node *new_node_varref(Var *var, Token *tok);
 Node *new_node_func_call(Token *tok);
 Node *lvar_init(Var *var, Token *tok);
@@ -47,6 +46,7 @@ Node *ary_init(Var *var, Token *tok);
 
 Var *new_gvar(Type *type, char *name, Token *tok);
 Var *new_lvar(Type *type, char *name, Token *tok);
+Var *new_strl(char *str, Token *tok);
 Var *declaration();
 
 Function *find_func(char *name);
@@ -463,7 +463,7 @@ Node *primary() {
     if (tok = consume(TK_RESERVED, "\"")) {
         tok = expect(TK_STR, NULL);
         expect(TK_RESERVED, "\"");
-        return new_node_string(tok->str, tok);
+        return new_node_varref(new_strl(tok->str, tok), tok);
     }
 
     tok = expect(TK_NUM, NULL);
@@ -559,20 +559,6 @@ Node *new_node_num(int val, Token *tok) {
     node->type = int_type();
     node->val = val;
     return node;
-}
-
-/**
- * Creates a node to represent a string literal.
- * @param str A string literal.
- * @param tok A string token.
- * @return A node.
- */
-Node *new_node_string(char *str, Token *tok) {
-    Type *type = ary_of(char_type(), strlen(str) + 1);
-    char *name = format(".L.str%d", str_label_cnt++);
-    Var *var = new_gvar(type, name, tok);
-    var->data = tok->str;
-    return new_node_varref(var, tok);
 }
 
 /**
@@ -725,7 +711,7 @@ Var *new_var(Type *type, char *name, bool is_local) {
 }
 
 /**
- * Creates a node to represent a global variable.
+ * Creates a global variable.
  * The created variable is added into the list of global variables.
  * @param type The type of a global variable.
  * @param name The name of a global variable.
@@ -741,7 +727,7 @@ Var *new_gvar(Type *type, char *name, Token *tok) {
 }
 
 /**
- * Creates a node to represent a local variable.
+ * Creates a local variable.
  * The created variable is added into the list of local variables.
  * @param type The type of a local variable.
  * @param name The name of a global variable.
@@ -752,6 +738,20 @@ Var *new_lvar(Type *type, char *name, Token *tok) {
     Var *var = new_var(type, name, true);
     vec_push(fn->lvars, var);
     push_scope(var);
+    return var;
+}
+
+/**
+ * Creates a string literal.
+ * @param str A string literal.
+ * @param tok A string token.
+ * @return A variable.
+ */
+Var *new_strl(char *str, Token *tok) {
+    Type *type = ary_of(char_type(), strlen(str) + 1);
+    char *name = format(".L.str%d", str_label_cnt++);
+    Var *var = new_gvar(type, name, tok);
+    var->data = tok->str;
     return var;
 }
 
