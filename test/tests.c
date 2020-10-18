@@ -3,7 +3,6 @@
 /**
  * A block comment.
  */
-int printf(char *fmt);
 int assert(int expected, int actual, char *code);
 
 int ret3() {
@@ -97,6 +96,7 @@ int main() {
     assert(12, ({ int x[4][3]; sizeof(*x); }), "int x[4][3]; sizeof(*x);");
     assert(12, ({ int x[3][3]; sizeof(x[0]); }), "int x[3][3]; sizeof(x[0]);");
     assert(4, ({ int x[3][3]; sizeof(x[0][0]); }), "int x[3][3]; sizeof(x[0][0]);");
-    // assert(0, ({ int x[2][3]; int *y; y=*x; *y=0; 0; }), "int x[2][3]; int *y; y=*x; *y=0; 0;");
+    assert(3, ({ int x[2][3]; x[0][0] = 3; x[0][0]; }), "int x[2][3]; x[0][0] = 3; x[0][0];");
+    assert(0, ({ int x[2][3]; int *y; y=*x; *y=0; 0; }), "int x[2][3]; int *y; y=*x; *y=0; 0;");
     return 0;
 }

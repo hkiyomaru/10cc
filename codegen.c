@@ -6,85 +6,76 @@ char *argregs8[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
 int label_cnt = 0;
 
+void gen_data(Program *prog);
+void gen_text(Program *prog);
+void gen(Node *node);
+void gen_lval(Node *node);
+void load_arg(Node *node, int index);
+void load(Type *type);
+void store(Type *type);
+
+int roundup(int x, int align);
+
 /**
- * Loads an argument following the function calling convention.
- * @param Node A node.
- * @param index The index of the argument.
+ * Generates code written in x86-64 assembly.
+ * @param prog A program.
  */
-void load_arg(Node *node, int index) {
-    switch (node->var->type->size) {
-        case 1:
-            printf("  mov [rbp-%d], %s\n", node->var->offset, argregs1[index]);
-            break;
-        case 4:
-            printf("  mov [rbp-%d], %s\n", node->var->offset, argregs4[index]);
-            break;
-        case 8:
-            printf("  mov [rbp-%d], %s\n", node->var->offset, argregs8[index]);
-            break;
+void codegen(Program *prog) {
+    printf(".intel_syntax noprefix\n");
+    gen_data(prog);
+    gen_text(prog);
+}
+
+/**
+ * Generates code to allocate memory for global variables.
+ * @param prog A program.
+ */
+void gen_data(Program *prog) {
+    printf(".data\n");
+    for (int i = 0; i < prog->gvars->len; i++) {
+        Var *var = vec_at(prog->gvars, i);
+        printf("%s:\n", var->name);
+        if (var->data) {
+            printf("  .string \"%s\"\n", var->data);
+        } else {
+            printf("  .zero %d\n", var->type->size);
+        }
     }
 }
 
 /**
- * Loads a value from an address. The address must be on the top of the stack.
- * @param type A type of a value to be loaded.
+ * Generates code to perform functions.
+ * @param prog A program.
  */
-void load(Type *type) {
-    printf("  pop rax\n");
-    switch (type->size) {
-        case 1:
-            printf("  movsx rax, byte ptr [rax]\n");
-            break;
-        case 4:
-            printf("  movsx rax, dword ptr [rax]\n");
-            break;
-        case 8:
-            printf("  mov rax, [rax]\n");
-            break;
-    }
-    printf("  push rax\n");
-}
+void gen_text(Program *prog) {
+    printf(".text\n");
+    for (int i = 0; i < prog->fns->len; i++) {
+        Function *fn = vec_at(prog->fns->vals, i);
+        if (!fn->body) {
+            continue;  // Just a prototype declaration.
+        }
 
-/**
- * Stores a value to an address. The top of the stack must be the value.
- * The second from the top must be the address.
- * @param type A type of a value to be stored.
- */
-void store(Type *type) {
-    printf("  pop rdi\n");
-    printf("  pop rax\n");
-    switch (type->size) {
-        case 1:
-            printf("  mov [rax], dil\n");
-            break;
-        case 4:
-            printf("  mov [rax], edi\n");
-            break;
-        case 8:
-            printf("  mov [rax], rdi\n");
-            break;
-    }
-    printf("  push rdi\n");
-}
+        int offset = 0;
+        for (int i = 0; i < fn->lvars->len; i++) {
+            Var *var = vec_at(fn->lvars, i);
+            offset += var->type->size;
+            offset = roundup(offset, var->type->align);
+            var->offset = offset;
+        }
 
-/**
- * Rounds up a number.
- * @param x A number to be rounded up.
- * @param align A base number.
- */
-int roundup(int x, int align) { return (x + align - 1) & ~(align - 1); }
+        printf(".global %s\n", fn->name);
+        printf("%s:\n", fn->name);
 
-/**
- * Generates a code to push an address to a variable to the stack.
- * @param node A node representing a local variable.
- */
-void gen_val(Node *node) {
-    if (node->var->is_local) {
-        printf("  lea rax, [rbp-%d]\n", node->var->offset);
-    } else {
-        printf("  lea rax, %s\n", node->var->name);
+        printf("  push rbp\n");
+        printf("  mov rbp, rsp\n");
+        printf("  sub rsp, %d\n", roundup(offset, 16));
+
+        for (int i = 0; i < fn->args->len; i++) {
+            load_arg(vec_at(fn->args, i), i);
+        }
+
+        gen(fn->body);
     }
-    printf("  push rax\n");
 }
 
 /**
@@ -100,14 +91,14 @@ void gen(Node *node) {
             printf("  push %d\n", node->val);
             return;
         case ND_ADDR:
-            gen_val(node->lhs);
+            gen_lval(node->lhs);
             return;
         case ND_DEREF:
             gen(node->lhs);
             load(node->type);
             return;
         case ND_VARREF:
-            gen_val(node);
+            gen_lval(node);
             if (node->type->kind != TY_ARY) {
                 load(node->type);
             }
@@ -127,7 +118,7 @@ void gen(Node *node) {
             if (node->lhs->kind == ND_DEREF) {
                 gen(node->lhs->lhs);
             } else {
-                gen_val(node->lhs);
+                gen_lval(node->lhs);
             }
             gen(node->rhs);
             store(node->lhs->type);
@@ -234,63 +225,89 @@ void gen(Node *node) {
 }
 
 /**
- * Generates code to allocate memory for global variables.
- * @param prog A program.
+ * Generates a code to push an address to a variable to the stack.
+ * @param node A node representing a local variable.
  */
-void gen_data(Program *prog) {
-    printf(".data\n");
-    for (int i = 0; i < prog->gvars->len; i++) {
-        Var *var = vec_at(prog->gvars, i);
-        printf("%s:\n", var->name);
-        if (var->data) {
-            printf("  .string \"%s\"\n", var->data);
-        } else {
-            printf("  .zero %d\n", var->type->size);
-        }
+void gen_lval(Node *node) {
+    switch (node->kind) {
+        case ND_VARREF:
+            if (node->var->is_local) {
+                printf("  lea rax, [rbp-%d]\n", node->var->offset);
+            } else {
+                printf("  lea rax, %s\n", node->var->name);
+            }
+            printf("  push rax\n");
+            break;
+        case ND_DEREF:
+            gen(node->lhs);
+            break;
     }
 }
 
 /**
- * Generates code to perform functions.
- * @param prog A program.
+ * Loads an argument following the function calling convention.
+ * @param Node A node.
+ * @param index The index of the argument.
  */
-void gen_text(Program *prog) {
-    printf(".text\n");
-    for (int i = 0; i < prog->fns->len; i++) {
-        Function *fn = vec_at(prog->fns->vals, i);
-        if (!fn->body) {
-            continue;  // Just a prototype declaration.
-        }
-
-        int offset = 0;
-        for (int i = 0; i < fn->lvars->len; i++) {
-            Var *var = vec_at(fn->lvars, i);
-            offset += var->type->size;
-            offset = roundup(offset, var->type->align);
-            var->offset = offset;
-        }
-
-        printf(".global %s\n", fn->name);
-        printf("%s:\n", fn->name);
-
-        printf("  push rbp\n");
-        printf("  mov rbp, rsp\n");
-        printf("  sub rsp, %d\n", roundup(offset, 16));
-
-        for (int i = 0; i < fn->args->len; i++) {
-            load_arg(vec_at(fn->args, i), i);
-        }
-
-        gen(fn->body);
+void load_arg(Node *node, int index) {
+    switch (node->var->type->size) {
+        case 1:
+            printf("  mov [rbp-%d], %s\n", node->var->offset, argregs1[index]);
+            break;
+        case 4:
+            printf("  mov [rbp-%d], %s\n", node->var->offset, argregs4[index]);
+            break;
+        case 8:
+            printf("  mov [rbp-%d], %s\n", node->var->offset, argregs8[index]);
+            break;
     }
 }
 
 /**
- * Generates code written in x86-64 assembly.
- * @param prog A program.
+ * Loads a value from an address. The address must be on the top of the stack.
+ * @param type A type of a value to be loaded.
  */
-void codegen(Program *prog) {
-    printf(".intel_syntax noprefix\n");
-    gen_data(prog);
-    gen_text(prog);
+void load(Type *type) {
+    printf("  pop rax\n");
+    switch (type->size) {
+        case 1:
+            printf("  movsx rax, byte ptr [rax]\n");
+            break;
+        case 4:
+            printf("  movsx rax, dword ptr [rax]\n");
+            break;
+        case 8:
+            printf("  mov rax, [rax]\n");
+            break;
+    }
+    printf("  push rax\n");
 }
+
+/**
+ * Stores a value to an address. The top of the stack must be the value.
+ * The second from the top must be the address.
+ * @param type A type of a value to be stored.
+ */
+void store(Type *type) {
+    printf("  pop rdi\n");
+    printf("  pop rax\n");
+    switch (type->size) {
+        case 1:
+            printf("  mov [rax], dil\n");
+            break;
+        case 4:
+            printf("  mov [rax], edi\n");
+            break;
+        case 8:
+            printf("  mov [rax], rdi\n");
+            break;
+    }
+    printf("  push rdi\n");
+}
+
+/**
+ * Rounds up a number.
+ * @param x A number to be rounded up.
+ * @param align A base number.
+ */
+int roundup(int x, int align) { return (x + align - 1) & ~(align - 1); }
