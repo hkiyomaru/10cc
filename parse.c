@@ -649,12 +649,11 @@ Node *int_init(Var *var, Token *tok) {
 Node *ary_init(Var *var, Token *tok) {
     assert(var->type->kind == TY_ARY);
 
+    Node *node = new_node(ND_BLOCK, tok);
+    node->stmts = vec_create();
     Node *lvar = new_node_varref(var, tok);
-
     if (tok = consume(TK_RESERVED, "{")) {
         // {expr, ...}
-        Node *node = new_node(ND_BLOCK, tok);
-        node->stmts = vec_create();
         for (int i = 0;; i++) {
             if (consume(TK_RESERVED, "}")) {
                 break;
@@ -675,17 +674,38 @@ Node *ary_init(Var *var, Token *tok) {
             lvar->type->array_size = node->stmts->len;
             lvar->type->size = lvar->type->base->size * node->stmts->len;
         }
-        for (int i = node->stmts->len; i < lvar->type->array_size; i++) {
+    } else if (tok = consume(TK_RESERVED, "\"")) {
+        // string literal
+        Token *tok = expect(TK_STR, NULL);
+        expect(TK_RESERVED, "\"");
+        if (var->type->array_size != -1 && strlen(tok->str) > var->type->array_size - 1) {
+            error_at(tok->loc, "error: initializer-string for array of chars is too long");
+        }
+        for (int i = 0; i < strlen(tok->str); i++) {
             Node *index = new_node_num(i, NULL);
             Node *addr = new_node_bin_op(ND_ADD, lvar, index, NULL);
             Node *lval = new_node_unary_op(ND_DEREF, addr, NULL);
-            Node *asgn = new_node_bin_op(ND_ASSIGN, lval, new_node_num(0, NULL), NULL);
+            Node *asgn = new_node_bin_op(ND_ASSIGN, lval, new_node_num(tok->str[i], NULL), NULL);
             vec_push(node->stmts, new_node_unary_op(ND_EXPR_STMT, asgn, NULL));
         }
-        return node;
-    } else if (tok = consume(TK_RESERVED, "\"")) {
-        // string literal
+        Node *index = new_node_num(strlen(tok->str), NULL);
+        Node *addr = new_node_bin_op(ND_ADD, lvar, index, NULL);
+        Node *lval = new_node_unary_op(ND_DEREF, addr, NULL);
+        Node *asgn = new_node_bin_op(ND_ASSIGN, lval, new_node_num(0, NULL), NULL);
+        vec_push(node->stmts, new_node_unary_op(ND_EXPR_STMT, asgn, NULL));
+        if (lvar->type->array_size == -1) {
+            lvar->type->array_size = strlen(tok->str);
+            lvar->type->size = lvar->type->base->size * strlen(tok->str);
+        }
     }
+    for (int i = node->stmts->len; i < lvar->type->array_size; i++) {
+        Node *index = new_node_num(i, NULL);
+        Node *addr = new_node_bin_op(ND_ADD, lvar, index, NULL);
+        Node *lval = new_node_unary_op(ND_DEREF, addr, NULL);
+        Node *asgn = new_node_bin_op(ND_ASSIGN, lval, new_node_num(0, NULL), NULL);
+        vec_push(node->stmts, new_node_unary_op(ND_EXPR_STMT, asgn, NULL));
+    }
+    return node;
 }
 
 /**
