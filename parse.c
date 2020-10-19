@@ -181,9 +181,7 @@ Node *stmt() {
         node->cond = expr();
         expect(TK_RESERVED, ")");
         node->then = stmt();
-        if (consume(TK_RESERVED, "else")) {
-            node->els = stmt();
-        }
+        node->els = consume(TK_RESERVED, "else") ? stmt() : new_node(ND_NULL, NULL);
         return node;
     }
 
@@ -200,17 +198,10 @@ Node *stmt() {
         Node *node = new_node(ND_FOR, tok);
         expect(TK_RESERVED, "(");
         Scope *sc = enter_scope();
-        if (!consume(TK_RESERVED, ";")) {
-            node->init = expr_stmt();
-            expect(TK_RESERVED, ";");
-        }
-        if (!consume(TK_RESERVED, ";")) {
-            node->cond = expr();
-            expect(TK_RESERVED, ";");
-        }
-        if (!consume(TK_RESERVED, ")")) {
-            node->upd = expr_stmt();
-        }
+        node->init = consume(TK_RESERVED, ";") ? new_node(ND_NULL, NULL) : expr_stmt();
+        node->cond = consume(TK_RESERVED, ";") ? new_node_num(1, NULL) : expr();
+        expect(TK_RESERVED, ";");
+        node->upd = peek(TK_RESERVED, ")") ? new_node(ND_NULL, NULL) : expr();
         expect(TK_RESERVED, ")");
         node->then = stmt();
         leave_scope(sc);
@@ -218,14 +209,9 @@ Node *stmt() {
     }
 
     if (at_typename()) {
-        Node *node;
         tok = token;
         Var *var = decl();
-        if (tok = consume(TK_RESERVED, "=")) {
-            node = lvar_init(var, tok);
-        } else {
-            node = new_node(ND_NULL, tok);
-        }
+        Node *node = consume(TK_RESERVED, "=") ? lvar_init(var, tok) : new_node(ND_NULL, tok);
         expect(TK_RESERVED, ";");
         return node;
     }
@@ -234,9 +220,7 @@ Node *stmt() {
         return new_node(ND_NULL, tok);
     }
 
-    Node *node = expr_stmt();
-    expect(TK_RESERVED, ";");
-    return node;
+    return expr_stmt();
 }
 
 /**
@@ -247,10 +231,15 @@ Node *stmt() {
 Node *expr() { return assign(); }
 
 /**
- * Creates a node to represent an expression statement.
+ * Creates a node to represent an expression statement, where
+ *     expr_stmt = expr ";"
  * @return A node.
  */
-Node *expr_stmt() { return new_node_unary_op(ND_EXPR_STMT, expr(), token); }
+Node *expr_stmt() {
+    Node *node = new_node_unary_op(ND_EXPR_STMT, expr(), token);
+    expect(TK_RESERVED, ";");
+    return node;
+}
 
 /**
  * Parses tokens to represent a statement expression, where
@@ -265,10 +254,9 @@ Node *stmt_expr() {
     node->stmts = vec_create();
 
     Scope *sc = enter_scope();
-    vec_push(node->stmts, stmt());
-    while (!consume(TK_RESERVED, "}")) {
+    do {
         vec_push(node->stmts, stmt());
-    }
+    } while (!consume(TK_RESERVED, "}"));
     leave_scope(sc);
 
     Node *last = vec_back(node->stmts);
@@ -437,12 +425,7 @@ Node *postfix() {
 Node *primary() {
     Token *tok;
     if (tok = consume(TK_RESERVED, "(")) {
-        Node *node;
-        if (peek(TK_RESERVED, "{")) {
-            node = stmt_expr();
-        } else {
-            node = expr();
-        }
+        Node *node = peek(TK_RESERVED, "{") ? stmt_expr() : expr();
         expect(TK_RESERVED, ")");
         return node;
     }

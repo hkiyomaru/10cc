@@ -38,20 +38,12 @@ Node *do_walk(Node *node, bool decay) {
         case ND_IF:
             node->cond = walk(node->cond);
             node->then = walk(node->then);
-            if (node->els) {
-                node->els = walk(node->els);
-            }
+            node->els = walk(node->els);
             return node;
         case ND_FOR:
-            if (node->init) {
-                node->init = walk(node->init);
-            }
-            if (node->cond) {
-                node->cond = walk(node->cond);
-            }
-            if (node->upd) {
-                node->upd = walk(node->upd);
-            }
+            node->init = walk(node->init);
+            node->cond = walk(node->cond);
+            node->upd = walk(node->upd);
             node->then = walk(node->then);
             return node;
         case ND_WHILE:
