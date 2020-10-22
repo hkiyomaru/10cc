@@ -74,14 +74,18 @@ Program *parse() {
 void top_level() {
     Type *type = read_type();
     Token *tok = expect(TK_IDENT, NULL);
+    type = read_ary(type);
     if (peek(TK_RESERVED, "(")) {
         func(type, tok);
     } else {
-        if (find_var(tok->str)) {
-            error_at(tok->loc, "error: redefinition of %s\n", tok->str);
+        if (map_count(scope->vars, tok->str)) {
+            Var *var = map_at(scope->vars, tok->str);
+            if (!is_same_type(type, var->type)) {
+                error_at(tok->loc, "error: conflicting types for '%s'", tok->str);
+            }
+        } else {
+            new_gvar(type, tok->str, tok);
         }
-        type = read_ary(type);
-        new_gvar(type, tok->str, tok);
         expect(TK_RESERVED, ";");
     }
 }
@@ -746,11 +750,16 @@ Var *new_strl(char *str, Token *tok) {
 Var *decl() {
     Type *type = read_type();
     Token *tok = expect(TK_IDENT, NULL);
-    if (find_var(tok->str)) {
-        // TODO: Resurrect this assertion by implementing variable scope.
-        // error_at(tok->loc, "error: redeclaration of '%s'", tok->str);
-    }
     type = read_ary(type);
+    if (map_count(scope->vars, tok->str)) {
+        Var *var = map_at(scope->vars, tok->str);
+        if (!is_same_type(type, var->type)) {
+            error_at(tok->loc, "error: conflicting types for '%s'", tok->str);
+        } else {
+            error_at(tok->loc, "error: redeclaration of '%s'", tok->str);
+        }
+        return var;
+    }
     return new_lvar(type, tok->str, tok);
 }
 

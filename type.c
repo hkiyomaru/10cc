@@ -10,6 +10,8 @@ Type *ptr_to(Type *base);
 Type *ary_of(Type *base, int len);
 Node *decay_array(Node *base);
 
+bool is_same_type(Type *x, Type *y);
+
 void ensure_referable(Node *node);
 void ensure_int(Node *node);
 
@@ -235,6 +237,24 @@ Node *decay_array(Node *base) {
     Node *node = new_node_unary_op(ND_ADDR, base, base->tok);
     node->type = ptr_to(base->type->base);
     return node;
+}
+
+/**
+ * Returns true if given two types are the same.
+ * @return True if given two types are the same.
+ */
+bool is_same_type(Type *x, Type *y) {
+    if (x->kind != y->kind) {
+        return false;
+    }
+    switch (x->kind) {
+        case TY_PTR:
+            return is_same_type(x->base, y->base);
+        case TY_ARY:
+            return x->array_size == y->array_size && is_same_type(x->base, y->base);
+        default:
+            return true;
+    }
 }
 
 /**

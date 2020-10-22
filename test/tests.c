@@ -44,6 +44,9 @@ int int_gvar;
 int *intptr_gvar;
 int intary_gvar[2];
 
+// Redefinition is allowd for global variables.
+int a; int a;
+
 int main() {
     assert(1, ({ 1; }), "1;");
     assert(2, ({ 1 + 1; }), "1 + 1;");

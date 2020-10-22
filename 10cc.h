@@ -163,6 +163,7 @@ Type *int_type();
 Type *char_type();
 Type *ptr_to(Type *base);
 Type *ary_of(Type *base, int len);
+bool is_same_type(Type *x, Type *y);
 
 /**
  * container.c
