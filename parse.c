@@ -3,17 +3,13 @@
 typedef struct VarScope VarScope;
 struct VarScope {
     VarScope *next;
-    Var *var;
+    Map *vars;
 };
-
-typedef struct {
-    VarScope *var_scope;
-} Scope;
 
 Program *prog;  // The program
 Function *fn;   // The function being parsed
 
-VarScope *var_scope;
+VarScope *scope;
 
 int str_label_cnt = 1;
 
@@ -51,10 +47,11 @@ Var *decl();
 
 Function *find_func(char *name);
 
-Scope *enter_scope();
-void leave_scope(Scope *sc);
-VarScope *push_scope(Var *var);
-VarScope *find_var(char *name);
+VarScope *new_scope();
+void *enter_scope();
+void leave_scope();
+void *push_scope(Var *var);
+Var *find_var(char *name);
 
 /**
  * Parses tokens syntactically.
@@ -62,6 +59,7 @@ VarScope *find_var(char *name);
  */
 Program *parse() {
     prog = calloc(1, sizeof(Program));
+    scope = new_scope();
     prog->fns = map_create();
     prog->gvars = vec_create();
     while (!at_eof()) {
@@ -113,7 +111,7 @@ Function *func(Type *rtype, Token *tok) {
     // Parse the arguments.
     fn->args = vec_create();
     expect(TK_RESERVED, "(");
-    Scope *sc = enter_scope();
+    enter_scope();
     while (!consume(TK_RESERVED, ")")) {
         if (0 < fn->args->len) {
             expect(TK_RESERVED, ",");
@@ -128,7 +126,7 @@ Function *func(Type *rtype, Token *tok) {
 
     // If this is a prototype declaration, exit.
     if (consume(TK_RESERVED, ";")) {
-        leave_scope(sc);
+        leave_scope();
         return fn;
     }
 
@@ -139,7 +137,7 @@ Function *func(Type *rtype, Token *tok) {
     while (!consume(TK_RESERVED, "}")) {
         vec_push(fn->body->stmts, (void *)stmt());
     }
-    leave_scope(sc);
+    leave_scope();
     return fn;
 }
 
@@ -160,11 +158,11 @@ Node *stmt() {
     if (tok = consume(TK_RESERVED, "{")) {
         Node *node = new_node(ND_BLOCK, tok);
         node->stmts = vec_create();
-        Scope *sc = enter_scope();
+        enter_scope();
         while (!consume(TK_RESERVED, "}")) {
             vec_push(node->stmts, (void *)stmt());
         }
-        leave_scope(sc);
+        leave_scope();
         return node;
     }
 
@@ -197,14 +195,14 @@ Node *stmt() {
     if (tok = consume(TK_RESERVED, "for")) {
         Node *node = new_node(ND_FOR, tok);
         expect(TK_RESERVED, "(");
-        Scope *sc = enter_scope();
+        enter_scope();
         node->init = consume(TK_RESERVED, ";") ? new_node(ND_NULL, NULL) : expr_stmt();
         node->cond = peek(TK_RESERVED, ";") ? new_node_num(1, NULL) : expr();
         expect(TK_RESERVED, ";");
         node->upd = peek(TK_RESERVED, ")") ? new_node(ND_NULL, NULL) : expr();
         expect(TK_RESERVED, ")");
         node->then = stmt();
-        leave_scope(sc);
+        leave_scope();
         return node;
     }
 
@@ -253,11 +251,11 @@ Node *stmt_expr() {
     Node *node = new_node(ND_STMT_EXPR, tok);
     node->stmts = vec_create();
 
-    Scope *sc = enter_scope();
+    enter_scope();
     do {
         vec_push(node->stmts, stmt());
     } while (!consume(TK_RESERVED, "}"));
-    leave_scope(sc);
+    leave_scope();
 
     Node *last = vec_back(node->stmts);
     if (last->kind != ND_EXPR_STMT) {
@@ -434,9 +432,9 @@ Node *primary() {
         if (peek(TK_RESERVED, "(")) {
             return new_node_func_call(tok);
         } else {
-            VarScope *sc = find_var(tok->str);
-            if (sc->var) {
-                return new_node_varref(sc->var, tok);
+            Var *var = find_var(tok->str);
+            if (var) {
+                return new_node_varref(var, tok);
             } else {
                 error_at(tok->loc, "error: '%s' undeclared\n", tok->str);
             }
@@ -769,42 +767,47 @@ Function *find_func(char *name) {
 }
 
 /**
+ * Create an empty variable scope.
+ * @return A variable scope.
+ */
+VarScope *new_scope() {
+    VarScope *sc = calloc(1, sizeof(VarScope));
+    sc->next = NULL;
+    sc->vars = map_create();
+    return sc;
+}
+
+/**
  * Enters scope.
  * @return A scope.
  */
-Scope *enter_scope() {
-    Scope *sc = calloc(1, sizeof(Scope));
-    sc->var_scope = var_scope;
-    return sc;
+void *enter_scope() {
+    VarScope *sc = new_scope();
+    sc->next = scope;
+    scope = sc;
 }
 
 /**
  * Leaves scope.
  * @param sc A scope.
  */
-void leave_scope(Scope *sc) { var_scope = sc->var_scope; }
+void leave_scope() { scope = scope->next; }
 
 /**
- * Pushes a variable scope.
+ * Pushes a variable to the current scope.
  * @param var A variable.
  */
-VarScope *push_scope(Var *var) {
-    VarScope *sc = calloc(1, sizeof(VarScope));
-    sc->next = var_scope;
-    sc->var = var;
-    var_scope = sc;
-    return sc;
-}
+void *push_scope(Var *var) { map_insert(scope->vars, var->name, var); }
 
 /**
  * Finds a variable.
  * @param name A variable name.
  * @return A variable scope.
  */
-VarScope *find_var(char *name) {
-    for (VarScope *sc = var_scope; sc; sc = sc->next) {
-        if (!strcmp(name, sc->var->name)) {
-            return sc;
+Var *find_var(char *name) {
+    for (VarScope *sc = scope; sc; sc = sc->next) {
+        if (map_count(sc->vars, name)) {
+            return map_at(sc->vars, name);
         }
     }
     return NULL;
