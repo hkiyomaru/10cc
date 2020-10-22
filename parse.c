@@ -145,7 +145,7 @@ Function *func(Type *rtype, Token *tok) {
 
 /**
  * Parses tokens to represent a statement, where
- *     stmt = expr ";"
+ *     stmt = expr_stmt ";"
  *          | "{" stmt* "}"
  *          | "if" "(" expr ")" stmt ("else" stmt)?
  *          | "while" "(" expr ")" stmt
