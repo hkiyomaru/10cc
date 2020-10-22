@@ -161,9 +161,9 @@ Node *walk_nodecay(Node *node) { return do_walk(node, false); }
 /**
  * Assign a type to each nodes in a given program.
  */
-Program *assign_type(Program *prog) {
+Prog *assign_type(Prog *prog) {
     for (int i = 0; i < prog->fns->len; i++) {
-        Function *fn = vec_at(prog->fns->vals, i);
+        Func *fn = vec_at(prog->fns->vals, i);
         if (fn->body) {
             fn->body = walk(fn->body);
         }

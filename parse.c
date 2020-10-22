@@ -6,15 +6,15 @@ struct VarScope {
     Map *vars;
 };
 
-Program *prog;  // The program
-Function *fn;   // The function being parsed
+Prog *prog;  // The program
+Func *fn;    // The function being parsed
 
 VarScope *scope;
 
 int str_label_cnt = 1;
 
 void top_level();
-Function *func(Type *rtype, Token *tok);
+Func *func(Type *rtype, Token *tok);
 Node *stmt();
 Node *expr();
 Node *expr_stmt();
@@ -45,7 +45,7 @@ Var *new_lvar(Type *type, char *name, Token *tok);
 Var *new_strl(char *str, Token *tok);
 Var *decl();
 
-Function *find_func(char *name);
+Func *find_func(char *name);
 
 VarScope *new_scope();
 void *enter_scope();
@@ -57,8 +57,8 @@ Var *find_var(char *name);
  * Parses tokens syntactically.
  * @return A program.
  */
-Program *parse() {
-    prog = calloc(1, sizeof(Program));
+Prog *parse() {
+    prog = calloc(1, sizeof(Prog));
     scope = new_scope();
     prog->fns = map_create();
     prog->gvars = vec_create();
@@ -98,8 +98,8 @@ void top_level() {
  * @param tok The name of a function.
  * @return A function.
  */
-Function *func(Type *rtype, Token *tok) {
-    Function *fn_ = find_func(tok->str);
+Func *func(Type *rtype, Token *tok) {
+    Func *fn_ = find_func(tok->str);
     if (fn_) {
         if (fn_->body) {
             error_at(tok->loc, "error: redefinition of %s\n", tok->str);
@@ -107,7 +107,7 @@ Function *func(Type *rtype, Token *tok) {
         // TODO: Confirm that types are sane.
     }
 
-    fn = calloc(1, sizeof(Function));
+    fn = calloc(1, sizeof(Func));
     fn->rtype = rtype;
     fn->name = tok->str;
     fn->lvars = vec_create();
@@ -569,7 +569,7 @@ Node *new_node_varref(Var *var, Token *tok) {
  * @return A node.
  */
 Node *new_node_func_call(Token *tok) {
-    Function *fn_ = find_func(tok->str);
+    Func *fn_ = find_func(tok->str);
     if (!fn_) {
         error_at(tok->loc, "error: undefined reference to `%s'\n", tok->str);
     }
@@ -769,7 +769,7 @@ Var *decl() {
  * @param name The name of a function.
  * @return A function.
  */
-Function *find_func(char *name) {
+Func *find_func(char *name) {
     if (map_count(prog->fns, name)) {
         return map_at(prog->fns, name);
     } else {

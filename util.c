@@ -234,9 +234,9 @@ void draw_node(Node *node, int depth, char *role) {
  * Draws the abstract syntax tree of a program.
  * @param prog A program.
  */
-void draw_ast(Program *prog) {
+void draw_ast(Prog *prog) {
     for (int i = 0; i < prog->fns->len; i++) {
-        Function *fn = vec_at(prog->fns->vals, i);
+        Func *fn = vec_at(prog->fns->vals, i);
         debug("%s(\n", fn->name);
         for (int j = 0; j < fn->args->len; j++) {
             draw_node(fn->args->data[j], 1, format("arg%d", j));

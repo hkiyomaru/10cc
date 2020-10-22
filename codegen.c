@@ -6,8 +6,8 @@ char *argregs8[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
 int label_cnt = 0;
 
-void gen_data(Program *prog);
-void gen_text(Program *prog);
+void gen_data(Prog *prog);
+void gen_text(Prog *prog);
 void gen(Node *node);
 void gen_lval(Node *node);
 void load_arg(Node *node, int index);
@@ -20,7 +20,7 @@ int roundup(int x, int align);
  * Generates code written in x86-64 assembly.
  * @param prog A program.
  */
-void codegen(Program *prog) {
+void codegen(Prog *prog) {
     printf(".intel_syntax noprefix\n");
     gen_data(prog);
     gen_text(prog);
@@ -30,7 +30,7 @@ void codegen(Program *prog) {
  * Generates code to allocate memory for global variables.
  * @param prog A program.
  */
-void gen_data(Program *prog) {
+void gen_data(Prog *prog) {
     printf(".data\n");
     for (int i = 0; i < prog->gvars->len; i++) {
         Var *var = vec_at(prog->gvars, i);
@@ -47,10 +47,10 @@ void gen_data(Program *prog) {
  * Generates code to perform functions.
  * @param prog A program.
  */
-void gen_text(Program *prog) {
+void gen_text(Prog *prog) {
     printf(".text\n");
     for (int i = 0; i < prog->fns->len; i++) {
-        Function *fn = vec_at(prog->fns->vals, i);
+        Func *fn = vec_at(prog->fns->vals, i);
         if (!fn->body) {
             continue;  // Just a prototype declaration.
         }

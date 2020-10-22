@@ -12,8 +12,8 @@ typedef struct Token Token;
 typedef struct Type Type;
 typedef struct Node Node;
 typedef struct Var Var;
-typedef struct Function Function;
-typedef struct Program Program;
+typedef struct Func Func;
+typedef struct Prog Prog;
 typedef struct Vector Vector;
 typedef struct Map Map;
 
@@ -83,12 +83,12 @@ typedef enum {
     ND_NULL
 } NodeKind;  // AST nodes
 
-struct Program {
+struct Prog {
     Map *fns;
     Vector *gvars;
 };
 
-struct Function {
+struct Func {
     Type *rtype;
     char *name;
     Vector *lvars;
@@ -137,7 +137,7 @@ struct Var {
     char *data;
 };
 
-Program *parse();
+Prog *parse();
 
 Node *new_node(NodeKind kind, Token *tok);
 Node *new_node_bin_op(NodeKind kind, Node *lhs, Node *rhs, Token *tok);
@@ -157,7 +157,7 @@ struct Type {
     int array_size;
 };
 
-Program *assign_type(Program *prog);
+Prog *assign_type(Prog *prog);
 
 Type *int_type();
 Type *char_type();
@@ -207,4 +207,4 @@ void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);
 bool startswith(char *p, char *q);
 bool isalnumus(char c);
-void draw_ast(Program *prog);
+void draw_ast(Prog *prog);
