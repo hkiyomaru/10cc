@@ -144,7 +144,7 @@ Function *func(Type *rtype, Token *tok) {
 /**
  * Parses tokens to represent a statement, where
  *     stmt = expr_stmt ";"
- *          | "{" stmt* "}"
+ *          | "{" stmt+ "}"
  *          | "if" "(" expr ")" stmt ("else" stmt)?
  *          | "while" "(" expr ")" stmt
  *          | "for" "(" expr? ";" expr? ";" expr? ")" stmt
@@ -159,9 +159,9 @@ Node *stmt() {
         Node *node = new_node(ND_BLOCK, tok);
         node->stmts = vec_create();
         enter_scope();
-        while (!consume(TK_RESERVED, "}")) {
+        do {
             vec_push(node->stmts, (void *)stmt());
-        }
+        } while (!consume(TK_RESERVED, "}"));
         leave_scope();
         return node;
     }
@@ -196,10 +196,11 @@ Node *stmt() {
         Node *node = new_node(ND_FOR, tok);
         expect(TK_RESERVED, "(");
         enter_scope();
-        node->init = consume(TK_RESERVED, ";") ? new_node(ND_NULL, NULL) : expr_stmt();
+        node->init = peek(TK_RESERVED, ";") ? new_node(ND_NULL, NULL) : expr_stmt();
+        expect(TK_RESERVED, ";");
         node->cond = peek(TK_RESERVED, ";") ? new_node_num(1, NULL) : expr();
         expect(TK_RESERVED, ";");
-        node->upd = peek(TK_RESERVED, ")") ? new_node(ND_NULL, NULL) : expr();
+        node->upd = peek(TK_RESERVED, ")") ? new_node(ND_NULL, NULL) : expr_stmt();
         expect(TK_RESERVED, ")");
         node->then = stmt();
         leave_scope();
@@ -218,7 +219,9 @@ Node *stmt() {
         return new_node(ND_NULL, tok);
     }
 
-    return expr_stmt();
+    Node *node = expr_stmt();
+    expect(TK_RESERVED, ";");
+    return node;
 }
 
 /**
@@ -235,7 +238,6 @@ Node *expr() { return assign(); }
  */
 Node *expr_stmt() {
     Node *node = new_node_unary_op(ND_EXPR_STMT, expr(), token);
-    expect(TK_RESERVED, ";");
     return node;
 }
 
