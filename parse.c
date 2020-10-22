@@ -263,7 +263,7 @@ Node *stmt_expr() {
     if (last->kind != ND_EXPR_STMT) {
         error_at(last->tok->loc, "error: void value not ignored as it ought to be\n");
     }
-    memcpy(last, last->lhs, sizeof(Node));
+    vec_set(node->stmts, node->stmts->len - 1, last->lhs);
     return node;
 }
 
