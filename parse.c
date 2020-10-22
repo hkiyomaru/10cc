@@ -199,7 +199,7 @@ Node *stmt() {
         expect(TK_RESERVED, "(");
         Scope *sc = enter_scope();
         node->init = consume(TK_RESERVED, ";") ? new_node(ND_NULL, NULL) : expr_stmt();
-        node->cond = consume(TK_RESERVED, ";") ? new_node_num(1, NULL) : expr();
+        node->cond = peek(TK_RESERVED, ";") ? new_node_num(1, NULL) : expr();
         expect(TK_RESERVED, ";");
         node->upd = peek(TK_RESERVED, ")") ? new_node(ND_NULL, NULL) : expr();
         expect(TK_RESERVED, ")");
