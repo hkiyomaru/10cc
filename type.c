@@ -130,7 +130,9 @@ Node *do_walk(Node *node, bool decay) {
                 Node *stmt = vec_at(node->stmts, i);
                 vec_set(node->stmts, i, walk(stmt));
             }
-            node->type = ((Node *)vec_back(node->stmts))->type;
+            if (node->stmts->len) {
+                node->type = ((Node *)vec_back(node->stmts))->type;
+            }
             return node;
         case ND_SIZEOF:
             node->lhs = walk_nodecay(node->lhs);
