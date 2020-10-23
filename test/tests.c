@@ -153,5 +153,11 @@ int main() {
     assert(1, ({ int a = 0; int b = 0; a = a + b++; b; }), "int a = 0; int b = 0; a = a + b++; b;");
     assert(1, ({ int a[3] = {0, 1, 2}; int *p = a; p++; *p; }), "int a[3] = {0, 1, 2}; int *p = a; p++; *p;");
     assert(55, ({ int total; int i; total = 0; for (i=1; i <= 10; i++) total = total + i; total; }), "int total; int i; total = 0; for (i=1; i <= 10; i++) total = total + i; total;");
+    assert(0, ({ int a = 1; --a; }), "int a = 1; --a;");
+    assert(1, ({ int a = 1; a--; }), "int a = 1; a--;");
+    assert(0, ({ int a = 1; a--; a; }), "int a = 1; a--; a;");
+    assert(0, ({ int a[3] = {0, 1, 2}; int *p = a; ++p; --p; *p; }), "int a[3] = {0, 1, 2}; int *p = a; ++p; --p; *p;");
+    assert(0, ({ int a[3] = {0, 1, 2}; int *p = a; p++; p--; *p; }), "int a[3] = {0, 1, 2}; int *p = a; p++; p--; *p;");
+    assert(55, ({ int total; int i; total = 0; for (i=10; i >= 0; i--) total = total + i; total; }), "int total; int i; total = 0; for (i=10; i >= 0; i--) total = total + i; total;");
     return 0;
 }

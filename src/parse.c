@@ -368,7 +368,7 @@ Node *mul() {
 /*
  * Return an unary expression, where
  *     unary = ("+" | "-" | "&" | "*")? unary
- *           | ("++") unary
+ *           | ("++", "--") unary
  *           | "sizeof" unary
  *           | "sizeof" "(" type-name ")"
  *           | postfix
@@ -386,6 +386,8 @@ Node *unary() {
         return new_node_unary_op(ND_DEREF, unary(), tok);
     } else if (tok = consume(TK_RESERVED, "++")) {
         return new_node_unary_op(ND_PRE_INC, unary(), tok);
+    } else if (tok = consume(TK_RESERVED, "--")) {
+        return new_node_unary_op(ND_PRE_DEC, unary(), tok);
     } else if (tok = consume(TK_RESERVED, "sizeof")) {
         Node *node;
         if (consume(TK_RESERVED, "(")) {
@@ -405,7 +407,7 @@ Node *unary() {
 
 /**
  * Return a postfix expression, where
- *     postfix = primary ("[" assign "]" | "++")*
+ *     postfix = primary ("[" assign "]" | "++" | "--")*
  * @return A node.
  */
 Node *postfix() {
@@ -421,6 +423,11 @@ Node *postfix() {
 
         if (tok = consume(TK_RESERVED, "++")) {
             node = new_node_unary_op(ND_POST_INC, node, tok);
+            continue;
+        }
+
+        if (tok = consume(TK_RESERVED, "--")) {
+            node = new_node_unary_op(ND_POST_DEC, node, tok);
             continue;
         }
 

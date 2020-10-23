@@ -106,6 +106,8 @@ Node *do_walk(Node *node, bool decay) {
             return node;
         case ND_PRE_INC:
         case ND_POST_INC:
+        case ND_PRE_DEC:
+        case ND_POST_DEC:
             node->lhs = walk(node->lhs);
             node->type = node->lhs->type;
             return node;

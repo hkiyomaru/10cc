@@ -153,6 +153,21 @@ void gen(Node *node) {
             store(node->type);
             dec(node->type);
             return;
+        case ND_PRE_DEC:
+            gen_lval(node->lhs);
+            gen_lval(node->lhs);
+            load(node->type);
+            dec(node->type);
+            store(node->type);
+            return;
+        case ND_POST_DEC:
+            gen_lval(node->lhs);
+            gen_lval(node->lhs);
+            load(node->type);
+            dec(node->type);
+            store(node->type);
+            inc(node->type);
+            return;
         case ND_IF:
             cur_label_cnt = label_cnt++;
             gen(node->cond);
