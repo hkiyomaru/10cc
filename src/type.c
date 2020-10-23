@@ -19,9 +19,9 @@ void ensure_int(Node *node);
 Node *scale_ptr(NodeKind kind, Node *base, Type *type);
 
 /**
- * Assigns types to nodes recursively.
+ * Assign a type to a given node.
  * @param node A node.
- * @param decay If true, the node may be decayed to a pointer.
+ * @param decay If true, the given node may be decayed to a pointer.
  * @return A node.
  */
 Node *do_walk(Node *node, bool decay) {
@@ -143,21 +143,22 @@ Node *do_walk(Node *node, bool decay) {
 }
 
 /**
- * Semantically parses a node.
+ * Run do_walk with the decay property enabled.
  * @param node A node.
  * @return A node.
  */
 Node *walk(Node *node) { return do_walk(node, true); }
 
 /**
- * Semantically parses a node without decay.
+ * Run do_walk with the decay property disabled.
  * @param node A node.
  * @return A node.
  */
 Node *walk_nodecay(Node *node) { return do_walk(node, false); }
 
 /**
- * Assign a type to each nodes in a given program.
+ * Assign a type to each node in a given program.
+ * @return A program.
  */
 Prog *assign_type(Prog *prog) {
     for (int i = 0; i < prog->fns->len; i++) {
@@ -170,8 +171,8 @@ Prog *assign_type(Prog *prog) {
 }
 
 /**
- * Creates a type.
- * @param type A type ID.
+ * Create a type.
+ * @param type A type kind.
  * @param size Required bytes to represent the type.
  * @return A type.
  */
@@ -183,26 +184,26 @@ Type *new_type(TypeKind type, int size) {
 }
 
 /**
- * Creates an int type.
+ * Create an int type.
  * @return An int type.
  */
 Type *int_type() { return new_type(TY_INT, 4); }
 
 /**
- * Creates a char type.
+ * Create a char type.
  * @return A char type.
  */
 Type *char_type() { return new_type(TY_CHAR, 1); }
 
 /**
- * Creates a void type.
+ * Create a void type.
  * @return A void type.
  */
 Type *void_type() { return new_type(TY_VOID, 1); }
 
 /**
- * Creates a pointer type.
- * @param base The type to be pointed.
+ * Create a pointer type.
+ * @param base A type to be pointed.
  * @return A pointer type.
  */
 Type *ptr_to(Type *base) {
@@ -212,9 +213,9 @@ Type *ptr_to(Type *base) {
 }
 
 /**
- * Creates an array type.
- * @param base The type of each item.
- * @param size The number of items.
+ * Create an array type.
+ * @param base A base type.
+ * @param size An array size.
  * @return An array type.
  */
 Type *ary_of(Type *base, int array_size) {
@@ -227,8 +228,7 @@ Type *ary_of(Type *base, int array_size) {
 }
 
 /**
- * If the given node is an array, decays it to a pointer.
- * Otherwise, does nothing.
+ * Decay a given node to an pointer if it is an array.
  * @param base A node.
  * @return A node.
  */
@@ -242,7 +242,7 @@ Node *decay_array(Node *base) {
 }
 
 /**
- * Returns true if given two types are the same.
+ * Return true if given two types are the same.
  * @return True if given two types are the same.
  */
 bool is_same_type(Type *x, Type *y) {
@@ -260,7 +260,7 @@ bool is_same_type(Type *x, Type *y) {
 }
 
 /**
- * Ensures the node is referable.
+ * Ensure that a given node is referable.
  * @param node A node.
  */
 void ensure_referable(Node *node) {
@@ -272,7 +272,7 @@ void ensure_referable(Node *node) {
 }
 
 /**
- * Ensures the node is an integer.
+ * Ensure that a given node is an integer.
  * @param node A node.
  */
 void ensure_int(Node *node) {
@@ -284,10 +284,10 @@ void ensure_int(Node *node) {
 }
 
 /**
- * Scales the number by referring to the given type.
+ * Scale a number by the size of a given type.
  * @param kind The kind of a node.
- * @param base A node to be scaled.
- * @param type A type to specify the scale.
+ * @param base A number node.
+ * @param type A type.
  * @return A node.
  */
 Node *scale_ptr(NodeKind kind, Node *base, Type *type) {

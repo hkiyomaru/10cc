@@ -3,7 +3,7 @@
 Token *ctok;
 
 /**
- * Returns the current token if it satisfies given conditions.
+ * Return the current token if it satisfies given conditions.
  * @param kind The kind of a token.
  * @param str The string expression of a token.
  * @return The current token.
@@ -16,7 +16,7 @@ Token *peek(TokenKind kind, char *str) {
 }
 
 /**
- * Pops the current token if it satisfies given conditions.
+ * Pop the current token if it satisfies given conditions.
  * Otherwise, NULL will be returned.
  * @param kind The kind of a token.
  * @param str The string expression of a token.
@@ -31,8 +31,8 @@ Token *consume(TokenKind kind, char *str) {
 }
 
 /**
- * Pops the current token if it satisfies given conditions.
- * Otherwise, raises an error message.
+ * Pop the current token if it satisfies given conditions.
+ * Otherwise, raise an error.
  * @param kind The kind of a token.
  * @param str The string expression of a token.
  * @return A consumed token.
@@ -48,14 +48,14 @@ Token *expect(TokenKind kind, char *str) {
 }
 
 /**
- * Returns true if the kind of the current token is EOF.
+ * Return true if the kind of the current token is EOF.
  * @return True if the kind of the current token is EOF.
  */
 bool at_eof() { return peek(TK_EOF, NULL); }
 
 /**
- * Returns true if the kind of the current token is a type.
- * @return True if the kind of the current token is a type.
+ * Return true if the kind of the current token is a type name.
+ * @return True if the kind of the current token is a type name.
  */
 bool at_typename() {
     char *typenames[] = {"int", "char", "void"};
@@ -68,7 +68,7 @@ bool at_typename() {
 }
 
 /**
- * Reads reserved keywords consisting of multiple characters.
+ * Read an reserved keyword.
  * @param p The pointer to the current position.
  * @return A reserved keyword.
  */
@@ -80,14 +80,12 @@ char *read_reserved(char *p) {
             return kws[i];
         }
     }
-
     char *multi_ops[] = {"<=", ">=", "==", "!="};
     for (int i = 0; i < sizeof(multi_ops) / sizeof(multi_ops[0]); i++) {
         if (startswith(p, multi_ops[i])) {
             return multi_ops[i];
         }
     }
-
     char *single_ops[] = {"+", "-", "*", "/", "(", ")", "<", ">", "=", ";", "{", "}", ",", "[", "]", "&"};
     for (int i = 0; i < sizeof(single_ops) / sizeof(single_ops[0]); i++) {
         if (startswith(p, single_ops[i])) {
@@ -98,17 +96,17 @@ char *read_reserved(char *p) {
 }
 
 /**
- * Creates a token.
- * @param kind The kind of a token.
- * @param str The string of a token.
- * @param len The length of the string of a token.
+ * Create a token.
+ * @param kind A token kind.
+ * @param cur The previous token.
+ * @param str A string.
+ * @param len The length of the string.
  * @return A token.
  */
 Token *new_token(TokenKind kind, Token *cur, char *p, int len) {
     char *str = calloc(len + 1, sizeof(char));
     strncpy(str, p, len);
     str[len] = '\0';
-
     Token *tok = calloc(1, sizeof(Token));
     tok->kind = kind;
     tok->str = str;
@@ -198,8 +196,8 @@ Token *tokenize() {
             cur->val = strtol(p, &p, 10);  // strtol increments `p`
             continue;
         }
-        error_at(p, "error: stray '%c' in program\n", p);
+        error_at(p, "error: stray '%c' in program\n", *p);
     }
-    cur = new_token(TK_EOF, cur, p, 0);
+    new_token(TK_EOF, cur, p, 0);
     return head.next;
 }

@@ -1,9 +1,9 @@
 #include "10cc.h"
 
 /**
- * Returns a formatted string.
+ * Return a formatted string.
  * @param fmt The format of a string.
- * @param arg Arguments which will be filled in the message.
+ * @param arg Arguments which will be filled in the string.
  */
 char *format(char *fmt, ...) {
     size_t size = 2048;
@@ -16,7 +16,7 @@ char *format(char *fmt, ...) {
 }
 
 /**
- * Shows an debug message.
+ * Show an debug message.
  * @param fmt The format of an debug message.
  * @param arg Arguments which will be filled in the message.
  */
@@ -27,7 +27,7 @@ void debug(char *fmt, ...) {
 }
 
 /**
- * Shows an error message.
+ * Show an error message.
  * @param fmt The format of an error message.
  * @param arg Arguments which will be filled in the message.
  */
@@ -39,7 +39,7 @@ void error(char *fmt, ...) {
 }
 
 /**
- * Shows an error message with its location information.
+ * Show an error message with its location information.
  * @param loc The location of an error.
  * @param fmt The format of an error message.
  * @param arg Arguments which will be filled in the message.
@@ -81,7 +81,7 @@ void error_at(char *loc, char *fmt, ...) {
 }
 
 /**
- * Returns true if the first string starts with the second string.
+ * Return true if the first string starts with the second string.
  * @param p A string.
  * @param q A string.
  * @return True if the first string starts with the second string.
@@ -89,14 +89,14 @@ void error_at(char *loc, char *fmt, ...) {
 bool startswith(char *p, char *q) { return memcmp(p, q, strlen(q)) == 0; }
 
 /**
- * Returns true if the given character is an alphabet, or a number, or _.
+ * Return true if a given character is an alphabet, number, or _.
  * @param c A character.
- * @return True if the given character is an alphabet, or a number, or _.
+ * @return True if the given character is an alphabet, number, or _.
  */
 bool isalnumus(char c) { return isalnum(c) || c == '_'; }
 
 /**
- * Draws the abstract syntax tree of a node.
+ * Draw the abstract syntax tree of a node.
  * @param node A node.
  * @param depth The depth of the node.
  * @param role The role of the node.
@@ -231,7 +231,7 @@ void draw_node(Node *node, int depth, char *role) {
 }
 
 /**
- * Draws the abstract syntax tree of a program.
+ * Draw the abstract syntax tree of a program.
  * @param prog A program.
  */
 void draw_ast(Prog *prog) {

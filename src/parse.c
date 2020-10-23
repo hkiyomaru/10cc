@@ -38,7 +38,7 @@ Node *new_node_num(int val, Token *tok);
 Node *new_node_varref(Var *var, Token *tok);
 Node *new_node_func_call(Token *tok);
 Node *lvar_init(Var *var, Token *tok);
-Node *default_init(Var *var, Token *tok);
+Node *default_lvar_init(Var *var, Token *tok);
 Node *ary_init(Var *var, Token *tok);
 
 Var *new_gvar(Type *type, char *name, Token *tok);
@@ -55,7 +55,8 @@ void *push_scope(Var *var);
 Var *find_var(char *name);
 
 /**
- * Parses tokens syntactically.
+ * Return a program, where
+ *     program = (func | gvar)*
  * @return A program.
  */
 Prog *parse() {
@@ -70,7 +71,8 @@ Prog *parse() {
 }
 
 /**
- * Parses tokens at the top level of a program.
+ * Register a top-level component to the program, where
+ *     top-level = func | gvar
  */
 void top_level() {
     Type *type = read_type();
@@ -85,13 +87,12 @@ void top_level() {
 }
 
 /**
- * Parses a function and registers it to the program.
- * Here, the function name has already been consumed.
- * So, the current token must be '('.
+ * Return a function and register it to the program.
  * @param type The type of a return variable.
  * @param name A function name.
  * @param tok The name of a function.
  * @return A function.
+ * @note The function name has already been consumed, the current token must be '('.
  */
 Func *new_func(Type *rtype, char *name, Token *tok) {
     fn = calloc(1, sizeof(Func));
@@ -130,7 +131,7 @@ Func *new_func(Type *rtype, char *name, Token *tok) {
         }
     }
 
-    // NOTE: functions must be registered before parsing their bodies
+    // NOTE: Functions must be registered before parsing their bodies
     // to deal with recursion.
     map_insert(prog->fns, name, fn);
 
@@ -147,22 +148,19 @@ Func *new_func(Type *rtype, char *name, Token *tok) {
 }
 
 /**
- * Parses tokens to represent a statement, where
- *     stmt = expr_stmt ";"
- *          | compound-stmt
+ * Return a statement, where
+ *     stmt = "return" expr ";"
  *          | "if" "(" expr ")" stmt ("else" stmt)?
  *          | "while" "(" expr ")" stmt
  *          | "for" "(" expr? ";" expr? ";" expr? ")" stmt
- *          | "return" expr ";"
+ *          | compound-stmt
  *          | T ident ("=" expr)? ";"
  *          | ";"
+ *          | expr_stmt ";"
  * @return A node.
  */
 Node *stmt() {
     Token *tok;
-    if (tok = peek(TK_RESERVED, "{")) {
-        return compound_stmt();
-    }
 
     if (tok = consume(TK_RESERVED, "return")) {
         Node *node = new_node(ND_RETURN, tok);
@@ -205,6 +203,10 @@ Node *stmt() {
         return node;
     }
 
+    if (tok = peek(TK_RESERVED, "{")) {
+        return compound_stmt();
+    }
+
     if (at_typename()) {
         Var *var = decl();
         Node *node = consume(TK_RESERVED, "=") ? lvar_init(var, ctok) : new_node(ND_NULL, ctok);
@@ -222,7 +224,7 @@ Node *stmt() {
 }
 
 /**
- * Parses a compound statement, where
+ * Return a compound statement, where
  *     compound-stmt = "{" stmt* "}"
  */
 Node *compound_stmt() {
@@ -238,21 +240,21 @@ Node *compound_stmt() {
 }
 
 /**
- * Parses tokens to represent an expression, where
+ * Return an expression, where
  *     expr = assign
  * @return A node.
  */
 Node *expr() { return assign(); }
 
 /**
- * Creates a node to represent an expression statement, where
+ * Return an expression statement, where
  *     expr_stmt = expr ";"
  * @return A node.
  */
 Node *expr_stmt() { return new_node_unary_op(ND_EXPR_STMT, expr(), ctok); }
 
 /**
- * Parses tokens to represent a statement expression, where
+ * Return a statement expression, where
  *     stmt_expr = "(" "{" stmt+ "}" ")"
  * @return A node.
  * @note Parentheses are consumed outside of this function.
@@ -272,7 +274,7 @@ Node *stmt_expr() {
 }
 
 /**
- * Parses tokens to represent an assignment, where
+ * Return an assignment expression, where
  *     assign = equality ("=" assign)?
  * @return A node.
  */
@@ -286,7 +288,7 @@ Node *assign() {
 }
 
 /**
- * Parses tokens to represent an equality, where
+ * Return an equality expression, where
  *     equality = relational (("==" | "!=") relational)?
  * @return A node.
  */
@@ -305,7 +307,7 @@ Node *equality() {
 }
 
 /**
- * Parses tokens to represent a relationality, where
+ * Return a relational expression, where
  *     relational = add (("<=" | ">=" | "<" | ">") add)?
  * @return A node.
  */
@@ -326,7 +328,7 @@ Node *relational() {
 }
 
 /**
- * Parses tokens to represent addition, where
+ * Return an add expression, where
  *     add = mul ("+" unary | "-" unary)*
  * @return A node.
  */
@@ -345,7 +347,7 @@ Node *add() {
 }
 
 /*
- * Parses tokens to represent multiplication, where
+ * Return a mul expression, where
  *     mul = unary (("*" | "/") unary)*
  * @return A node.
  */
@@ -364,7 +366,7 @@ Node *mul() {
 }
 
 /*
- * Parses tokens to represent an unary operation, where
+ * Return an unary expression, where
  *     unary = "sizeof" unary
  *           | "sizeof" "(" type-name ")"
  *           | ("+" | "-" | "&" | "*")? primary
@@ -398,8 +400,7 @@ Node *unary() {
 }
 
 /**
- * Parses tokens to represent a primary item.
- * Then, if possible, parses the postfix, where
+ * Return a postfix expression, where
  *     postfix = primary ("[" assign "]")*
  * @return A node.
  */
@@ -418,7 +419,7 @@ Node *postfix() {
 }
 
 /**
- * Parses tokens to represent a primary item, where
+ * Return a primary expression, where
  *     primary = num
  *             | str
  *             | ident ("(" ")")?
@@ -439,11 +440,10 @@ Node *primary() {
             return new_node_func_call(tok);
         } else {
             Var *var = find_var(tok->str);
-            if (var) {
-                return new_node_varref(var, tok);
-            } else {
+            if (!var) {
                 error_at(tok->loc, "error: '%s' undeclared\n", tok->str);
             }
+            return new_node_varref(var, tok);
         }
     }
 
@@ -458,7 +458,7 @@ Node *primary() {
 }
 
 /**
- * Parses tokens to represent a type.
+ * Read a base type.
  * @return A type.
  */
 Type *read_type() {
@@ -479,8 +479,8 @@ Type *read_type() {
 }
 
 /**
- * Parses tokens to represent an array.
- * @param type The type of each item.
+ * Read an array size.
+ * @param type A base type.
  * @return A type.
  */
 Type *read_ary(Type *type) {
@@ -497,9 +497,9 @@ Type *read_ary(Type *type) {
 }
 
 /**
- * Creates a node.
- * @param kind The kind of a node.
- * @param tok The representative token of a node.
+ * Create a node.
+ * @param kind A node kind.
+ * @param tok A token.
  * @return A node.
  */
 Node *new_node(NodeKind kind, Token *tok) {
@@ -510,8 +510,8 @@ Node *new_node(NodeKind kind, Token *tok) {
 }
 
 /**
- * Creates a node to represent a binary operation.
- * @param kind The kind of a node.
+ * Create a node to represent a binary operation.
+ * @param kind A node kind.
  * @param lhs The left-hand side of a binary operation.
  * @param rhs The right-hand side of a binary operation.
  * @param tok A binary operator token.
@@ -525,10 +525,10 @@ Node *new_node_bin_op(NodeKind kind, Node *lhs, Node *rhs, Token *tok) {
 }
 
 /**
- * Creates a node to represent a unary operation.
+ * Create a node to represent a unary operation.
  * @param kind The kind of a node.
  * @param lhs The input of a unary operation.
- * @param tok A representative token.
+ * @param tok A token.
  * @return A node.
  */
 Node *new_node_unary_op(NodeKind kind, Node *lhs, Token *tok) {
@@ -538,7 +538,7 @@ Node *new_node_unary_op(NodeKind kind, Node *lhs, Token *tok) {
 }
 
 /**
- * Creates a node to represent a number.
+ * Create a node to represent a number.
  * @param val A number.
  * @param tok A number token.
  * @return A node.
@@ -551,9 +551,9 @@ Node *new_node_num(int val, Token *tok) {
 }
 
 /**
- * Creates a node to refer a variable.
+ * Create a node to refer a variable.
  * @param var A variable to be refered.
- * @param tok An representative token.
+ * @param tok A token.
  * @return A node.
  */
 Node *new_node_varref(Var *var, Token *tok) {
@@ -564,11 +564,10 @@ Node *new_node_varref(Var *var, Token *tok) {
 }
 
 /**
- * Creates a node to represent a function call.
- * Here, the function name has already been consumed.
- * So, the current token must be '('.
+ * Create a node to represent a function call.
  * @param tok An identifiier token.
  * @return A node.
+ * @note The function name has already been consumed, so the current token must be '('.
  */
 Node *new_node_func_call(Token *tok) {
     Func *fn_ = find_func(tok->str);
@@ -590,9 +589,9 @@ Node *new_node_func_call(Token *tok) {
 }
 
 /**
- * Creates a node to assign an initial value to a given variable.
- * @param var A variable to be refered.
- * @param tok An representative token.
+ * Create a node to assign an initial value to a given local variable.
+ * @param var A local variable.
+ * @param tok A token.
  * @return A node.
  */
 Node *lvar_init(Var *var, Token *tok) {
@@ -600,26 +599,26 @@ Node *lvar_init(Var *var, Token *tok) {
         case TY_ARY:
             return ary_init(var, tok);
         default:
-            return default_init(var, tok);
+            return default_lvar_init(var, tok);
     }
 }
 
 /**
- * Creates a node to assign an initial value to a given variable.
+ * Create a node to assign an initial value to a given local variable.
  * @param var A variable to be refered.
  * @param tok An representative token.
  * @return A node.
  */
-Node *default_init(Var *var, Token *tok) {
+Node *default_lvar_init(Var *var, Token *tok) {
     Node *lvar = new_node_varref(var, tok);
     Node *asgn = new_node_bin_op(ND_ASSIGN, lvar, expr(), tok);
     return new_node_unary_op(ND_EXPR_STMT, asgn, NULL);
 }
 
 /**
- * Creates a node to assign an initial value to a given array variable.
+ * Create a node to assign an initial value to a given array variable.
  * @param var A variable to be refered.
- * @param tok An representative token.
+ * @param tok A token.
  * @return A node.
  */
 Node *ary_init(Var *var, Token *tok) {
@@ -687,11 +686,11 @@ Node *ary_init(Var *var, Token *tok) {
 }
 
 /**
- * Creates a variable.
- * @param type The type of a global variable.
- * @param name A name of a variable.
- * @param is_local If true, creates a local variable.
- * @param tok An identifiier token.
+ * Create a variable.
+ * @param type The type of a variable.
+ * @param name Variable name.
+ * @param is_local If true, created as a local variable.
+ * @param tok A token.
  * @return A variable.
  */
 Var *new_var(Type *type, char *name, bool is_local, Token *tok) {
@@ -715,16 +714,14 @@ Var *new_var(Type *type, char *name, bool is_local, Token *tok) {
 }
 
 /**
- * Creates a global variable.
- * The created variable is added into the list of global variables.
- * @param type The type of a global variable.
- * @param name The name of a global variable.
- * @param tok An identifiier token.
+ * Create a global variable, and registers it to the program.
+ * @param type The type of a variable.
+ * @param name Variable name.
+ * @param tok A token.
  * @return A variable.
- * @note `new_node_string` also registers variables to the global variable map.
  */
 Var *new_gvar(Type *type, char *name, Token *tok) {
-    if (map_count(scope->vars, name)) {
+    if (map_contains(scope->vars, name)) {
         Var *var = map_at(scope->vars, name);
         if (!is_same_type(type, var->type)) {
             error_at(tok->loc, "error: conflicting types for '%s'", name);
@@ -738,21 +735,15 @@ Var *new_gvar(Type *type, char *name, Token *tok) {
 }
 
 /**
- * Creates a local variable.
- * The created variable is added into the list of local variables.
- * @param type The type of a local variable.
- * @param name The name of a global variable.
- * @param tok An identifiier token.
+ * Create a local variable, and registers it to the function.
+ * @param type The type of a variable.
+ * @param name Variable name.
+ * @param tok A token.
  * @return A variable.
  */
 Var *new_lvar(Type *type, char *name, Token *tok) {
-    if (map_count(scope->vars, tok->str)) {
-        Var *var = map_at(scope->vars, tok->str);
-        if (!is_same_type(type, var->type)) {
-            error_at(tok->loc, "error: conflicting types for '%s'", tok->str);
-        } else {
-            error_at(tok->loc, "error: redeclaration of '%s'", tok->str);
-        }
+    if (map_contains(scope->vars, tok->str)) {
+        error_at(tok->loc, "error: redeclaration of '%s'", tok->str);
     }
     Var *var = new_var(type, name, true, tok);
     vec_push(fn->lvars, var);
@@ -761,9 +752,9 @@ Var *new_lvar(Type *type, char *name, Token *tok) {
 }
 
 /**
- * Creates a string literal.
- * @param str A string literal.
- * @param tok A string token.
+ * Create a string literal.
+ * @param str A string.
+ * @param tok A token.
  * @return A variable.
  */
 Var *new_strl(char *str, Token *tok) {
@@ -775,7 +766,7 @@ Var *new_strl(char *str, Token *tok) {
 }
 
 /**
- * Parses tokens to represent a declaration, where
+ * Returns a local variable by reading its declaration, where
  *     declaration = T ident ("[" num? "]")?
  * @return A variable.
  */
@@ -788,12 +779,12 @@ Var *decl() {
 }
 
 /**
- * If there exists a function whose name matches given condition,
- * returns it. Otherwise, NULL will be returned.
+ * Return a function with a specific name.
+ * If such a function does not exist, return NULL.
  * @param name The name of a function.
  * @return A function.
  */
-Func *find_func(char *name) { return map_count(prog->fns, name) ? map_at(prog->fns, name) : NULL; }
+Func *find_func(char *name) { return map_contains(prog->fns, name) ? map_at(prog->fns, name) : NULL; }
 
 /**
  * Create an empty variable scope.
@@ -807,8 +798,7 @@ VarScope *new_scope() {
 }
 
 /**
- * Enters scope.
- * @return A scope.
+ * Enter a new scope.
  */
 void *enter_scope() {
     VarScope *sc = new_scope();
@@ -817,25 +807,25 @@ void *enter_scope() {
 }
 
 /**
- * Leaves scope.
- * @param sc A scope.
+ * Leave the current scope.
  */
 void leave_scope() { scope = scope->next; }
 
 /**
- * Pushes a variable to the current scope.
+ * Push a variable to the current scope.
  * @param var A variable.
  */
 void *push_scope(Var *var) { map_insert(scope->vars, var->name, var); }
 
 /**
- * Finds a variable.
- * @param name A variable name.
- * @return A variable scope.
+ * Return a variable with a specific name.
+ * If such a variable does not exist, return NULL.
+ * @param name Variable name.
+ * @return A variable.
  */
 Var *find_var(char *name) {
     for (VarScope *sc = scope; sc; sc = sc->next) {
-        if (map_count(sc->vars, name)) {
+        if (map_contains(sc->vars, name)) {
             return map_at(sc->vars, name);
         }
     }

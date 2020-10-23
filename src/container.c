@@ -3,7 +3,7 @@
 int INITIAL_VECTOR_SIZE = 32;
 
 /**
- * Creates an empty vector.
+ * Create an empty vector.
  * @return A vector.
  */
 Vector *vec_create() {
@@ -15,9 +15,9 @@ Vector *vec_create() {
 }
 
 /**
- * Pushes an item to a vector.
+ * Push an item to a vector.
  * @param vec A vector.
- * @param item An item to be registered.
+ * @param item An item.
  */
 void vec_push(Vector *vec, void *item) {
     if (vec->len == vec->capacity) {
@@ -28,17 +28,18 @@ void vec_push(Vector *vec, void *item) {
 }
 
 /**
- * Pushes an iteger to a vector.
+ * Push an iteger to a vector.
  * @param vec A vector.
- * @param item An item to be registered.
+ * @param item An integer.
  */
 void vec_pushi(Vector *vec, int item) { vec_push(vec, (void *)(intptr_t)item); }
 
 /**
- * Gets an item from a vector.
+ * Get an item from a vector.
  * @param vec A vector.
  * @param index An index.
  * @return An item.
+ * @note If no such item exists, raise an error.
  */
 void *vec_at(Vector *vec, int index) {
     if (vec->len <= index) {
@@ -48,24 +49,21 @@ void *vec_at(Vector *vec, int index) {
 }
 
 /**
- * Gets an iteger from a vector.
+ * Get an integer from a vector.
  * @param vec A vector.
  * @param index An index.
- * @return An item.
+ * @return An integer.
+ * @note If no such item exists, raise an error.
  */
-int vec_ati(Vector *vec, int index) {
-    if (vec->len <= index) {
-        error("error: out of range\n");
-    }
-    return (intptr_t)(vec_at(vec, index));
-}
+int vec_ati(Vector *vec, int index) { return (intptr_t)(vec_at(vec, index)); }
 
 /**
- * Sets an item to a vector.
+ * Set an item to a vector.
  * @param vec A vector.
  * @param index An index.
  * @param item An item.
  * @return An item.
+ * @note If no such item exists, raise an error.
  */
 void *vec_set(Vector *vec, int index, void *item) {
     if (vec->len <= index) {
@@ -76,14 +74,15 @@ void *vec_set(Vector *vec, int index, void *item) {
 }
 
 /**
- * Fetches the last item.
+ * Get the last item of a vector.
  * @param vec A vector.
  * @return An item.
+ * @note Calling vec_back on an empty container causes undefined behavior.
  */
 void *vec_back(Vector *vec) { return vec->data[vec->len - 1]; }
 
 /**
- * Creates an empty map.
+ * Create an empty map.
  * @return A map.
  */
 Map *map_create() {
@@ -95,7 +94,7 @@ Map *map_create() {
 }
 
 /**
- * Inserts an item to a map.
+ * Insert an item to a map.
  * @param map A map.
  * @param key A key.
  * @param val A value.
@@ -113,11 +112,11 @@ void map_insert(Map *map, char *key, void *val) {
 }
 
 /**
- * Gets an item from a map.
- * NULL will be returned if the key is not in the map.
+ * Get an item from a map.
  * @param map A map.
  * @param key A key.
  * @return An item.
+ * @note If no such item exists, raise an error.
  */
 void *map_at(Map *map, char *key) {
     for (int i = 0; i < map->len; i++) {
@@ -129,16 +128,16 @@ void *map_at(Map *map, char *key) {
 }
 
 /**
- * Returns 1 if there exists an item associated to a given key.
+ * Check if there is an element with key.
  * @param map A map.
  * @param key A key.
- * @return 1 if there exists an item associated to a given key. Otherwise, 0.
+ * @return True if there is such an element, otherwise false.
  */
-int map_count(Map *map, char *key) {
+bool map_contains(Map *map, char *key) {
     for (int i = 0; i < map->len; i++) {
         if (!strcmp(vec_at(map->keys, i), key)) {
-            return 1;
+            return true;
         }
     }
-    return 0;
+    return false;
 }

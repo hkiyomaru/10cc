@@ -192,7 +192,7 @@ void *vec_back(Vector *vec);
 Map *map_create();
 void map_insert(Map *map, char *key, void *val);
 void *map_at(Map *map, char *key);
-int map_count(Map *map, char *key);
+bool map_contains(Map *map, char *key);
 
 /**
  * codegen.c

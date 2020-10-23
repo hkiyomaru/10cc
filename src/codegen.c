@@ -4,7 +4,7 @@ char *argregs1[] = {"dil", "sil", "dl", "cl", "r8b", "r9b"};
 char *argregs4[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
 char *argregs8[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
-char *fnname;
+char *funcname;
 int label_cnt = 0;
 
 void gen_data(Prog *prog);
@@ -16,7 +16,7 @@ void load(Type *type);
 void store(Type *type);
 
 /**
- * Generates code written in x86-64 assembly.
+ * Generate assembly code.
  * @param prog A program.
  */
 void codegen(Prog *prog) {
@@ -26,7 +26,7 @@ void codegen(Prog *prog) {
 }
 
 /**
- * Generates code to allocate memory for global variables.
+ * Generate assembly code for a data segment.
  * @param prog A program.
  */
 void gen_data(Prog *prog) {
@@ -43,7 +43,7 @@ void gen_data(Prog *prog) {
 }
 
 /**
- * Generates code to perform functions.
+ * Generate assemly code for a code segment.
  * @param prog A program.
  */
 void gen_text(Prog *prog) {
@@ -51,9 +51,9 @@ void gen_text(Prog *prog) {
     for (int i = 0; i < prog->fns->len; i++) {
         Func *fn = vec_at(prog->fns->vals, i);
         if (!fn->body) {
-            continue;  // Just a prototype declaration.
+            continue;
         }
-        fnname = fn->name;
+        funcname = fn->name;
 
         int offset = 0;
         for (int i = 0; i < fn->lvars->len; i++) {
@@ -65,17 +65,21 @@ void gen_text(Prog *prog) {
         printf(".global %s\n", fn->name);
         printf("%s:\n", fn->name);
 
+        // Prologue.
         printf("  push rbp\n");
         printf("  mov rbp, rsp\n");
         printf("  sub rsp, %d\n", offset);
 
+        // Push arguments to the stack.
         for (int i = 0; i < fn->args->len; i++) {
             load_arg(vec_at(fn->args, i), i);
         }
 
+        // Emit code.
         gen(fn->body);
 
-        printf(".Lreturn.%s:\n", fnname);
+        // Epilogue.
+        printf(".Lreturn.%s:\n", funcname);
         printf("  mov rsp, rbp\n");
         printf("  pop rbp\n");
         printf("  ret\n");
@@ -83,7 +87,7 @@ void gen_text(Prog *prog) {
 }
 
 /**
- * Generates code to perform the operation of a node.
+ * Generate assembly code for a given node.
  * @param node A node.
  */
 void gen(Node *node) {
@@ -117,7 +121,6 @@ void gen(Node *node) {
             printf("  mov al, 0\n");
             printf("  call %s\n", node->funcname);
             printf("  push rax\n");
-
             if (node->type->kind == TY_VOID) {
                 printf("  pop rax\n");
                 printf("  movsx rax, al\n");
@@ -177,7 +180,7 @@ void gen(Node *node) {
         case ND_RETURN:
             gen(node->lhs);
             printf("  pop rax\n");
-            printf("  jmp .Lreturn.%s\n", fnname);
+            printf("  jmp .Lreturn.%s\n", funcname);
             return;
         case ND_EXPR_STMT:
             gen(node->lhs);
@@ -233,8 +236,8 @@ void gen(Node *node) {
 }
 
 /**
- * Generates a code to push an address to a variable to the stack.
- * @param node A node representing a left variable.
+ * Generate assembly code to push an address to a lvalue to the stack.
+ * @param node A node for an lvalue.
  */
 void gen_lval(Node *node) {
     switch (node->kind) {
@@ -253,9 +256,9 @@ void gen_lval(Node *node) {
 }
 
 /**
- * Loads an argument following the function calling convention.
+ * Generate assembly code to load an argument value following the function calling convention.
  * @param Node A node.
- * @param index The index of the argument.
+ * @param index The index of an argument.
  */
 void load_arg(Node *node, int index) {
     switch (node->var->type->size) {
@@ -272,7 +275,7 @@ void load_arg(Node *node, int index) {
 }
 
 /**
- * Loads a value from an address. The address must be on the top of the stack.
+ * Generate assembly code to load a value from an address on the top of the stack.
  * @param type A type of a value to be loaded.
  */
 void load(Type *type) {
@@ -292,8 +295,8 @@ void load(Type *type) {
 }
 
 /**
- * Stores a value to an address. The top of the stack must be the value.
- * The second from the top must be the address.
+ * Generate assembly code to store a value to an address.
+ * The top of the stack must be the value, and the second from the top must be the address.
  * @param type A type of a value to be stored.
  */
 void store(Type *type) {

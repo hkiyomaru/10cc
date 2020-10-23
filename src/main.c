@@ -6,9 +6,9 @@ char *user_input;
 void usage() { error("error: no input files\n"); }
 
 /**
- * Returns the contents of a given file.
+ * Read a file.
  * @param path Path to a file.
- * @return Contents.
+ * @return A pointer to the start of the file.
  */
 char *read_file(char *path) {
     // Open the file.
