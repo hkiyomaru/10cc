@@ -671,6 +671,8 @@ Node *ary_init(Var *var, Token *tok) {
             lvar->type->array_size = strlen(tok->str);
             lvar->type->size = lvar->type->base->size * strlen(tok->str);
         }
+    } else {
+        error_at(ctok->loc, "error: expected expression before '%s'", ctok->str);
     }
     for (int i = node->stmts->len; i < lvar->type->array_size; i++) {
         Node *index = new_node_num(i, NULL);
