@@ -159,5 +159,13 @@ int main() {
     assert(0, ({ int a[3] = {0, 1, 2}; int *p = a; ++p; --p; *p; }), "int a[3] = {0, 1, 2}; int *p = a; ++p; --p; *p;");
     assert(0, ({ int a[3] = {0, 1, 2}; int *p = a; p++; p--; *p; }), "int a[3] = {0, 1, 2}; int *p = a; p++; p--; *p;");
     assert(55, ({ int total; int i; total = 0; for (i=10; i >= 0; i--) total = total + i; total; }), "int total; int i; total = 0; for (i=10; i >= 0; i--) total = total + i; total;");
+    assert(1, ({ int a = 0; a+=1; }), "int a = 0; a+=1;");
+    assert(1, ({ char a = 0; a+=1; }), "char a = 0; a+=1;");
+    assert(-1, ({ int a = 0; a-=1; }), "int a = 0; a-=1;");
+    assert(-1, ({ char a = 0; a-=1; }), "char a = 0; a-=1;");
+    assert(1, ({ int ary[] = {0, 1, 2}; int *p = ary; p += 1; *p; }), "int ary[] = {1, 2, 3}; int *p = ary; p += 1; *p;");
+    assert(2, ({ int ary[] = {0, 1, 2}; int *p = ary; p += 2; *p; }), "int ary[] = {1, 2, 3}; int *p = ary; p += 2; *p;");
+    assert(4, ({ int a = 1; a*=4; }), "int a = 1; a*=4;");
+    assert(2, ({ int a = 4; a/=2; }), "int a = 4; a/=2;");
     return 0;
 }

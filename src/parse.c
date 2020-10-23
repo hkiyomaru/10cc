@@ -275,15 +275,33 @@ Node *stmt_expr() {
 
 /**
  * Return an assignment expression, where
- *     assign = equality ("=" assign)?
+ *     assign = equality (("=" | "+=", "-=") assign)?
  * @return A node.
  */
 Node *assign() {
     Node *node = equality();
     Token *tok;
+
     if (tok = consume(TK_RESERVED, "=")) {
-        node = new_node_bin_op(ND_ASSIGN, node, assign(), tok);
+        return new_node_bin_op(ND_ASSIGN, node, assign(), tok);
     }
+
+    if (tok = consume(TK_RESERVED, "+=")) {
+        return new_node_bin_op(ND_ASSIGN, node, new_node_bin_op(ND_ADD, node, assign(), tok), tok);
+    }
+
+    if (tok = consume(TK_RESERVED, "-=")) {
+        return new_node_bin_op(ND_ASSIGN, node, new_node_bin_op(ND_SUB, node, assign(), tok), tok);
+    }
+
+    if (tok = consume(TK_RESERVED, "*=")) {
+        return new_node_bin_op(ND_ASSIGN, node, new_node_bin_op(ND_MUL, node, assign(), tok), tok);
+    }
+
+    if (tok = consume(TK_RESERVED, "/=")) {
+        return new_node_bin_op(ND_ASSIGN, node, new_node_bin_op(ND_DIV, node, assign(), tok), tok);
+    }
+
     return node;
 }
 
