@@ -75,7 +75,11 @@ Node *do_walk(Node *node, bool decay) {
             Type *rtype = node->rhs->type;
 
             if (ltype->kind == TY_PTR) {
-                node = rtype->kind == TY_PTR ? scale_ptr(ND_DIV, node, ltype) : scale_ptr(ND_MUL, node->rhs, ltype);
+                if (rtype->kind == TY_PTR) {
+                    node = scale_ptr(ND_DIV, node, ltype);
+                } else {
+                    node->rhs = scale_ptr(ND_MUL, node->rhs, ltype);
+                }
                 node->type = ltype;
             } else {
                 node->type = int_type();
