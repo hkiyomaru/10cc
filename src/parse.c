@@ -467,6 +467,8 @@ Type *read_type() {
         type = int_type();
     } else if (consume(TK_RESERVED, "char")) {
         type = char_type();
+    } else if (consume(TK_RESERVED, "void")) {
+        type = void_type();
     } else {
         error_at(ctok->loc, "error: unknown type name '%s'\n", ctok->str);
     }

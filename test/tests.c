@@ -131,5 +131,6 @@ int main() {
     assert(10, ({ int i = 0; for (;i < 10;) {i = i + 1; } i; }), "int i = 0; for (;i < 10;) {i = i + 1; } i;");
     assert(0, ({ {}; 0; }), "{}; 0;");
     assert(0, ({ ({{}; 0;}); }), "({{}; 0;});");
+    assert(1, ({ sizeof(void); }), "sizeof(void);");
     return 0;
 }

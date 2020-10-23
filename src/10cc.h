@@ -148,7 +148,7 @@ Node *new_node_num(int val, Token *tok);
 /**
  * type.c
  */
-typedef enum { TY_INT, TY_PTR, TY_ARY, TY_CHAR } TypeKind;
+typedef enum { TY_INT, TY_PTR, TY_ARY, TY_CHAR, TY_VOID } TypeKind;
 
 struct Type {
     TypeKind kind;
@@ -161,6 +161,7 @@ Prog *assign_type(Prog *prog);
 
 Type *int_type();
 Type *char_type();
+Type *void_type();
 Type *ptr_to(Type *base);
 Type *ary_of(Type *base, int len);
 bool is_same_type(Type *x, Type *y);

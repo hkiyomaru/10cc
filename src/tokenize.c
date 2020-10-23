@@ -58,7 +58,7 @@ bool at_eof() { return peek(TK_EOF, NULL); }
  * @return True if the kind of the current token is a type.
  */
 bool at_typename() {
-    char *typenames[] = {"int", "char"};
+    char *typenames[] = {"int", "char", "void"};
     for (int i = 0; i < sizeof(typenames) / sizeof(typenames[0]); i++) {
         if (peek(TK_RESERVED, typenames[i])) {
             return true;
@@ -73,7 +73,7 @@ bool at_typename() {
  * @return A reserved keyword.
  */
 char *read_reserved(char *p) {
-    char *kws[] = {"return", "if", "else", "while", "for", "sizeof", "int", "char"};
+    char *kws[] = {"return", "if", "else", "while", "for", "sizeof", "int", "char", "void"};
     for (int i = 0; i < sizeof(kws) / sizeof(kws[0]); i++) {
         int len = strlen(kws[i]);
         if (startswith(p, kws[i]) && !isalnumus(p[len])) {

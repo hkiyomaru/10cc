@@ -6,6 +6,7 @@ Node *walk_nodecay(Node *node);
 
 Type *int_type();
 Type *char_type();
+Type *void_type();
 Type *ptr_to(Type *base);
 Type *ary_of(Type *base, int len);
 Node *decay_array(Node *base);
@@ -182,21 +183,27 @@ Type *new_type(TypeKind type, int size) {
 }
 
 /**
- * Creates an INT type.
- * @return An INT type.
+ * Creates an int type.
+ * @return An int type.
  */
 Type *int_type() { return new_type(TY_INT, 4); }
 
 /**
- * Creates a CHAR type.
- * @return A CHAR type.
+ * Creates a char type.
+ * @return A char type.
  */
 Type *char_type() { return new_type(TY_CHAR, 1); }
 
 /**
- * Creates a PTR type.
+ * Creates a void type.
+ * @return A void type.
+ */
+Type *void_type() { return new_type(TY_VOID, 1); }
+
+/**
+ * Creates a pointer type.
  * @param base The type to be pointed.
- * @return A PTR type.
+ * @return A pointer type.
  */
 Type *ptr_to(Type *base) {
     Type *type = new_type(TY_PTR, 8);
@@ -205,10 +212,10 @@ Type *ptr_to(Type *base) {
 }
 
 /**
- * Creates an ARY type.
+ * Creates an array type.
  * @param base The type of each item.
  * @param size The number of items.
- * @return An ARY type.
+ * @return An array type.
  */
 Type *ary_of(Type *base, int array_size) {
     Type *type = calloc(1, sizeof(Type));
