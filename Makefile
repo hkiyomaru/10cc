@@ -1,21 +1,36 @@
-CFLAGS=-std=c11 -g -static
-SRCS=$(wildcard *.c)
-OBJS=$(SRCS:.c=.o)
+SRCDIR := src
+BLDDIR := bld
 
-10cc: $(OBJS)
-	$(CC) -o 10cc $(OBJS) $(LDFLAGS)
+TARGET := $(BLDDIR)/10cc
+CFLAGS := -std=c11 -g -static
 
-$(OBJS): 10cc.h
+SRCS := $(wildcard $(SRCDIR)/*.c)
+HDRS := $(wildcard $(SRCDIR)/*.h)
+OBJS := $(patsubst %.c,$(BLDDIR)/%.o,$(notdir $(SRCS)))
 
-test_tools.o: test/test_tools.c
-	gcc -xc -c -o test_tools.o test/test_tools.c
+.PHONY: all
+all: $(TARGET)
 
-test: 10cc test_tools.o
-	./10cc test/tests.c > tmp.s
-	gcc -static -o tmp tmp.s test_tools.o
-	./tmp
+$(TARGET): $(OBJS)
+	$(CC) -o $@ $(OBJS) $(LDFLAGS)
 
+$(BLDDIR)/%.o: $(SRCDIR)/%.c $(HDRS)
+	mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+.PHONY: test
+test: test/test
+	./$<
+
+test/test: test/test.s test/test_tools.o
+	$(CC) $(CFLAGS) -o $@ $^
+
+test/test.s: $(TARGET) test/tests.c
+	./$< test/tests.c > $@
+
+test/test_tools.o: test/test_tools.c
+	$(CC) $(CFLAGS) -c -o $@ $^
+
+.PHONY: clean
 clean:
-	rm -f 10cc *.o tmp*
-
-.PHONY: test clean
+	rm -f $(BLDDIR)/* test/test test/test.s test/test_tools.o
