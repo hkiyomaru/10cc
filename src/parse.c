@@ -367,9 +367,11 @@ Node *mul() {
 
 /*
  * Return an unary expression, where
- *     unary = "sizeof" unary
+ *     unary = ("+" | "-" | "&" | "*")? unary
+ *           | ("++") unary
+ *           | "sizeof" unary
  *           | "sizeof" "(" type-name ")"
- *           | ("+" | "-" | "&" | "*")? primary
+ *           | postfix
  * @return A node.
  */
 Node *unary() {
@@ -382,6 +384,8 @@ Node *unary() {
         return new_node_unary_op(ND_ADDR, unary(), tok);
     } else if (tok = consume(TK_RESERVED, "*")) {
         return new_node_unary_op(ND_DEREF, unary(), tok);
+    } else if (tok = consume(TK_RESERVED, "++")) {
+        return new_node_unary_op(ND_PRE_INC, unary(), tok);
     } else if (tok = consume(TK_RESERVED, "sizeof")) {
         Node *node;
         if (consume(TK_RESERVED, "(")) {

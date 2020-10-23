@@ -14,6 +14,7 @@ void gen_lval(Node *node);
 void load_arg(Node *node, int index);
 void load(Type *type);
 void store(Type *type);
+void inc(Type *type);
 
 /**
  * Generate assembly code.
@@ -136,6 +137,13 @@ void gen(Node *node) {
             gen(node->rhs);
             store(node->lhs->type);
             return;
+        case ND_PRE_INC:
+            gen_lval(node->lhs);
+            gen_lval(node->lhs);
+            load(node->type);
+            inc(node->type);
+            store(node->type);
+            return;
         case ND_IF:
             cur_label_cnt = label_cnt++;
             gen(node->cond);
@@ -236,7 +244,7 @@ void gen(Node *node) {
 }
 
 /**
- * Generate assembly code to push an address to a lvalue to the stack.
+ * Push an address to a lvalue to the stack.
  * @param node A node for an lvalue.
  */
 void gen_lval(Node *node) {
@@ -256,7 +264,7 @@ void gen_lval(Node *node) {
 }
 
 /**
- * Generate assembly code to load an argument value following the function calling convention.
+ * Push a value to a pre-defined address, which follows the function calling convention.
  * @param Node A node.
  * @param index The index of an argument.
  */
@@ -275,7 +283,7 @@ void load_arg(Node *node, int index) {
 }
 
 /**
- * Generate assembly code to load a value from an address on the top of the stack.
+ * Load a value from an address on the top of the stack, and push the value to the stack.
  * @param type A type of a value to be loaded.
  */
 void load(Type *type) {
@@ -295,8 +303,7 @@ void load(Type *type) {
 }
 
 /**
- * Generate assembly code to store a value to an address.
- * The top of the stack must be the value, and the second from the top must be the address.
+ * Load a value and an address from the top of the stack. The loaded value is stored to the loaded address.
  * @param type A type of a value to be stored.
  */
 void store(Type *type) {
@@ -314,4 +321,14 @@ void store(Type *type) {
             break;
     }
     printf("  push rdi\n");
+}
+
+/**
+ * Increment the value on the top of the stack.
+ * @param type A type.
+ */
+void inc(Type *type) {
+    printf("  pop rax\n");
+    printf("  add rax, %d\n", type->base ? type->base->size : 1);
+    printf("  push rax\n");
 }

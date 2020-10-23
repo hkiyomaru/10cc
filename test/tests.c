@@ -144,5 +144,9 @@ int main() {
     assert(8, ({ char *ary[] = {"ABC", "CBA"}; sizeof *ary; }), "char *ary[] = {\"ABC\", \"CBA\"}; sizeof *ary;");
     assert(67, ({ char *ary[] = {"ABC", "CBA"}; ary[1][0]; }), "char *ary[] = {\"ABC\", \"CBA\"}; ary[1][0];");
     assert(66, ({ char *ary[] = {"ABC", "CBA"}; ary[1][1]; }), "char *ary[] = {\"ABC\", \"CBA\"}; ary[1][1];");
+    assert(1, ({ int a = 0; ++a; }), "int a = 0; ++a;");
+    assert(1, ({ int a = 0; int b = 0; a = a + ++b; a; }), "int a = 0; int b = 0; a = a + ++b; a;");
+    assert(1, ({ int a = 0; int b = 0; a = a + ++b; b; }), "int a = 0; int b = 0; a = a + ++b; b;");
+    assert(1, ({ int a[3] = {0, 1, 2}; int *p = a; ++p; *p; }), "int a[3] = {0, 1, 2}; int *p = a; ++p; *p;");
     return 0;
 }
