@@ -691,9 +691,22 @@ Node *ary_init(Var *var, Token *tok) {
  * @param type The type of a global variable.
  * @param name A name of a variable.
  * @param is_local If true, creates a local variable.
+ * @param tok An identifiier token.
  * @return A variable.
  */
-Var *new_var(Type *type, char *name, bool is_local) {
+Var *new_var(Type *type, char *name, bool is_local, Token *tok) {
+    if (type->kind == TY_VOID) {
+        error_at(tok->loc, "error: variable or field '%s' declared void", tok->str);
+    }
+    if (type->kind == TY_ARY) {
+        Type *base = type->base;
+        while (base->kind == TY_ARY) {
+            base = base->base;
+        }
+        if (base->kind == TY_VOID) {
+            error_at(tok->loc, "error: declaration of '%s' as array of voids", tok->str);
+        }
+    }
     Var *var = calloc(1, sizeof(Var));
     var->type = type;
     var->name = name;
@@ -718,7 +731,7 @@ Var *new_gvar(Type *type, char *name, Token *tok) {
         }
         return var;
     }
-    Var *var = new_var(type, name, false);
+    Var *var = new_var(type, name, false, tok);
     vec_push(prog->gvars, var);
     push_scope(var);
     return var;
@@ -741,7 +754,7 @@ Var *new_lvar(Type *type, char *name, Token *tok) {
             error_at(tok->loc, "error: redeclaration of '%s'", tok->str);
         }
     }
-    Var *var = new_var(type, name, true);
+    Var *var = new_var(type, name, true, tok);
     vec_push(fn->lvars, var);
     push_scope(var);
     return var;
@@ -767,8 +780,9 @@ Var *new_strl(char *str, Token *tok) {
  * @return A variable.
  */
 Var *decl() {
+    Token *tok = ctok;
     Type *type = read_type();
-    Token *tok = expect(TK_IDENT, NULL);
+    tok = expect(TK_IDENT, NULL);
     type = read_ary(type);
     return new_lvar(type, tok->str, tok);
 }
