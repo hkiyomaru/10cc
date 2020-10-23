@@ -75,12 +75,7 @@ Node *do_walk(Node *node, bool decay) {
             Type *rtype = node->rhs->type;
 
             if (ltype->kind == TY_PTR) {
-                if (rtype->kind == TY_PTR) {
-                    node = scale_ptr(ND_DIV, node, ltype);
-                    node->type = ltype;
-                } else {
-                    node->rhs = scale_ptr(ND_MUL, node->rhs, ltype);
-                }
+                node = rtype->kind == TY_PTR ? scale_ptr(ND_DIV, node, ltype) : scale_ptr(ND_MUL, node->rhs, ltype);
                 node->type = ltype;
             } else {
                 node->type = int_type();
@@ -122,15 +117,13 @@ Node *do_walk(Node *node, bool decay) {
             return node;
         case ND_FUNC_CALL:
             for (int i = 0; i < node->args->len; i++) {
-                Node *arg = vec_at(node->args, i);
-                vec_set(node->args, i, walk(arg));
+                vec_set(node->args, i, walk((Node *)vec_at(node->args, i)));
             }
             return node;
         case ND_BLOCK:
         case ND_STMT_EXPR:
             for (int i = 0; i < node->stmts->len; i++) {
-                Node *stmt = vec_at(node->stmts, i);
-                vec_set(node->stmts, i, walk(stmt));
+                vec_set(node->stmts, i, walk((Node *)vec_at(node->stmts, i)));
             }
             if (node->stmts->len) {
                 node->type = ((Node *)vec_back(node->stmts))->type;
@@ -181,7 +174,6 @@ Type *new_type(TypeKind type, int size) {
     Type *ret = calloc(1, sizeof(Type));
     ret->kind = type;
     ret->size = size;
-    ret->align = size;
     return ret;
 }
 
@@ -214,13 +206,12 @@ Type *ptr_to(Type *base) {
  * @param size The number of items.
  * @return An ARY type.
  */
-Type *ary_of(Type *base, int len) {
+Type *ary_of(Type *base, int array_size) {
     Type *type = calloc(1, sizeof(Type));
     type->kind = TY_ARY;
-    type->size = base->size * len;
-    type->align = base->align;
+    type->size = base->size * array_size;
     type->base = base;
-    type->array_size = len;
+    type->array_size = array_size;
     return type;
 }
 

@@ -14,8 +14,9 @@ VarScope *scope;
 int str_label_cnt = 1;
 
 void top_level();
-Func *func(Type *rtype, Token *tok);
+Func *new_func(Type *rtype, char *name, Token *tok);
 Node *stmt();
+Node *compound_stmt();
 Node *expr();
 Node *expr_stmt();
 Node *stmt_expr();
@@ -76,16 +77,9 @@ void top_level() {
     Token *tok = expect(TK_IDENT, NULL);
     type = read_ary(type);
     if (peek(TK_RESERVED, "(")) {
-        func(type, tok);
+        new_func(type, tok->str, tok);
     } else {
-        if (map_count(scope->vars, tok->str)) {
-            Var *var = map_at(scope->vars, tok->str);
-            if (!is_same_type(type, var->type)) {
-                error_at(tok->loc, "error: conflicting types for '%s'", tok->str);
-            }
-        } else {
-            new_gvar(type, tok->str, tok);
-        }
+        new_gvar(type, tok->str, tok);
         expect(TK_RESERVED, ";");
     }
 }
@@ -95,21 +89,15 @@ void top_level() {
  * Here, the function name has already been consumed.
  * So, the current token must be '('.
  * @param type The type of a return variable.
+ * @param name A function name.
  * @param tok The name of a function.
  * @return A function.
  */
-Func *func(Type *rtype, Token *tok) {
-    Func *fn_ = find_func(tok->str);
-    if (fn_) {
-        if (fn_->body) {
-            error_at(tok->loc, "error: redefinition of %s\n", tok->str);
-        }
-        // TODO: Confirm that types are sane.
-    }
-
+Func *new_func(Type *rtype, char *name, Token *tok) {
     fn = calloc(1, sizeof(Func));
     fn->rtype = rtype;
-    fn->name = tok->str;
+    fn->name = name;
+    fn->tok = tok;
     fn->lvars = vec_create();
 
     // Parse the arguments.
@@ -120,13 +108,31 @@ Func *func(Type *rtype, Token *tok) {
         if (0 < fn->args->len) {
             expect(TK_RESERVED, ",");
         }
-        tok = token;
-        vec_push(fn->args, new_node_varref(decl(), tok));
+        vec_push(fn->args, new_node_varref(decl(), ctok));
+    }
+
+    // Check conflict.
+    Func *fn_ = find_func(name);
+    if (fn_) {
+        if (fn_->body) {
+            error_at(fn->tok->loc, "error: redefinition of '%s'\n", tok->str);
+        }
+        if (!is_same_type(fn->rtype, fn_->rtype)) {
+            error_at(fn->tok->loc, "error: conflicting types for '%s'", tok->str);
+        }
+        if (fn->args->len != fn_->args->len) {
+            error_at(fn->tok->loc, "error: conflicting types for '%s'", tok->str);
+        }
+        for (int i = 0; i < fn->args->len; i++) {
+            if (!is_same_type((Type *)vec_at(fn->args, i), (Type *)vec_at(fn_->args, i))) {
+                error_at(fn->tok->loc, "error: conflicting types for '%s'", tok->str);
+            }
+        }
     }
 
     // NOTE: functions must be registered before parsing their bodies
     // to deal with recursion.
-    map_insert(prog->fns, fn->name, fn);
+    map_insert(prog->fns, name, fn);
 
     // If this is a prototype declaration, exit.
     if (consume(TK_RESERVED, ";")) {
@@ -135,12 +141,7 @@ Func *func(Type *rtype, Token *tok) {
     }
 
     // Parse the body.
-    tok = expect(TK_RESERVED, "{");
-    fn->body = new_node(ND_BLOCK, tok);
-    fn->body->stmts = vec_create();
-    while (!consume(TK_RESERVED, "}")) {
-        vec_push(fn->body->stmts, (void *)stmt());
-    }
+    fn->body = compound_stmt();
     leave_scope();
     return fn;
 }
@@ -148,7 +149,7 @@ Func *func(Type *rtype, Token *tok) {
 /**
  * Parses tokens to represent a statement, where
  *     stmt = expr_stmt ";"
- *          | "{" stmt+ "}"
+ *          | compound-stmt
  *          | "if" "(" expr ")" stmt ("else" stmt)?
  *          | "while" "(" expr ")" stmt
  *          | "for" "(" expr? ";" expr? ";" expr? ")" stmt
@@ -159,15 +160,8 @@ Func *func(Type *rtype, Token *tok) {
  */
 Node *stmt() {
     Token *tok;
-    if (tok = consume(TK_RESERVED, "{")) {
-        Node *node = new_node(ND_BLOCK, tok);
-        node->stmts = vec_create();
-        enter_scope();
-        do {
-            vec_push(node->stmts, (void *)stmt());
-        } while (!consume(TK_RESERVED, "}"));
-        leave_scope();
-        return node;
+    if (tok = peek(TK_RESERVED, "{")) {
+        return compound_stmt();
     }
 
     if (tok = consume(TK_RESERVED, "return")) {
@@ -212,9 +206,8 @@ Node *stmt() {
     }
 
     if (at_typename()) {
-        tok = token;
         Var *var = decl();
-        Node *node = consume(TK_RESERVED, "=") ? lvar_init(var, tok) : new_node(ND_NULL, tok);
+        Node *node = consume(TK_RESERVED, "=") ? lvar_init(var, ctok) : new_node(ND_NULL, ctok);
         expect(TK_RESERVED, ";");
         return node;
     }
@@ -225,6 +218,22 @@ Node *stmt() {
 
     Node *node = expr_stmt();
     expect(TK_RESERVED, ";");
+    return node;
+}
+
+/**
+ * Parses a compound statement, where
+ *     compound-stmt = "{" stmt* "}"
+ */
+Node *compound_stmt() {
+    Node *node = new_node(ND_BLOCK, ctok);
+    node->stmts = vec_create();
+    enter_scope();
+    expect(TK_RESERVED, "{");
+    while (!consume(TK_RESERVED, "}")) {
+        vec_push(node->stmts, (void *)stmt());
+    }
+    leave_scope();
     return node;
 }
 
@@ -240,10 +249,7 @@ Node *expr() { return assign(); }
  *     expr_stmt = expr ";"
  * @return A node.
  */
-Node *expr_stmt() {
-    Node *node = new_node_unary_op(ND_EXPR_STMT, expr(), token);
-    return node;
-}
+Node *expr_stmt() { return new_node_unary_op(ND_EXPR_STMT, expr(), ctok); }
 
 /**
  * Parses tokens to represent a statement expression, where
@@ -252,17 +258,11 @@ Node *expr_stmt() {
  * @note Parentheses are consumed outside of this function.
  */
 Node *stmt_expr() {
-    Token *tok = expect(TK_RESERVED, "{");
-
-    Node *node = new_node(ND_STMT_EXPR, tok);
-    node->stmts = vec_create();
-
-    enter_scope();
-    do {
-        vec_push(node->stmts, stmt());
-    } while (!consume(TK_RESERVED, "}"));
-    leave_scope();
-
+    Node *node = new_node(ND_STMT_EXPR, ctok);
+    node->stmts = compound_stmt()->stmts;
+    if (node->stmts->len == 0) {
+        error_at(node->tok->loc, "error: void value not ignored as it ought to be\n");
+    }
     Node *last = vec_back(node->stmts);
     if (last->kind != ND_EXPR_STMT) {
         error_at(last->tok->loc, "error: void value not ignored as it ought to be\n");
@@ -388,7 +388,7 @@ Node *unary() {
                 expect(TK_RESERVED, ")");
                 return node;
             } else {
-                token = tok->next;
+                ctok = tok->next;
             }
         }
         return new_node_unary_op(ND_SIZEOF, unary(), tok);
@@ -468,7 +468,7 @@ Type *read_type() {
     } else if (consume(TK_RESERVED, "char")) {
         type = char_type();
     } else {
-        error_at(token->loc, "error: unknown type name '%s'\n", token->str);
+        error_at(ctok->loc, "error: unknown type name '%s'\n", ctok->str);
     }
     while ((consume(TK_RESERVED, "*"))) {
         type = ptr_to(type);
@@ -707,6 +707,13 @@ Var *new_var(Type *type, char *name, bool is_local) {
  * @note `new_node_string` also registers variables to the global variable map.
  */
 Var *new_gvar(Type *type, char *name, Token *tok) {
+    if (map_count(scope->vars, name)) {
+        Var *var = map_at(scope->vars, name);
+        if (!is_same_type(type, var->type)) {
+            error_at(tok->loc, "error: conflicting types for '%s'", name);
+        }
+        return var;
+    }
     Var *var = new_var(type, name, false);
     vec_push(prog->gvars, var);
     push_scope(var);
@@ -722,6 +729,14 @@ Var *new_gvar(Type *type, char *name, Token *tok) {
  * @return A variable.
  */
 Var *new_lvar(Type *type, char *name, Token *tok) {
+    if (map_count(scope->vars, tok->str)) {
+        Var *var = map_at(scope->vars, tok->str);
+        if (!is_same_type(type, var->type)) {
+            error_at(tok->loc, "error: conflicting types for '%s'", tok->str);
+        } else {
+            error_at(tok->loc, "error: redeclaration of '%s'", tok->str);
+        }
+    }
     Var *var = new_var(type, name, true);
     vec_push(fn->lvars, var);
     push_scope(var);
@@ -751,15 +766,6 @@ Var *decl() {
     Type *type = read_type();
     Token *tok = expect(TK_IDENT, NULL);
     type = read_ary(type);
-    if (map_count(scope->vars, tok->str)) {
-        Var *var = map_at(scope->vars, tok->str);
-        if (!is_same_type(type, var->type)) {
-            error_at(tok->loc, "error: conflicting types for '%s'", tok->str);
-        } else {
-            error_at(tok->loc, "error: redeclaration of '%s'", tok->str);
-        }
-        return var;
-    }
     return new_lvar(type, tok->str, tok);
 }
 
@@ -769,13 +775,7 @@ Var *decl() {
  * @param name The name of a function.
  * @return A function.
  */
-Func *find_func(char *name) {
-    if (map_count(prog->fns, name)) {
-        return map_at(prog->fns, name);
-    } else {
-        return NULL;
-    }
-}
+Func *find_func(char *name) { return map_count(prog->fns, name) ? map_at(prog->fns, name) : NULL; }
 
 /**
  * Create an empty variable scope.

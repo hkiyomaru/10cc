@@ -26,7 +26,7 @@ extern char *user_input;
 /**
  * tokenize.c
  */
-extern Token *token;
+extern Token *ctok;
 
 typedef enum {
     TK_RESERVED,  // '+', '-', and so on
@@ -94,6 +94,7 @@ struct Func {
     Vector *lvars;
     Vector *args;
     Node *body;
+    Token *tok;
 };
 
 struct Node {
@@ -152,7 +153,6 @@ typedef enum { TY_INT, TY_PTR, TY_ARY, TY_CHAR } TypeKind;
 struct Type {
     TypeKind kind;
     int size;
-    int align;
     struct Type *base;  // used when type is TY_PTR or TY_ARY
     int array_size;
 };

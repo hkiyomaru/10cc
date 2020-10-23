@@ -14,8 +14,6 @@ void load_arg(Node *node, int index);
 void load(Type *type);
 void store(Type *type);
 
-int roundup(int x, int align);
-
 /**
  * Generates code written in x86-64 assembly.
  * @param prog A program.
@@ -59,7 +57,6 @@ void gen_text(Prog *prog) {
         for (int i = 0; i < fn->lvars->len; i++) {
             Var *var = vec_at(fn->lvars, i);
             offset += var->type->size;
-            offset = roundup(offset, var->type->align);
             var->offset = offset;
         }
 
@@ -68,7 +65,7 @@ void gen_text(Prog *prog) {
 
         printf("  push rbp\n");
         printf("  mov rbp, rsp\n");
-        printf("  sub rsp, %d\n", roundup(offset, 16));
+        printf("  sub rsp, %d\n", offset);
 
         for (int i = 0; i < fn->args->len; i++) {
             load_arg(vec_at(fn->args, i), i);
@@ -304,10 +301,3 @@ void store(Type *type) {
     }
     printf("  push rdi\n");
 }
-
-/**
- * Rounds up a number.
- * @param x A number to be rounded up.
- * @param align A base number.
- */
-int roundup(int x, int align) { return (x + align - 1) & ~(align - 1); }

@@ -1,6 +1,6 @@
 #include "10cc.h"
 
-Token *token;
+Token *ctok;
 
 /**
  * Returns the current token if it satisfies given conditions.
@@ -9,10 +9,10 @@ Token *token;
  * @return The current token.
  */
 Token *peek(TokenKind kind, char *str) {
-    if (token->kind != kind || (str && strcmp(token->str, str))) {
+    if (ctok->kind != kind || (str && strcmp(ctok->str, str))) {
         return NULL;
     }
-    return token;
+    return ctok;
 }
 
 /**
@@ -20,12 +20,12 @@ Token *peek(TokenKind kind, char *str) {
  * Otherwise, NULL will be returned.
  * @param kind The kind of a token.
  * @param str The string expression of a token.
- * @return The current token.
+ * @return A consumed token.
  */
 Token *consume(TokenKind kind, char *str) {
     Token *ret = peek(kind, str);
     if (ret) {
-        token = token->next;
+        ctok = ctok->next;
     }
     return ret;
 }
@@ -35,14 +35,14 @@ Token *consume(TokenKind kind, char *str) {
  * Otherwise, raises an error message.
  * @param kind The kind of a token.
  * @param str The string expression of a token.
- * @return The current token.
+ * @return A consumed token.
  */
 Token *expect(TokenKind kind, char *str) {
     Token *ret = peek(kind, str);
     if (ret) {
-        token = token->next;
+        ctok = ctok->next;
     } else {
-        error_at(token->loc, "error: expected '%s' before '%s' token\n", str, token->str);
+        error_at(ctok->loc, "error: expected '%s' before '%s' token\n", str, ctok->str);
     }
     return ret;
 }
@@ -148,7 +148,7 @@ Token *tokenize() {
         if (strncmp(p, "/*", 2) == 0) {
             char *q = strstr(p + 2, "*/");
             if (!q) {
-                error_at(p, "Unclosed block comment\n");
+                error_at(p, "error: unterminated comment\n");
             }
             p = q + 2;
             continue;
