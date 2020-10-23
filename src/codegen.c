@@ -15,6 +15,7 @@ void load_arg(Node *node, int index);
 void load(Type *type);
 void store(Type *type);
 void inc(Type *type);
+void dec(Type *type);
 
 /**
  * Generate assembly code.
@@ -143,6 +144,14 @@ void gen(Node *node) {
             load(node->type);
             inc(node->type);
             store(node->type);
+            return;
+        case ND_POST_INC:
+            gen_lval(node->lhs);
+            gen_lval(node->lhs);
+            load(node->type);
+            inc(node->type);
+            store(node->type);
+            dec(node->type);
             return;
         case ND_IF:
             cur_label_cnt = label_cnt++;
@@ -330,5 +339,15 @@ void store(Type *type) {
 void inc(Type *type) {
     printf("  pop rax\n");
     printf("  add rax, %d\n", type->base ? type->base->size : 1);
+    printf("  push rax\n");
+}
+
+/**
+ * Decrement the value on the top of the stack.
+ * @param type A type.
+ */
+void dec(Type *type) {
+    printf("  pop rax\n");
+    printf("  sub rax, %d\n", type->base ? type->base->size : 1);
     printf("  push rax\n");
 }

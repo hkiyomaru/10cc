@@ -148,5 +148,10 @@ int main() {
     assert(1, ({ int a = 0; int b = 0; a = a + ++b; a; }), "int a = 0; int b = 0; a = a + ++b; a;");
     assert(1, ({ int a = 0; int b = 0; a = a + ++b; b; }), "int a = 0; int b = 0; a = a + ++b; b;");
     assert(1, ({ int a[3] = {0, 1, 2}; int *p = a; ++p; *p; }), "int a[3] = {0, 1, 2}; int *p = a; ++p; *p;");
+    assert(0, ({ int a = 0; a++; }), "int a = 0; a++;");
+    assert(0, ({ int a = 0; int b = 0; a = a + b++; a; }), "int a = 0; int b = 0; a = a + b++; a;");
+    assert(1, ({ int a = 0; int b = 0; a = a + b++; b; }), "int a = 0; int b = 0; a = a + b++; b;");
+    assert(1, ({ int a[3] = {0, 1, 2}; int *p = a; p++; *p; }), "int a[3] = {0, 1, 2}; int *p = a; p++; *p;");
+    assert(55, ({ int total; int i; total = 0; for (i=1; i <= 10; i++) total = total + i; total; }), "int total; int i; total = 0; for (i=1; i <= 10; i++) total = total + i; total;");
     return 0;
 }

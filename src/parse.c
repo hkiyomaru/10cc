@@ -405,7 +405,7 @@ Node *unary() {
 
 /**
  * Return a postfix expression, where
- *     postfix = primary ("[" assign "]")*
+ *     postfix = primary ("[" assign "]" | "++")*
  * @return A node.
  */
 Node *postfix() {
@@ -418,6 +418,12 @@ Node *postfix() {
             expect(TK_RESERVED, "]");
             continue;
         }
+
+        if (tok = consume(TK_RESERVED, "++")) {
+            node = new_node_unary_op(ND_POST_INC, node, tok);
+            continue;
+        }
+
         return node;
     }
 }
