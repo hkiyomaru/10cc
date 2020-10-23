@@ -139,5 +139,10 @@ int main() {
     assert(0, ({ ({{}; 0;}); }), "({{}; 0;});");
     assert(1, ({ sizeof(void); }), "sizeof(void);");
     assert(0, ({ do_nothing(); 0; }), "do_nothing(); 0;");
+    assert(65, ({ char *ary[] = {"ABC", "CBA"}; *ary[0]; }), "char *ary[] = {\"ABC\", \"CBA\"}; *ary[0];");
+    assert(8, ({ char *ary[] = {"ABC", "CBA"}; sizeof ary[0]; }), "char *ary[] = {\"ABC\", \"CBA\"}; sizeof ary[0];");
+    assert(8, ({ char *ary[] = {"ABC", "CBA"}; sizeof *ary; }), "char *ary[] = {\"ABC\", \"CBA\"}; sizeof *ary;");
+    assert(67, ({ char *ary[] = {"ABC", "CBA"}; ary[1][0]; }), "char *ary[] = {\"ABC\", \"CBA\"}; ary[1][0];");
+    assert(66, ({ char *ary[] = {"ABC", "CBA"}; ary[1][1]; }), "char *ary[] = {\"ABC\", \"CBA\"}; ary[1][1];");
     return 0;
 }
