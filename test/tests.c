@@ -3,7 +3,7 @@
 /**
  * A block comment.
  */
-int assert(int expected, int actual, char *code);
+void assert(int expected, int actual, char *code);
 
 int ret3() {
     return 3;
