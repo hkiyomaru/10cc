@@ -7,12 +7,12 @@ OBJS=$(SRCS:.c=.o)
 
 $(OBJS): 10cc.h
 
-test.o: test/test.h
-	gcc -xc -c -o test.o test/test.h
+test_tools.o: test/test_tools.c
+	gcc -xc -c -o test_tools.o test/test_tools.c
 
-test: 10cc test.o
+test: 10cc test_tools.o
 	./10cc test/tests.c > tmp.s
-	gcc -static -o tmp tmp.s test.o
+	gcc -static -o tmp tmp.s test_tools.o
 	./tmp
 
 clean:
