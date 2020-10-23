@@ -122,5 +122,7 @@ int main() {
     assert(67, ({ char *a = "ABC"; a[2]; }), "char *a = \"ABC\"; a[2];");
     assert(0, ({ char *a = "ABC"; a[3]; }), "char *a = \"ABC\"; a[3];");
     assert(10, ({ int i = 0; for (;i < 10;) {i = i + 1; } i; }), "int i = 0; for (;i < 10;) {i = i + 1; } i;");
+    assert(0, ({ {}; 0; }), "{}; 0;");
+    assert(0, ({ ({{}; 0;}); }), "({{}; 0;});");
     return 0;
 }
