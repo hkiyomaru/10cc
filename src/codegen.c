@@ -4,6 +4,7 @@ char *argregs1[] = {"dil", "sil", "dl", "cl", "r8b", "r9b"};
 char *argregs4[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
 char *argregs8[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
+char *fnname;
 int label_cnt = 0;
 
 void gen_data(Prog *prog);
@@ -52,6 +53,7 @@ void gen_text(Prog *prog) {
         if (!fn->body) {
             continue;  // Just a prototype declaration.
         }
+        fnname = fn->name;
 
         int offset = 0;
         for (int i = 0; i < fn->lvars->len; i++) {
@@ -72,6 +74,11 @@ void gen_text(Prog *prog) {
         }
 
         gen(fn->body);
+
+        printf(".Lreturn.%s:\n", fnname);
+        printf("  mov rsp, rbp\n");
+        printf("  pop rbp\n");
+        printf("  ret\n");
     }
 }
 
@@ -104,12 +111,18 @@ void gen(Node *node) {
             for (int i = 0; i < node->args->len; i++) {
                 gen(vec_at(node->args, i));
             }
-            for (int i = node->args->len - 1; 0 <= i; i--) {
+            for (int i = node->args->len - 1; i >= 0; i--) {
                 printf("  pop %s\n", argregs8[i]);
             }
             printf("  mov al, 0\n");
             printf("  call %s\n", node->funcname);
             printf("  push rax\n");
+
+            if (node->type->kind == TY_VOID) {
+                printf("  pop rax\n");
+                printf("  movsx rax, al\n");
+                printf("  push rax\n");
+            }
             return;
         case ND_ASSIGN:
             if (node->lhs->kind == ND_DEREF) {
@@ -164,9 +177,7 @@ void gen(Node *node) {
         case ND_RETURN:
             gen(node->lhs);
             printf("  pop rax\n");
-            printf("  mov rsp, rbp\n");
-            printf("  pop rbp\n");
-            printf("  ret\n");
+            printf("  jmp .Lreturn.%s\n", fnname);
             return;
         case ND_EXPR_STMT:
             gen(node->lhs);

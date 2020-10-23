@@ -40,6 +40,12 @@ char first(char *str) {
     return str[0];
 }
 
+void do_nothing() {
+    int a = 1;
+    int b = 1;
+    int c = 1;
+}
+
 int int_gvar;
 int *intptr_gvar;
 int intary_gvar[2];
@@ -132,5 +138,6 @@ int main() {
     assert(0, ({ {}; 0; }), "{}; 0;");
     assert(0, ({ ({{}; 0;}); }), "({{}; 0;});");
     assert(1, ({ sizeof(void); }), "sizeof(void);");
+    assert(0, ({ do_nothing(); 0; }), "do_nothing(); 0;");
     return 0;
 }
