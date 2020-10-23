@@ -113,10 +113,17 @@ int main() {
     assert(0, ({ int a[3] = {0, 1, 2}; a[0]; }), "int a[3] = {0, 1, 2}; a[0];");
     assert(1, ({ int a[3] = {0, 1, 2}; a[1]; }), "int a[3] = {0, 1, 2}; a[1];");
     assert(2, ({ int a[3] = {0, 1, 2}; a[2]; }), "int a[3] = {0, 1, 2}; a[2];");
+    assert(0, ({ int a[] = {0, 1, 2}; a[0]; }), "int a[] = {0, 1, 2}; a[0];");
+    assert(1, ({ int a[] = {0, 1, 2}; a[1]; }), "int a[] = {0, 1, 2}; a[1];");
+    assert(2, ({ int a[] = {0, 1, 2}; a[2]; }), "int a[] = {0, 1, 2}; a[2];");
     assert(65, ({ int a[4] = "ABC"; a[0]; }), "int a[4] = \"ABC\"; a[0];");
     assert(66, ({ int a[4] = "ABC"; a[1]; }), "int a[4] = \"ABC\"; a[1];");
     assert(67, ({ int a[4] = "ABC"; a[2]; }), "int a[4] = \"ABC\"; a[2];");
     assert(0, ({ int a[4] = "ABC"; a[3]; }), "int a[4] = \"ABC\"; a[3];");
+    assert(65, ({ int a[] = "ABC"; a[0]; }), "int a[] = \"ABC\"; a[0];");
+    assert(66, ({ int a[] = "ABC"; a[1]; }), "int a[] = \"ABC\"; a[1];");
+    assert(67, ({ int a[] = "ABC"; a[2]; }), "int a[] = \"ABC\"; a[2];");
+    assert(0, ({ int a[] = "ABC"; a[3]; }), "int a[] = \"ABC\"; a[3];");
     assert(65, ({ char *a = "ABC"; a[0]; }), "char *a = \"ABC\"; a[0];");
     assert(66, ({ char *a = "ABC"; a[1]; }), "char *a = \"ABC\"; a[1];");
     assert(67, ({ char *a = "ABC"; a[2]; }), "char *a = \"ABC\"; a[2];");
