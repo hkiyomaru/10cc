@@ -515,20 +515,18 @@ Type *read_type() {
 
 /**
  * Read an array size.
- * @param type A base type.
+ * @param base A base type.
  * @return A type.
  */
-Type *read_ary(Type *type) {
-    Vector *sizes = vec_create();
-    while (consume(TK_RESERVED, "[")) {
-        Token *tok = consume(TK_NUM, NULL);
-        vec_pushi(sizes, tok ? tok->val : -1);
-        expect(TK_RESERVED, "]");
+Type *read_ary(Type *base) {
+    if (!consume(TK_RESERVED, "[")) {
+        return base;
     }
-    for (int i = sizes->len - 1; i >= 0; i--) {
-        type = ary_of(type, vec_ati(sizes, i));
-    }
-    return type;
+    Token *tok = consume(TK_NUM, NULL);
+    int size = tok ? tok->val : -1;
+    expect(TK_RESERVED, "]");
+    base = read_ary(base);
+    return ary_of(base, size);
 }
 
 /**
