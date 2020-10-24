@@ -12,6 +12,7 @@ typedef struct Token Token;
 typedef struct Type Type;
 typedef struct Node Node;
 typedef struct Var Var;
+typedef struct Member Member;
 typedef struct Func Func;
 typedef struct Prog Prog;
 typedef struct Vector Vector;
@@ -84,6 +85,7 @@ typedef enum {
     ND_ADDR,
     ND_DEREF,
     ND_SIZEOF,
+    ND_MEMBER,
     ND_NULL
 } NodeKind;  // AST nodes
 
@@ -128,6 +130,10 @@ struct Node {
 
     // Number literal
     int val;
+
+    // Struct member
+    char *member_name;
+    Member *member;
 };
 
 struct Var {
@@ -142,6 +148,12 @@ struct Var {
     char *data;
 };
 
+struct Member {
+    char *name;
+    Type *type;
+    int offset;
+};
+
 Prog *parse();
 
 Node *new_node(NodeKind kind, Token *tok);
@@ -152,13 +164,14 @@ Node *new_node_num(int val, Token *tok);
 /**
  * type.c
  */
-typedef enum { TY_INT, TY_PTR, TY_ARY, TY_CHAR, TY_VOID } TypeKind;
+typedef enum { TY_INT, TY_PTR, TY_ARY, TY_CHAR, TY_VOID, TY_STRUCT } TypeKind;
 
 struct Type {
     TypeKind kind;
     int size;
-    struct Type *base;  // used when type is TY_PTR or TY_ARY
-    int array_size;
+    struct Type *base;  // pointer or array
+    int array_size;     // array
+    Map *members;       // struct
 };
 
 Prog *assign_type(Prog *prog);
@@ -166,6 +179,7 @@ Prog *assign_type(Prog *prog);
 Type *int_type();
 Type *char_type();
 Type *void_type();
+Type *struct_type();
 Type *ptr_to(Type *base);
 Type *ary_of(Type *base, int len);
 bool is_same_type(Type *x, Type *y);

@@ -144,6 +144,15 @@ Node *do_walk(Node *node, bool decay) {
         case ND_SIZEOF:
             node->lhs = walk_nodecay(node->lhs);
             return new_node_num(node->lhs->type->size, node->tok);
+        case ND_MEMBER:
+            if (node->lhs->type->kind != TY_STRUCT) {
+                error_at(node->tok->loc, "error: member reference base type is not a structure\n");
+            }
+            if (!node->member) {
+                error_at(node->tok->loc, "error: no member named '%s'", node->member_name);
+            }
+            node->type = node->member->type;
+            return node;
         default:
             error_at(node->tok->loc, "error: failed to assign type\n");
     }
@@ -235,6 +244,19 @@ Type *ary_of(Type *base, int array_size) {
 }
 
 /**
+ * Create a struct type.
+ * @param members Members.
+ * @return A struct type.
+ */
+Type *struct_type(Map *members) {
+    Member *last = vec_back(members->vals);
+    int size = last->offset + last->type->size;
+    Type *type = new_type(TY_STRUCT, size);
+    type->members = members;
+    return type;
+}
+
+/**
  * Decay a given node to an pointer if it is an array.
  * @param base A node.
  * @return A node.
@@ -272,7 +294,7 @@ bool is_same_type(Type *x, Type *y) {
  */
 void ensure_referable(Node *node) {
     NodeKind kind = node->kind;
-    if (kind != ND_VARREF && kind != ND_DEREF) {
+    if (kind != ND_VARREF && kind != ND_DEREF && kind != ND_MEMBER) {
         char *loc = node->tok->loc;
         error_at(loc, "error: lvalue required as left operand of assignment\n");
     }

@@ -108,6 +108,7 @@ void gen(Node *node) {
             load(node->type);
             return;
         case ND_VARREF:
+        case ND_MEMBER:
             gen_lval(node);
             if (node->type->kind != TY_ARY) {
                 load(node->type);
@@ -284,6 +285,12 @@ void gen_lval(Node *node) {
         case ND_DEREF:
             gen(node->lhs);
             break;
+        case ND_MEMBER:
+            gen_lval(node->lhs);
+            printf("  pop rax\n");
+            printf("  add rax, %d\n", node->member->offset);
+            printf("  push rax\n");
+            return;
     }
 }
 

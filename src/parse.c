@@ -31,6 +31,8 @@ Node *primary();
 
 Type *read_base_type();
 Type *read_type_postfix(Type *type);
+Type *struct_decl();
+Member *struct_member();
 
 Node *new_node_bin_op(NodeKind kind, Node *lhs, Node *rhs, Token *tok);
 Node *new_node_unary_op(NodeKind kind, Node *lhs, Token *tok);
@@ -407,10 +409,9 @@ Node *unary() {
     } else if (tok = consume(TK_RESERVED, "--")) {
         return new_node_unary_op(ND_PRE_DEC, unary(), tok);
     } else if (tok = consume(TK_RESERVED, "sizeof")) {
-        Node *node;
         if (consume(TK_RESERVED, "(")) {
             if (at_typename()) {
-                node = new_node_num(read_base_type()->size, tok);
+                Node *node = new_node_num(read_base_type()->size, tok);
                 expect(TK_RESERVED, ")");
                 return node;
             } else {
@@ -425,7 +426,7 @@ Node *unary() {
 
 /**
  * Return a postfix expression, where
- *     postfix = primary ("[" assign "]" | "++" | "--")*
+ *     postfix = primary ("[" assign "]" | "++" | "--" | "." ident)*
  * @return A node.
  */
 Node *postfix() {
@@ -446,6 +447,16 @@ Node *postfix() {
 
         if (tok = consume(TK_RESERVED, "--")) {
             node = new_node_unary_op(ND_POST_DEC, node, tok);
+            continue;
+        }
+
+        if (tok = consume(TK_RESERVED, ".")) {
+            node = new_node_unary_op(ND_MEMBER, node, tok);
+            char *member_name = expect(TK_IDENT, NULL)->str;
+            node->member_name = member_name;
+            if (map_contains(node->lhs->type->members, member_name)) {
+                node->member = map_at(node->lhs->type->members, member_name);
+            }
             continue;
         }
 
@@ -504,6 +515,8 @@ Type *read_base_type() {
         type = char_type();
     } else if (consume(TK_RESERVED, "void")) {
         type = void_type();
+    } else if (peek(TK_RESERVED, "struct")) {
+        type = struct_decl();
     } else {
         error_at(ctok->loc, "error: unknown type name '%s'\n", ctok->str);
     }
@@ -527,6 +540,40 @@ Type *read_type_postfix(Type *base) {
     expect(TK_RESERVED, "]");
     base = read_type_postfix(base);
     return ary_of(base, size);
+}
+
+/**
+ * Read a struct type declaration, where
+ *     struct-decl = "struct" "{" struct-member* "}"
+ */
+Type *struct_decl() {
+    expect(TK_RESERVED, "struct");
+    expect(TK_RESERVED, "{");
+    Map *members = map_create();
+    int offset = 0;
+    while (!consume(TK_RESERVED, "}")) {
+        Member *mem = struct_member();
+        if (map_contains(members, mem->name)) {
+            error_at(ctok->loc, "error: duplicate member '%s'", mem->name);
+        }
+        mem->offset = offset;
+        offset += mem->type->size;
+        map_insert(members, mem->name, mem);
+    }
+    return struct_type(members);
+}
+
+/**
+ * Read a struct member, where
+ *     struct-member = type ident ("[" num "]")* ";"
+ */
+Member *struct_member() {
+    Member *mem = calloc(1, sizeof(Member));
+    mem->type = read_base_type();
+    mem->name = expect(TK_IDENT, NULL)->str;
+    mem->type = read_type_postfix(mem->type);
+    expect(TK_RESERVED, ";");
+    return mem;
 }
 
 /**

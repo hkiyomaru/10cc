@@ -167,5 +167,11 @@ int main() {
     assert(2, ({ int ary[] = {0, 1, 2}; int *p = ary; p += 2; *p; }), "int ary[] = {1, 2, 3}; int *p = ary; p += 2; *p;");
     assert(4, ({ int a = 1; a*=4; }), "int a = 1; a*=4;");
     assert(2, ({ int a = 4; a/=2; }), "int a = 4; a/=2;");
+    assert(1, ({ struct {int a; int b;} X; 1; }), "struct {int a; int b;} X; 1;");
+    assert(8, ({ struct {int a; int b;} X; sizeof X; }), "struct {int a; int b;} X; sizeof X;");
+    assert(5, ({ struct {int a; char b;} X; sizeof X; }), "struct {int a; char b;} X; sizeof X;");
+    assert(15, ({ struct {int a; char b;} X[3]; sizeof X; }), "struct {int a; char b;} X[3]; sizeof X;");
+    assert(1, ({ struct {int a; char b;} X; X.a = 1; X.b = 2; X.a; }), "struct {int a; char b;} X; X.a = 1; X.b = 2; X.a;");
+    assert(2, ({ struct {int a; char b;} X; X.a = 1; X.b = 2; X.b; }), "struct {int a; char b;} X; X.a = 1; X.b = 2; X.b;");
     return 0;
 }
