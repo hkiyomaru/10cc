@@ -29,8 +29,8 @@ Node *unary();
 Node *postfix();
 Node *primary();
 
-Type *read_type();
-Type *read_ary(Type *type);
+Type *read_base_type();
+Type *read_type_postfix(Type *type);
 
 Node *new_node_bin_op(NodeKind kind, Node *lhs, Node *rhs, Token *tok);
 Node *new_node_unary_op(NodeKind kind, Node *lhs, Token *tok);
@@ -75,9 +75,9 @@ Prog *parse() {
  *     top-level = func | gvar
  */
 void top_level() {
-    Type *type = read_type();
+    Type *type = read_base_type();
     Token *tok = expect(TK_IDENT, NULL);
-    type = read_ary(type);
+    type = read_type_postfix(type);
     if (peek(TK_RESERVED, "(")) {
         new_func(type, tok->str, tok);
     } else {
@@ -410,7 +410,7 @@ Node *unary() {
         Node *node;
         if (consume(TK_RESERVED, "(")) {
             if (at_typename()) {
-                node = new_node_num(read_type()->size, tok);
+                node = new_node_num(read_base_type()->size, tok);
                 expect(TK_RESERVED, ")");
                 return node;
             } else {
@@ -496,7 +496,7 @@ Node *primary() {
  * Read a base type.
  * @return A type.
  */
-Type *read_type() {
+Type *read_base_type() {
     Type *type;
     if (consume(TK_RESERVED, "int")) {
         type = int_type();
@@ -518,14 +518,14 @@ Type *read_type() {
  * @param base A base type.
  * @return A type.
  */
-Type *read_ary(Type *base) {
+Type *read_type_postfix(Type *base) {
     if (!consume(TK_RESERVED, "[")) {
         return base;
     }
     Token *tok = consume(TK_NUM, NULL);
     int size = tok ? tok->val : -1;
     expect(TK_RESERVED, "]");
-    base = read_ary(base);
+    base = read_type_postfix(base);
     return ary_of(base, size);
 }
 
@@ -805,9 +805,9 @@ Var *new_strl(char *str, Token *tok) {
  */
 Var *decl() {
     Token *tok = ctok;
-    Type *type = read_type();
+    Type *type = read_base_type();
     tok = expect(TK_IDENT, NULL);
-    type = read_ary(type);
+    type = read_type_postfix(type);
     return new_lvar(type, tok->str, tok);
 }
 
