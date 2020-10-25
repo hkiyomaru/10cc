@@ -1,15 +1,23 @@
 #include "10cc.h"
 
 typedef struct VarScope VarScope;
+typedef struct TagScope TagScope;
+
 struct VarScope {
     VarScope *next;
-    Map *vars;
+    Map *vars;  // Map<Var *>
+};
+
+struct TagScope {
+    TagScope *next;
+    Map *types;  // Map<Type *>
 };
 
 Prog *prog;  // The program
 Func *fn;    // The function being parsed
 
-VarScope *scope;
+VarScope *var_scope;
+TagScope *tag_scope;
 
 int str_label_cnt = 1;
 
@@ -21,7 +29,11 @@ Var *new_strl(char *str, Token *tok);
 Var *push_var(Var *var);
 Var *find_var(char *name);
 
-VarScope *new_scope();
+Type *push_tag(char *tag, Type *type);
+Type *find_tag(char *name);
+
+VarScope *new_var_scope();
+TagScope *new_tag_scope();
 void *enter_scope();
 void leave_scope();
 
@@ -41,7 +53,7 @@ void top_level();
 void func();
 void gvar();
 
-Var *decl();
+Node *decl();
 
 Node *stmt();
 Node *compound_stmt();
@@ -57,9 +69,9 @@ Node *unary();
 Node *postfix();
 Node *primary();
 Node *new_node_func_call(Token *tok);
-Node *lvar_init(Var *var, Token *tok);
-Node *default_lvar_init(Var *var, Token *tok);
-Node *ary_init(Var *var, Token *tok);
+Node *lvar_init(Node *assignee, Token *tok);
+Node *default_lvar_init(Node *assignee, Token *tok);
+Node *ary_init(Node *assignee, Token *tok);
 
 // Create a variable.
 Var *new_var(Type *type, char *name, bool is_local, Token *tok) {
@@ -84,8 +96,8 @@ Var *new_var(Type *type, char *name, bool is_local, Token *tok) {
 
 // Create a global variable, and registers it to the program.
 Var *new_gvar(Type *type, char *name, Token *tok) {
-    if (map_contains(scope->vars, name)) {
-        Var *var = map_at(scope->vars, name);
+    if (map_contains(var_scope->vars, name)) {
+        Var *var = map_at(var_scope->vars, name);
         if (!is_same_type(type, var->type)) {
             error_at(tok->loc, "error: conflicting types for '%s'", name);
         }
@@ -96,7 +108,7 @@ Var *new_gvar(Type *type, char *name, Token *tok) {
 
 // Create a local variable, and registers it to the function.
 Var *new_lvar(Type *type, char *name, Token *tok) {
-    if (map_contains(scope->vars, tok->str)) {
+    if (map_contains(var_scope->vars, tok->str)) {
         error_at(tok->loc, "error: redeclaration of '%s'", tok->str);
     }
     return push_var(new_var(type, name, true, tok));
@@ -113,7 +125,7 @@ Var *new_strl(char *str, Token *tok) {
 
 // Push a variable to the current scope.
 Var *push_var(Var *var) {
-    map_insert(scope->vars, var->name, var);
+    map_insert(var_scope->vars, var->name, var);
     if (var->is_local) {
         vec_push(fn->lvars, var);
     } else {
@@ -124,7 +136,7 @@ Var *push_var(Var *var) {
 
 // Find a variable by name.
 Var *find_var(char *name) {
-    for (VarScope *sc = scope; sc; sc = sc->next) {
+    for (VarScope *sc = var_scope; sc; sc = sc->next) {
         if (map_contains(sc->vars, name)) {
             return map_at(sc->vars, name);
         }
@@ -132,23 +144,54 @@ Var *find_var(char *name) {
     return NULL;
 }
 
+// Push a tag to the current scope.
+Type *push_tag(char *tag, Type *type) {
+    map_insert(tag_scope->types, tag, type);
+    return type;
+}
+
+// Find a type by name.
+Type *find_tag(char *name) {
+    for (TagScope *sc = tag_scope; sc; sc = sc->next) {
+        if (map_contains(sc->types, name)) {
+            return map_at(sc->types, name);
+        }
+    }
+    return NULL;
+}
+
 // Create an empty variable scope.
-VarScope *new_scope() {
+VarScope *new_var_scope() {
     VarScope *sc = calloc(1, sizeof(VarScope));
     sc->next = NULL;
     sc->vars = map_create();
     return sc;
 }
 
+// Create an empty tag scope.
+TagScope *new_tag_scope() {
+    TagScope *sc = calloc(1, sizeof(TagScope));
+    sc->next = NULL;
+    sc->types = map_create();
+    return sc;
+}
+
 // Enter a new scope.
 void *enter_scope() {
-    VarScope *sc = new_scope();
-    sc->next = scope;
-    scope = sc;
+    VarScope *var_sc = new_var_scope();
+    var_sc->next = var_scope;
+    var_scope = var_sc;
+
+    TagScope *tag_sc = new_tag_scope();
+    tag_sc->next = tag_scope;
+    tag_scope = tag_sc;
 }
 
 // Leave the current scope.
-void leave_scope() { scope = scope->next; }
+void leave_scope() {
+    var_scope = var_scope->next;
+    tag_scope = tag_scope->next;
+}
 
 // T = ("int" | "char" | "void" | struct-decl) "*"*
 Type *read_base_type() {
@@ -182,12 +225,24 @@ Type *read_type_postfix(Type *base) {
     return ary_of(base, size);
 }
 
-// struct-decl = "struct" "{" struct-member* "}"
+// struct-decl = "struct" ident
+//             | "struct" ident? "{" struct-member* "}"
 Type *struct_decl() {
     expect(TK_RESERVED, "struct");
-    expect(TK_RESERVED, "{");
+
+    // Read a tag.
+    Token *tag = consume(TK_IDENT, NULL);
+    if (tag && !peek(TK_RESERVED, "{")) {
+        Type *type = find_tag(tag->str);
+        if (!type) {
+            error_at(tag->loc, "error: unknown type name '%s'", tag->str);
+        }
+        return type;
+    }
+
     Map *members = map_create();
     int offset = 0;
+    expect(TK_RESERVED, "{");
     while (!consume(TK_RESERVED, "}")) {
         Member *mem = struct_member();
         if (map_contains(members, mem->name)) {
@@ -197,7 +252,13 @@ Type *struct_decl() {
         offset += mem->type->size;
         map_insert(members, mem->name, mem);
     }
-    return struct_type(members);
+
+    Type *type = struct_type(members);
+    if (tag) {
+        push_tag(tag->str, type);
+    }
+
+    return type;
 }
 
 // struct-member = type ident ("[" num "]")* ";"
@@ -287,8 +348,28 @@ void top_level() {
     }
 }
 
+// param = T ident ("[" num "]")*
+Var *func_param() {
+    Type *type = read_base_type();
+    Token *tok = expect(TK_IDENT, NULL);
+    char *name = tok->str;
+    type = read_type_postfix(type);
+    return new_lvar(type, name, tok);
+}
+
+// params = (param ("," param)*)?
+Vector *func_params() {
+    Vector *params = vec_create();
+    while (!peek(TK_RESERVED, ")")) {
+        if (params->len > 0) {
+            expect(TK_RESERVED, ",");
+        }
+        vec_push(params, func_param());
+    }
+    return params;
+}
+
 // func = T ident "(" params? ")" "{" stmt* "}"
-// params = T ident ("," T ident)*
 void func() {
     fn = calloc(1, sizeof(Func));
     fn->rtype = read_base_type();
@@ -299,14 +380,9 @@ void func() {
     enter_scope();
 
     // Parse the arguments.
-    fn->args = vec_create();
     expect(TK_RESERVED, "(");
-    while (!consume(TK_RESERVED, ")")) {
-        if (0 < fn->args->len) {
-            expect(TK_RESERVED, ",");
-        }
-        vec_push(fn->args, decl());
-    }
+    fn->args = func_params();
+    expect(TK_RESERVED, ")");
 
     // Check conflict.
     Func *fn_ = find_func(fn->name);
@@ -349,13 +425,27 @@ void gvar() {
     new_gvar(type, name, tok);
 }
 
-// decl = T ident ("[" num? "]")?
-Var *decl() {
-    Token *tok = ctok;
+// decl = T ident ("[" num? "]")* ("=" expr) ";"
+//      | T ";"
+Node *decl() {
     Type *type = read_base_type();
-    tok = expect(TK_IDENT, NULL);
+
+    if (consume(TK_RESERVED, ";")) {
+        return new_node(ND_NULL, NULL);
+    }
+
+    Token *tok = expect(TK_IDENT, NULL);
     type = read_type_postfix(type);
-    return new_lvar(type, tok->str, tok);
+    Var *var = new_lvar(type, tok->str, tok);
+
+    if (consume(TK_RESERVED, ";")) {
+        return new_node(ND_NULL, NULL);
+    }
+
+    tok = expect(TK_RESERVED, "=");
+    Node *node = lvar_init(new_node_varref(var, tok), tok);
+    expect(TK_RESERVED, ";");
+    return node;
 }
 
 // stmt = "return" expr ";"
@@ -415,10 +505,7 @@ Node *stmt() {
     }
 
     if (at_typename()) {
-        Var *var = decl();
-        Node *node = consume(TK_RESERVED, "=") ? lvar_init(var, ctok) : new_node(ND_NULL, ctok);
-        expect(TK_RESERVED, ";");
-        return node;
+        return decl();
     }
 
     if (tok = consume(TK_RESERVED, ";")) {
@@ -673,29 +760,27 @@ Node *primary() {
 }
 
 // Create a node to assign an initial value to a given local variable.
-Node *lvar_init(Var *var, Token *tok) {
-    switch (var->type->kind) {
+Node *lvar_init(Node *assignee, Token *tok) {
+    switch (assignee->type->kind) {
         case TY_ARY:
-            return ary_init(var, tok);
+            return ary_init(assignee, tok);
         default:
-            return default_lvar_init(var, tok);
+            return default_lvar_init(assignee, tok);
     }
 }
 
 // Create a node to assign an initial value to a given local variable.
-Node *default_lvar_init(Var *var, Token *tok) {
-    Node *lvar = new_node_varref(var, tok);
-    Node *asgn = new_node_binary(ND_ASSIGN, lvar, expr(), tok);
+Node *default_lvar_init(Node *assignee, Token *tok) {
+    Node *asgn = new_node_binary(ND_ASSIGN, assignee, expr(), tok);
     return new_node_unary(ND_EXPR_STMT, asgn, NULL);
 }
 
 // Create a node to assign an initial value to a given array variable.
-Node *ary_init(Var *var, Token *tok) {
-    assert(var->type->kind == TY_ARY);
+Node *ary_init(Node *assignee, Token *tok) {
+    assert(assignee->type->kind == TY_ARY);
 
     Node *node = new_node(ND_BLOCK, tok);
     node->stmts = vec_create();
-    Node *lvar = new_node_varref(var, tok);
     if (tok = consume(TK_RESERVED, "{")) {
         // {expr, ...}
         for (int i = 0;; i++) {
@@ -705,48 +790,48 @@ Node *ary_init(Var *var, Token *tok) {
             if (node->stmts->len > 0) {
                 tok = expect(TK_RESERVED, ",");
             }
-            if (var->type->array_size != -1 && i >= var->type->array_size) {
+            if (assignee->type->array_size != -1 && i >= assignee->type->array_size) {
                 error_at(tok->loc, "error: excess elements in array initializer");
             }
             Node *index = new_node_num(i, NULL);
-            Node *addr = new_node_binary(ND_ADD, lvar, index, NULL);
+            Node *addr = new_node_binary(ND_ADD, assignee, index, NULL);
             Node *lval = new_node_unary(ND_DEREF, addr, NULL);
             Node *asgn = new_node_binary(ND_ASSIGN, lval, expr(), NULL);
             vec_push(node->stmts, new_node_unary(ND_EXPR_STMT, asgn, NULL));
         }
-        if (lvar->type->array_size == -1) {
-            lvar->type->array_size = node->stmts->len;
-            lvar->type->size = lvar->type->base->size * node->stmts->len;
+        if (assignee->type->array_size == -1) {
+            assignee->type->array_size = node->stmts->len;
+            assignee->type->size = assignee->type->base->size * node->stmts->len;
         }
     } else if (tok = consume(TK_RESERVED, "\"")) {
         // string literal
         Token *tok = expect(TK_STR, NULL);
         expect(TK_RESERVED, "\"");
-        if (var->type->array_size != -1 && strlen(tok->str) > var->type->array_size - 1) {
+        if (assignee->type->array_size != -1 && strlen(tok->str) > assignee->type->array_size - 1) {
             error_at(tok->loc, "error: initializer-string for array of chars is too long");
         }
         for (int i = 0; i < strlen(tok->str); i++) {
             Node *index = new_node_num(i, NULL);
-            Node *addr = new_node_binary(ND_ADD, lvar, index, NULL);
+            Node *addr = new_node_binary(ND_ADD, assignee, index, NULL);
             Node *lval = new_node_unary(ND_DEREF, addr, NULL);
             Node *asgn = new_node_binary(ND_ASSIGN, lval, new_node_num(tok->str[i], NULL), NULL);
             vec_push(node->stmts, new_node_unary(ND_EXPR_STMT, asgn, NULL));
         }
         Node *index = new_node_num(strlen(tok->str), NULL);
-        Node *addr = new_node_binary(ND_ADD, lvar, index, NULL);
+        Node *addr = new_node_binary(ND_ADD, assignee, index, NULL);
         Node *lval = new_node_unary(ND_DEREF, addr, NULL);
         Node *asgn = new_node_binary(ND_ASSIGN, lval, new_node_num(0, NULL), NULL);
         vec_push(node->stmts, new_node_unary(ND_EXPR_STMT, asgn, NULL));
-        if (lvar->type->array_size == -1) {
-            lvar->type->array_size = strlen(tok->str);
-            lvar->type->size = lvar->type->base->size * strlen(tok->str);
+        if (assignee->type->array_size == -1) {
+            assignee->type->array_size = strlen(tok->str);
+            assignee->type->size = assignee->type->base->size * strlen(tok->str);
         }
     } else {
         error_at(ctok->loc, "error: expected expression before '%s'", ctok->str);
     }
-    for (int i = node->stmts->len; i < lvar->type->array_size; i++) {
+    for (int i = node->stmts->len; i < assignee->type->array_size; i++) {
         Node *index = new_node_num(i, NULL);
-        Node *addr = new_node_binary(ND_ADD, lvar, index, NULL);
+        Node *addr = new_node_binary(ND_ADD, assignee, index, NULL);
         Node *lval = new_node_unary(ND_DEREF, addr, NULL);
         Node *asgn = new_node_binary(ND_ASSIGN, lval, new_node_num(0, NULL), NULL);
         vec_push(node->stmts, new_node_unary(ND_EXPR_STMT, asgn, NULL));
@@ -757,7 +842,8 @@ Node *ary_init(Var *var, Token *tok) {
 // program = top-level*
 Prog *parse() {
     prog = calloc(1, sizeof(Prog));
-    scope = new_scope();
+    var_scope = new_var_scope();
+    tag_scope = new_tag_scope();
     prog->fns = map_create();
     prog->gvars = vec_create();
     while (!at_eof()) {

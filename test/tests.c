@@ -173,5 +173,7 @@ int main() {
     assert(15, ({ struct {int a; char b;} X[3]; sizeof X; }), "struct {int a; char b;} X[3]; sizeof X;");
     assert(1, ({ struct {int a; char b;} X; X.a = 1; X.b = 2; X.a; }), "struct {int a; char b;} X; X.a = 1; X.b = 2; X.a;");
     assert(2, ({ struct {int a; char b;} X; X.a = 1; X.b = 2; X.b; }), "struct {int a; char b;} X; X.a = 1; X.b = 2; X.b;");
+    assert(1, ({ struct X {int a; char b;}; struct X x; x.a = 1; x.b = 2; x.a; }), "struct X {int a; char b;}; struct X x; x.a = 1; x.b = 2; x.a;");
+    assert(2, ({ struct X {int a; char b;}; struct X x; x.a = 1; x.b = 2; x.b; }), "struct X {int a; char b;}; struct X x; x.a = 1; x.b = 2; x.b;");
     return 0;
 }
