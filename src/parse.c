@@ -13,9 +13,35 @@ VarScope *scope;
 
 int str_label_cnt = 1;
 
+Var *new_var(Type *type, char *name, bool is_local, Token *tok);
+Var *new_gvar(Type *type, char *name, Token *tok);
+Var *new_lvar(Type *type, char *name, Token *tok);
+Var *new_strl(char *str, Token *tok);
+
+Var *push_var(Var *var);
+Var *find_var(char *name);
+
+VarScope *new_scope();
+void *enter_scope();
+void leave_scope();
+
+Type *read_base_type();
+Type *read_type_postfix(Type *type);
+Type *struct_decl();
+Member *struct_member();
+
+Node *new_node_binary(NodeKind kind, Node *lhs, Node *rhs, Token *tok);
+Node *new_node_unary(NodeKind kind, Node *lhs, Token *tok);
+Node *new_node_num(int val, Token *tok);
+Node *new_node_varref(Var *var, Token *tok);
+
+Func *find_func(char *name);
+
 void top_level();
-Func *new_func();
-Var *new_gvar();
+void func();
+void gvar();
+
+Var *decl();
 
 Node *stmt();
 Node *compound_stmt();
@@ -30,45 +56,222 @@ Node *mul();
 Node *unary();
 Node *postfix();
 Node *primary();
-
-Type *read_base_type();
-Type *read_type_postfix(Type *type);
-Type *struct_decl();
-Member *struct_member();
-
-Node *new_node_binary(NodeKind kind, Node *lhs, Node *rhs, Token *tok);
-Node *new_node_unary(NodeKind kind, Node *lhs, Token *tok);
-Node *new_node_num(int val, Token *tok);
-Node *new_node_varref(Var *var, Token *tok);
 Node *new_node_func_call(Token *tok);
 Node *lvar_init(Var *var, Token *tok);
 Node *default_lvar_init(Var *var, Token *tok);
 Node *ary_init(Var *var, Token *tok);
 
-Var *new_var(Type *type, char *name, bool is_local, Token *tok);
-Var *new_lvar(Type *type, char *name, Token *tok);
-Var *new_strl(char *str, Token *tok);
-Var *decl();
-
-Func *find_func(char *name);
-
-VarScope *new_scope();
-void *enter_scope();
-void leave_scope();
-void *push_scope(Var *var);
-Var *find_var(char *name);
-
-// program = top-level*
-Prog *parse() {
-    prog = calloc(1, sizeof(Prog));
-    scope = new_scope();
-    prog->fns = map_create();
-    prog->gvars = vec_create();
-    while (!at_eof()) {
-        top_level();
+// Create a variable.
+Var *new_var(Type *type, char *name, bool is_local, Token *tok) {
+    if (type->kind == TY_VOID) {
+        error_at(tok->loc, "error: variable or field '%s' declared void", tok->str);
     }
-    return prog;
+    if (type->kind == TY_ARY) {
+        Type *base = type->base;
+        while (base->kind == TY_ARY) {
+            base = base->base;
+        }
+        if (base->kind == TY_VOID) {
+            error_at(tok->loc, "error: declaration of '%s' as array of voids", tok->str);
+        }
+    }
+    Var *var = calloc(1, sizeof(Var));
+    var->type = type;
+    var->name = name;
+    var->is_local = is_local;
+    return var;
 }
+
+// Create a global variable, and registers it to the program.
+Var *new_gvar(Type *type, char *name, Token *tok) {
+    if (map_contains(scope->vars, name)) {
+        Var *var = map_at(scope->vars, name);
+        if (!is_same_type(type, var->type)) {
+            error_at(tok->loc, "error: conflicting types for '%s'", name);
+        }
+        return var;
+    }
+    return push_var(new_var(type, name, false, tok));
+}
+
+// Create a local variable, and registers it to the function.
+Var *new_lvar(Type *type, char *name, Token *tok) {
+    if (map_contains(scope->vars, tok->str)) {
+        error_at(tok->loc, "error: redeclaration of '%s'", tok->str);
+    }
+    return push_var(new_var(type, name, true, tok));
+}
+
+// Create a string literal.
+Var *new_strl(char *str, Token *tok) {
+    Type *type = ary_of(char_type(), strlen(str) + 1);
+    char *name = format(".L.str%d", str_label_cnt++);
+    Var *var = new_var(type, name, false, tok);
+    var->data = tok->str;
+    return push_var(var);
+}
+
+// Push a variable to the current scope.
+Var *push_var(Var *var) {
+    map_insert(scope->vars, var->name, var);
+    if (var->is_local) {
+        vec_push(fn->lvars, var);
+    } else {
+        vec_push(prog->gvars, var);
+    }
+    return var;
+}
+
+// Find a variable by name.
+Var *find_var(char *name) {
+    for (VarScope *sc = scope; sc; sc = sc->next) {
+        if (map_contains(sc->vars, name)) {
+            return map_at(sc->vars, name);
+        }
+    }
+    return NULL;
+}
+
+// Create an empty variable scope.
+VarScope *new_scope() {
+    VarScope *sc = calloc(1, sizeof(VarScope));
+    sc->next = NULL;
+    sc->vars = map_create();
+    return sc;
+}
+
+// Enter a new scope.
+void *enter_scope() {
+    VarScope *sc = new_scope();
+    sc->next = scope;
+    scope = sc;
+}
+
+// Leave the current scope.
+void leave_scope() { scope = scope->next; }
+
+// T = ("int" | "char" | "void" | struct-decl) "*"*
+Type *read_base_type() {
+    Type *type;
+    if (consume(TK_RESERVED, "int")) {
+        type = int_type();
+    } else if (consume(TK_RESERVED, "char")) {
+        type = char_type();
+    } else if (consume(TK_RESERVED, "void")) {
+        type = void_type();
+    } else if (peek(TK_RESERVED, "struct")) {
+        type = struct_decl();
+    } else {
+        error_at(ctok->loc, "error: unknown type name '%s'\n", ctok->str);
+    }
+    while ((consume(TK_RESERVED, "*"))) {
+        type = ptr_to(type);
+    }
+    return type;
+}
+
+// type-postfix = ("[" num? "]")*
+Type *read_type_postfix(Type *base) {
+    if (!consume(TK_RESERVED, "[")) {
+        return base;
+    }
+    Token *tok = consume(TK_NUM, NULL);
+    int size = tok ? tok->val : -1;
+    expect(TK_RESERVED, "]");
+    base = read_type_postfix(base);
+    return ary_of(base, size);
+}
+
+// struct-decl = "struct" "{" struct-member* "}"
+Type *struct_decl() {
+    expect(TK_RESERVED, "struct");
+    expect(TK_RESERVED, "{");
+    Map *members = map_create();
+    int offset = 0;
+    while (!consume(TK_RESERVED, "}")) {
+        Member *mem = struct_member();
+        if (map_contains(members, mem->name)) {
+            error_at(ctok->loc, "error: duplicate member '%s'", mem->name);
+        }
+        mem->offset = offset;
+        offset += mem->type->size;
+        map_insert(members, mem->name, mem);
+    }
+    return struct_type(members);
+}
+
+// struct-member = type ident ("[" num "]")* ";"
+Member *struct_member() {
+    Member *mem = calloc(1, sizeof(Member));
+    mem->type = read_base_type();
+    mem->name = expect(TK_IDENT, NULL)->str;
+    mem->type = read_type_postfix(mem->type);
+    expect(TK_RESERVED, ";");
+    return mem;
+}
+
+// func-call = ident "(" args? ")"
+// args = expr ("," expr)*
+Node *new_node_func_call(Token *tok) {
+    Func *fn_ = find_func(tok->str);
+    if (!fn_) {
+        error_at(tok->loc, "error: undefined reference to `%s'\n", tok->str);
+    }
+    Node *node = new_node(ND_FUNC_CALL, tok);
+    node->funcname = tok->str;
+    node->type = fn_->rtype;
+    node->args = vec_create();
+    expect(TK_RESERVED, "(");
+    while (!consume(TK_RESERVED, ")")) {
+        if (0 < node->args->len) {
+            expect(TK_RESERVED, ",");
+        }
+        vec_push(node->args, expr());
+    }
+    return node;
+}
+
+// Create a node.
+Node *new_node(NodeKind kind, Token *tok) {
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = kind;
+    node->tok = tok;
+    return node;
+}
+
+// Create a node to represent a binary operation.
+Node *new_node_binary(NodeKind kind, Node *lhs, Node *rhs, Token *tok) {
+    Node *node = new_node(kind, tok);
+    node->lhs = lhs;
+    node->rhs = rhs;
+    return node;
+}
+
+// Create a node to represent a unary operation.
+Node *new_node_unary(NodeKind kind, Node *lhs, Token *tok) {
+    Node *node = new_node(kind, tok);
+    node->lhs = lhs;
+    return node;
+}
+
+// Create a node to represent a number.
+Node *new_node_num(int val, Token *tok) {
+    Node *node = new_node(ND_NUM, tok);
+    node->type = int_type();
+    node->val = val;
+    return node;
+}
+
+// Create a node to refer a variable.
+Node *new_node_varref(Var *var, Token *tok) {
+    Node *node = new_node(ND_VARREF, NULL);
+    node->type = var->type;
+    node->var = var;
+    return node;
+}
+
+// Find a function by name.
+Func *find_func(char *name) { return map_contains(prog->fns, name) ? map_at(prog->fns, name) : NULL; }
 
 // top-level = func | gvar
 void top_level() {
@@ -78,15 +281,15 @@ void top_level() {
     ctok = tok;
 
     if (isfunc) {
-        new_func();
+        func();
     } else {
-        new_gvar();
+        gvar();
     }
 }
 
 // func = T ident "(" params? ")" "{" stmt* "}"
 // params = T ident ("," T ident)*
-Func *new_func() {
+void func() {
     fn = calloc(1, sizeof(Func));
     fn->rtype = read_base_type();
     fn->tok = expect(TK_IDENT, NULL);
@@ -102,7 +305,7 @@ Func *new_func() {
         if (0 < fn->args->len) {
             expect(TK_RESERVED, ",");
         }
-        vec_push(fn->args, new_node_varref(decl(), ctok));
+        vec_push(fn->args, decl());
     }
 
     // Check conflict.
@@ -118,7 +321,9 @@ Func *new_func() {
             error_at(fn->tok->loc, "error: conflicting types for '%s'", fn->tok->str);
         }
         for (int i = 0; i < fn->args->len; i++) {
-            if (!is_same_type((Type *)vec_at(fn->args, i), (Type *)vec_at(fn_->args, i))) {
+            Var *x = vec_at(fn->args, i);
+            Var *y = vec_at(fn_->args, i);
+            if (!is_same_type(x->type, y->type)) {
                 error_at(fn->tok->loc, "error: conflicting types for '%s'", fn->tok->str);
             }
         }
@@ -132,28 +337,25 @@ Func *new_func() {
         fn->body = compound_stmt();
     }
     leave_scope();
-    return fn;
 }
 
 // gvar = T ident ("[" num "]")* ";"
-Var *new_gvar() {
+void gvar() {
     Type *type = read_base_type();
     Token *tok = expect(TK_IDENT, NULL);
     char *name = tok->str;
     type = read_type_postfix(type);
     expect(TK_RESERVED, ";");
+    new_gvar(type, name, tok);
+}
 
-    if (map_contains(scope->vars, name)) {
-        Var *var = map_at(scope->vars, name);
-        if (!is_same_type(type, var->type)) {
-            error_at(tok->loc, "error: conflicting types for '%s'", name);
-        }
-        return var;
-    }
-    Var *var = new_var(type, name, false, tok);
-    vec_push(prog->gvars, var);
-    push_scope(var);
-    return var;
+// decl = T ident ("[" num? "]")?
+Var *decl() {
+    Token *tok = ctok;
+    Type *type = read_base_type();
+    tok = expect(TK_IDENT, NULL);
+    type = read_type_postfix(type);
+    return new_lvar(type, tok->str, tok);
 }
 
 // stmt = "return" expr ";"
@@ -427,11 +629,11 @@ Node *postfix() {
     }
 }
 
-// primary = num
-//         | str
-//         | ident ("(" ")")?
-//         | "(" "{" stmt+ "}" ")"
+// primary = "(" "{" stmt+ "}" ")"
 //         | "(" expr ")"
+//         | ident ("(" ")")?
+//         | str
+//         | num
 Node *primary() {
     Token *tok = ctok;
 
@@ -468,126 +670,6 @@ Node *primary() {
 
     tok = expect(TK_NUM, NULL);
     return new_node_num(tok->val, tok);
-}
-
-// T = ("int" | "char" | "void" | struct-decl) "*"*
-Type *read_base_type() {
-    Type *type;
-    if (consume(TK_RESERVED, "int")) {
-        type = int_type();
-    } else if (consume(TK_RESERVED, "char")) {
-        type = char_type();
-    } else if (consume(TK_RESERVED, "void")) {
-        type = void_type();
-    } else if (peek(TK_RESERVED, "struct")) {
-        type = struct_decl();
-    } else {
-        error_at(ctok->loc, "error: unknown type name '%s'\n", ctok->str);
-    }
-    while ((consume(TK_RESERVED, "*"))) {
-        type = ptr_to(type);
-    }
-    return type;
-}
-
-// type-postfix = ("[" num? "]")*
-Type *read_type_postfix(Type *base) {
-    if (!consume(TK_RESERVED, "[")) {
-        return base;
-    }
-    Token *tok = consume(TK_NUM, NULL);
-    int size = tok ? tok->val : -1;
-    expect(TK_RESERVED, "]");
-    base = read_type_postfix(base);
-    return ary_of(base, size);
-}
-
-// struct-decl = "struct" "{" struct-member* "}"
-Type *struct_decl() {
-    expect(TK_RESERVED, "struct");
-    expect(TK_RESERVED, "{");
-    Map *members = map_create();
-    int offset = 0;
-    while (!consume(TK_RESERVED, "}")) {
-        Member *mem = struct_member();
-        if (map_contains(members, mem->name)) {
-            error_at(ctok->loc, "error: duplicate member '%s'", mem->name);
-        }
-        mem->offset = offset;
-        offset += mem->type->size;
-        map_insert(members, mem->name, mem);
-    }
-    return struct_type(members);
-}
-
-// struct-member = type ident ("[" num "]")* ";"
-Member *struct_member() {
-    Member *mem = calloc(1, sizeof(Member));
-    mem->type = read_base_type();
-    mem->name = expect(TK_IDENT, NULL)->str;
-    mem->type = read_type_postfix(mem->type);
-    expect(TK_RESERVED, ";");
-    return mem;
-}
-
-// Create a node.
-Node *new_node(NodeKind kind, Token *tok) {
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = kind;
-    node->tok = tok;
-    return node;
-}
-
-// Create a node to represent a binary operation.
-Node *new_node_binary(NodeKind kind, Node *lhs, Node *rhs, Token *tok) {
-    Node *node = new_node(kind, tok);
-    node->lhs = lhs;
-    node->rhs = rhs;
-    return node;
-}
-
-// Create a node to represent a unary operation.
-Node *new_node_unary(NodeKind kind, Node *lhs, Token *tok) {
-    Node *node = new_node(kind, tok);
-    node->lhs = lhs;
-    return node;
-}
-
-// Create a node to represent a number.
-Node *new_node_num(int val, Token *tok) {
-    Node *node = new_node(ND_NUM, tok);
-    node->type = int_type();
-    node->val = val;
-    return node;
-}
-
-// Create a node to refer a variable.
-Node *new_node_varref(Var *var, Token *tok) {
-    Node *node = new_node(ND_VARREF, NULL);
-    node->type = var->type;
-    node->var = var;
-    return node;
-}
-
-// func-call = ident "(" args? ")"
-// args = expr ("," expr)*
-Node *new_node_func_call(Token *tok) {
-    Func *fn_ = find_func(tok->str);
-    if (!fn_) {
-        error_at(tok->loc, "error: undefined reference to `%s'\n", tok->str);
-    }
-    Node *node = new_node(ND_FUNC_CALL, tok);
-    node->funcname = tok->str;
-    node->type = fn_->rtype;
-    node->args = vec_create();
-    expect(TK_RESERVED, "(");
-    while (!consume(TK_RESERVED, ")")) {
-        if (0 < node->args->len) {
-            expect(TK_RESERVED, ",");
-        }
-        vec_push(node->args, expr());
-    }
-    return node;
 }
 
 // Create a node to assign an initial value to a given local variable.
@@ -672,89 +754,14 @@ Node *ary_init(Var *var, Token *tok) {
     return node;
 }
 
-// Create a variable.
-Var *new_var(Type *type, char *name, bool is_local, Token *tok) {
-    if (type->kind == TY_VOID) {
-        error_at(tok->loc, "error: variable or field '%s' declared void", tok->str);
+// program = top-level*
+Prog *parse() {
+    prog = calloc(1, sizeof(Prog));
+    scope = new_scope();
+    prog->fns = map_create();
+    prog->gvars = vec_create();
+    while (!at_eof()) {
+        top_level();
     }
-    if (type->kind == TY_ARY) {
-        Type *base = type->base;
-        while (base->kind == TY_ARY) {
-            base = base->base;
-        }
-        if (base->kind == TY_VOID) {
-            error_at(tok->loc, "error: declaration of '%s' as array of voids", tok->str);
-        }
-    }
-    Var *var = calloc(1, sizeof(Var));
-    var->type = type;
-    var->name = name;
-    var->is_local = is_local;
-    return var;
-}
-
-// Create a local variable, and registers it to the function.
-Var *new_lvar(Type *type, char *name, Token *tok) {
-    if (map_contains(scope->vars, tok->str)) {
-        error_at(tok->loc, "error: redeclaration of '%s'", tok->str);
-    }
-    Var *var = new_var(type, name, true, tok);
-    vec_push(fn->lvars, var);
-    push_scope(var);
-    return var;
-}
-
-// Create a string literal.
-Var *new_strl(char *str, Token *tok) {
-    Type *type = ary_of(char_type(), strlen(str) + 1);
-    char *name = format(".L.str%d", str_label_cnt++);
-
-    Var *var = new_var(type, name, false, tok);
-    var->data = tok->str;
-    vec_push(prog->gvars, var);
-    push_scope(var);
-    return var;
-}
-
-// decl = T ident ("[" num? "]")?
-Var *decl() {
-    Token *tok = ctok;
-    Type *type = read_base_type();
-    tok = expect(TK_IDENT, NULL);
-    type = read_type_postfix(type);
-    return new_lvar(type, tok->str, tok);
-}
-
-// Find a function by name.
-Func *find_func(char *name) { return map_contains(prog->fns, name) ? map_at(prog->fns, name) : NULL; }
-
-// Create an empty variable scope.
-VarScope *new_scope() {
-    VarScope *sc = calloc(1, sizeof(VarScope));
-    sc->next = NULL;
-    sc->vars = map_create();
-    return sc;
-}
-
-// Enter a new scope.
-void *enter_scope() {
-    VarScope *sc = new_scope();
-    sc->next = scope;
-    scope = sc;
-}
-
-// Leave the current scope.
-void leave_scope() { scope = scope->next; }
-
-// Push a variable to the current scope.
-void *push_scope(Var *var) { map_insert(scope->vars, var->name, var); }
-
-// Find a variable by name.
-Var *find_var(char *name) {
-    for (VarScope *sc = scope; sc; sc = sc->next) {
-        if (map_contains(sc->vars, name)) {
-            return map_at(sc->vars, name);
-        }
-    }
-    return NULL;
+    return prog;
 }

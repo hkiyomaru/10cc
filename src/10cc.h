@@ -85,14 +85,14 @@ typedef enum {
 
 struct Prog {
     Map *fns;
-    Vector *gvars;
+    Vector *gvars;  // Vector<Var *>
 };
 
 struct Func {
     Type *rtype;
     char *name;
-    Vector *lvars;
-    Vector *args;
+    Vector *lvars;  // Vector<Var *>
+    Vector *args;   // Vector<Var *>
     Node *body;
     Token *tok;
 };

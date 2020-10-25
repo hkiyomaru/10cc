@@ -11,7 +11,7 @@ void gen_data(Prog *prog);
 void gen_text(Prog *prog);
 void gen(Node *node);
 void gen_lval(Node *node);
-void load_arg(Node *node, int index);
+void load_arg(Var *var, int index);
 void load(Type *type);
 void store(Type *type);
 void inc(Type *type);
@@ -280,16 +280,16 @@ void gen_lval(Node *node) {
 }
 
 // Push a value to a pre-defined address, which follows the function calling convention.
-void load_arg(Node *node, int index) {
-    switch (node->var->type->size) {
+void load_arg(Var *var, int index) {
+    switch (var->type->size) {
         case 1:
-            printf("  mov [rbp-%d], %s\n", node->var->offset, argregs1[index]);
+            printf("  mov [rbp-%d], %s\n", var->offset, argregs1[index]);
             break;
         case 4:
-            printf("  mov [rbp-%d], %s\n", node->var->offset, argregs4[index]);
+            printf("  mov [rbp-%d], %s\n", var->offset, argregs4[index]);
             break;
         case 8:
-            printf("  mov [rbp-%d], %s\n", node->var->offset, argregs8[index]);
+            printf("  mov [rbp-%d], %s\n", var->offset, argregs8[index]);
             break;
     }
 }

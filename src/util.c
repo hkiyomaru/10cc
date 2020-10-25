@@ -203,11 +203,7 @@ void draw_node(Node *node, int depth, char *role) {
 void draw_ast(Prog *prog) {
     for (int i = 0; i < prog->fns->len; i++) {
         Func *fn = vec_at(prog->fns->vals, i);
-        debug("%s(\n", fn->name);
-        for (int j = 0; j < fn->args->len; j++) {
-            draw_node(fn->args->data[j], 1, format("arg%d", j));
-        }
-        debug(")\n");
+        debug("%s()\n", fn->name);
         draw_node(fn->body, 1, "");
         debug("\n");
     }
