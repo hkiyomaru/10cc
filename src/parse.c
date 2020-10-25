@@ -235,7 +235,7 @@ Type *struct_decl() {
     if (tag && !peek(TK_RESERVED, "{")) {
         Type *type = find_tag(tag->str);
         if (!type) {
-            error_at(tag->loc, "error: unknown type name '%s'", tag->str);
+            error_at(tag->loc, "error: undefined struct '%s'", tag->str);
         }
         return type;
     }
@@ -680,7 +680,7 @@ Node *unary() {
     }
 }
 
-// postfix = primary ("[" assign "]" | "++" | "--" | "." ident)*
+// postfix = primary ("[" assign "]" | "++" | "--" | "." | "->" ident)*
 Node *postfix() {
     Node *node = primary();
     Token *tok;
@@ -704,11 +704,14 @@ Node *postfix() {
 
         if (tok = consume(TK_RESERVED, ".")) {
             node = new_node_unary(ND_MEMBER, node, tok);
-            char *member_name = expect(TK_IDENT, NULL)->str;
-            node->member_name = member_name;
-            if (map_contains(node->lhs->type->members, member_name)) {
-                node->member = map_at(node->lhs->type->members, member_name);
-            }
+            node->member_name = expect(TK_IDENT, NULL)->str;
+            continue;
+        }
+
+        if (tok = consume(TK_RESERVED, "->")) {
+            node = new_node_unary(ND_DEREF, node, tok);
+            node = new_node_unary(ND_MEMBER, node, tok);
+            node->member_name = expect(TK_IDENT, NULL)->str;
             continue;
         }
 

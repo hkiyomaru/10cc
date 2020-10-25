@@ -140,12 +140,14 @@ Node *do_walk(Node *node, bool decay) {
             node->lhs = walk_nodecay(node->lhs);
             return new_node_num(node->lhs->type->size, node->tok);
         case ND_MEMBER:
+            node->lhs = walk(node->lhs);
             if (node->lhs->type->kind != TY_STRUCT) {
                 error_at(node->tok->loc, "error: member reference base type is not a structure\n");
             }
-            if (!node->member) {
+            if (!map_contains(node->lhs->type->members, node->member_name)) {
                 error_at(node->tok->loc, "error: no member named '%s'", node->member_name);
             }
+            node->member = map_at(node->lhs->type->members, node->member_name);
             node->type = node->member->type;
             return node;
         default:

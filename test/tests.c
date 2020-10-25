@@ -175,5 +175,8 @@ int main() {
     assert(2, ({ struct {int a; char b;} X; X.a = 1; X.b = 2; X.b; }), "struct {int a; char b;} X; X.a = 1; X.b = 2; X.b;");
     assert(1, ({ struct X {int a; char b;}; struct X x; x.a = 1; x.b = 2; x.a; }), "struct X {int a; char b;}; struct X x; x.a = 1; x.b = 2; x.a;");
     assert(2, ({ struct X {int a; char b;}; struct X x; x.a = 1; x.b = 2; x.b; }), "struct X {int a; char b;}; struct X x; x.a = 1; x.b = 2; x.b;");
+    assert(1, ({ struct Vector {int x; int y;}; struct Vector a; struct Vector *pa = &a; pa->x = 1; pa->x; }), "struct Vector {int x; int y;}; struct Vector a; struct Vector *pa = &a; pa->x = 1; pa->x;");
+    assert(2, ({ struct Vector {int x; int y;}; struct Vector a; struct Vector *pa = &a; pa->x = 1; pa->y = 2; pa->y; }), "struct Vector {int x; int y;}; struct Vector a; struct Vector *pa = &a; pa->x = 1; pa->y = 2; pa->y;");
+    assert(2, ({ struct Vector {int x; int y;}; struct Vector a; struct Vector *pa = &a; pa->x = 1; pa->y = 2; a.y; }), "struct Vector {int x; int y;}; struct Vector a; struct Vector *pa = &a; pa->x = 1; pa->y = 2; a.y;");
     return 0;
 }
