@@ -14,7 +14,9 @@ VarScope *scope;
 int str_label_cnt = 1;
 
 void top_level();
-Func *new_func(Type *rtype, char *name, Token *tok);
+Func *new_func();
+Var *new_gvar();
+
 Node *stmt();
 Node *compound_stmt();
 Node *expr();
@@ -43,7 +45,7 @@ Node *lvar_init(Var *var, Token *tok);
 Node *default_lvar_init(Var *var, Token *tok);
 Node *ary_init(Var *var, Token *tok);
 
-Var *new_gvar(Type *type, char *name, Token *tok);
+Var *new_var(Type *type, char *name, bool is_local, Token *tok);
 Var *new_lvar(Type *type, char *name, Token *tok);
 Var *new_strl(char *str, Token *tok);
 Var *decl();
@@ -56,11 +58,7 @@ void leave_scope();
 void *push_scope(Var *var);
 Var *find_var(char *name);
 
-/**
- * Return a program, where
- *     program = (func | gvar)*
- * @return A program.
- */
+// program = top-level*
 Prog *parse() {
     prog = calloc(1, sizeof(Prog));
     scope = new_scope();
@@ -72,41 +70,34 @@ Prog *parse() {
     return prog;
 }
 
-/**
- * Register a top-level component to the program, where
- *     top-level = func | gvar
- */
+// top-level = func | gvar
 void top_level() {
-    Type *type = read_base_type();
-    Token *tok = expect(TK_IDENT, NULL);
-    type = read_type_postfix(type);
-    if (peek(TK_RESERVED, "(")) {
-        new_func(type, tok->str, tok);
+    Token *tok = ctok;
+    read_base_type();
+    bool isfunc = consume(TK_IDENT, NULL) && consume(TK_RESERVED, "(");
+    ctok = tok;
+
+    if (isfunc) {
+        new_func();
     } else {
-        new_gvar(type, tok->str, tok);
-        expect(TK_RESERVED, ";");
+        new_gvar();
     }
 }
 
-/**
- * Return a function and register it to the program.
- * @param type The type of a return variable.
- * @param name A function name.
- * @param tok The name of a function.
- * @return A function.
- * @note The function name has already been consumed, the current token must be '('.
- */
-Func *new_func(Type *rtype, char *name, Token *tok) {
+// func = T ident "(" params? ")" "{" stmt* "}"
+// params = T ident ("," T ident)*
+Func *new_func() {
     fn = calloc(1, sizeof(Func));
-    fn->rtype = rtype;
-    fn->name = name;
-    fn->tok = tok;
+    fn->rtype = read_base_type();
+    fn->tok = expect(TK_IDENT, NULL);
+    fn->name = fn->tok->str;
     fn->lvars = vec_create();
+
+    enter_scope();
 
     // Parse the arguments.
     fn->args = vec_create();
     expect(TK_RESERVED, "(");
-    enter_scope();
     while (!consume(TK_RESERVED, ")")) {
         if (0 < fn->args->len) {
             expect(TK_RESERVED, ",");
@@ -115,38 +106,54 @@ Func *new_func(Type *rtype, char *name, Token *tok) {
     }
 
     // Check conflict.
-    Func *fn_ = find_func(name);
+    Func *fn_ = find_func(fn->name);
     if (fn_) {
         if (fn_->body) {
-            error_at(fn->tok->loc, "error: redefinition of '%s'\n", tok->str);
+            error_at(fn->tok->loc, "error: redefinition of '%s'\n", fn->tok->str);
         }
         if (!is_same_type(fn->rtype, fn_->rtype)) {
-            error_at(fn->tok->loc, "error: conflicting types for '%s'", tok->str);
+            error_at(fn->tok->loc, "error: conflicting types for '%s'", fn->tok->str);
         }
         if (fn->args->len != fn_->args->len) {
-            error_at(fn->tok->loc, "error: conflicting types for '%s'", tok->str);
+            error_at(fn->tok->loc, "error: conflicting types for '%s'", fn->tok->str);
         }
         for (int i = 0; i < fn->args->len; i++) {
             if (!is_same_type((Type *)vec_at(fn->args, i), (Type *)vec_at(fn_->args, i))) {
-                error_at(fn->tok->loc, "error: conflicting types for '%s'", tok->str);
+                error_at(fn->tok->loc, "error: conflicting types for '%s'", fn->tok->str);
             }
         }
     }
 
-    // NOTE: Functions must be registered before parsing their bodies
-    // to deal with recursion.
-    map_insert(prog->fns, name, fn);
-
-    // If this is a prototype declaration, exit.
-    if (consume(TK_RESERVED, ";")) {
-        leave_scope();
-        return fn;
-    }
+    // Register the function to the program.
+    map_insert(prog->fns, fn->name, fn);
 
     // Parse the body.
-    fn->body = compound_stmt();
+    if (!consume(TK_RESERVED, ";")) {
+        fn->body = compound_stmt();
+    }
     leave_scope();
     return fn;
+}
+
+// gvar = T ident ("[" num "]")* ";"
+Var *new_gvar() {
+    Type *type = read_base_type();
+    Token *tok = expect(TK_IDENT, NULL);
+    char *name = tok->str;
+    type = read_type_postfix(type);
+    expect(TK_RESERVED, ";");
+
+    if (map_contains(scope->vars, name)) {
+        Var *var = map_at(scope->vars, name);
+        if (!is_same_type(type, var->type)) {
+            error_at(tok->loc, "error: conflicting types for '%s'", name);
+        }
+        return var;
+    }
+    Var *var = new_var(type, name, false, tok);
+    vec_push(prog->gvars, var);
+    push_scope(var);
+    return var;
 }
 
 /**
@@ -794,27 +801,6 @@ Var *new_var(Type *type, char *name, bool is_local, Token *tok) {
 }
 
 /**
- * Create a global variable, and registers it to the program.
- * @param type The type of a variable.
- * @param name Variable name.
- * @param tok A token.
- * @return A variable.
- */
-Var *new_gvar(Type *type, char *name, Token *tok) {
-    if (map_contains(scope->vars, name)) {
-        Var *var = map_at(scope->vars, name);
-        if (!is_same_type(type, var->type)) {
-            error_at(tok->loc, "error: conflicting types for '%s'", name);
-        }
-        return var;
-    }
-    Var *var = new_var(type, name, false, tok);
-    vec_push(prog->gvars, var);
-    push_scope(var);
-    return var;
-}
-
-/**
  * Create a local variable, and registers it to the function.
  * @param type The type of a variable.
  * @param name Variable name.
@@ -840,8 +826,11 @@ Var *new_lvar(Type *type, char *name, Token *tok) {
 Var *new_strl(char *str, Token *tok) {
     Type *type = ary_of(char_type(), strlen(str) + 1);
     char *name = format(".L.str%d", str_label_cnt++);
-    Var *var = new_gvar(type, name, tok);
+
+    Var *var = new_var(type, name, false, tok);
     var->data = tok->str;
+    vec_push(prog->gvars, var);
+    push_scope(var);
     return var;
 }
 
