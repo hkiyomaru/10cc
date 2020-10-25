@@ -489,8 +489,16 @@ Node *stmt() {
         Node *node = new_node(ND_FOR, tok);
         expect(TK_RESERVED, "(");
         enter_scope();
-        node->init = peek(TK_RESERVED, ";") ? new_node(ND_NULL, NULL) : expr_stmt();
-        expect(TK_RESERVED, ";");
+        if (consume(TK_RESERVED, ";")) {
+            node->init = new_node(ND_NULL, NULL);
+        } else {
+            if (at_typename()) {
+                node->init = decl();
+            } else {
+                node->init = expr_stmt();
+                expect(TK_RESERVED, ";");
+            }
+        }
         node->cond = peek(TK_RESERVED, ";") ? new_node_num(1, NULL) : expr();
         expect(TK_RESERVED, ";");
         node->upd = peek(TK_RESERVED, ")") ? new_node(ND_NULL, NULL) : expr_stmt();
@@ -533,7 +541,7 @@ Node *compound_stmt() {
 // expr = assign
 Node *expr() { return assign(); }
 
-// expr-stmt = expr ";"
+// expr-stmt = expr
 Node *expr_stmt() { return new_node_unary(ND_EXPR_STMT, expr(), ctok); }
 
 // stmt-expr = "(" "{" stmt+ "}" ")"
