@@ -17,20 +17,14 @@ void store(Type *type);
 void inc(Type *type);
 void dec(Type *type);
 
-/**
- * Generate assembly code.
- * @param prog A program.
- */
+// Generate assembly code.
 void codegen(Prog *prog) {
     printf(".intel_syntax noprefix\n");
     gen_data(prog);
     gen_text(prog);
 }
 
-/**
- * Generate assembly code for a data segment.
- * @param prog A program.
- */
+// Generate assembly code for a data segment.
 void gen_data(Prog *prog) {
     printf(".data\n");
     for (int i = 0; i < prog->gvars->len; i++) {
@@ -44,10 +38,7 @@ void gen_data(Prog *prog) {
     }
 }
 
-/**
- * Generate assemly code for a code segment.
- * @param prog A program.
- */
+// Generate assemly code for a code segment.
 void gen_text(Prog *prog) {
     printf(".text\n");
     for (int i = 0; i < prog->fns->len; i++) {
@@ -88,10 +79,7 @@ void gen_text(Prog *prog) {
     }
 }
 
-/**
- * Generate assembly code for a given node.
- * @param node A node.
- */
+// Generate assembly code for a given node.
 void gen(Node *node) {
     int cur_label_cnt;
     switch (node->kind) {
@@ -268,10 +256,7 @@ void gen(Node *node) {
     printf("  push rax\n");
 }
 
-/**
- * Push an address to a lvalue to the stack.
- * @param node A node for an lvalue.
- */
+// Push an address to a lvalue to the stack.
 void gen_lval(Node *node) {
     switch (node->kind) {
         case ND_VARREF:
@@ -294,11 +279,7 @@ void gen_lval(Node *node) {
     }
 }
 
-/**
- * Push a value to a pre-defined address, which follows the function calling convention.
- * @param Node A node.
- * @param index The index of an argument.
- */
+// Push a value to a pre-defined address, which follows the function calling convention.
 void load_arg(Node *node, int index) {
     switch (node->var->type->size) {
         case 1:
@@ -313,10 +294,7 @@ void load_arg(Node *node, int index) {
     }
 }
 
-/**
- * Load a value from an address on the top of the stack, and push the value to the stack.
- * @param type A type of a value to be loaded.
- */
+// Load a value from an address on the top of the stack, and push the value to the stack.
 void load(Type *type) {
     printf("  pop rax\n");
     switch (type->size) {
@@ -333,10 +311,7 @@ void load(Type *type) {
     printf("  push rax\n");
 }
 
-/**
- * Load a value and an address from the top of the stack. The loaded value is stored to the loaded address.
- * @param type A type of a value to be stored.
- */
+// Load a value and an address from the top of the stack. The loaded value is stored to the loaded address.
 void store(Type *type) {
     printf("  pop rdi\n");
     printf("  pop rax\n");
@@ -354,20 +329,14 @@ void store(Type *type) {
     printf("  push rdi\n");
 }
 
-/**
- * Increment the value on the top of the stack.
- * @param type A type.
- */
+// Increment the value on the top of the stack.
 void inc(Type *type) {
     printf("  pop rax\n");
     printf("  add rax, %d\n", type->base ? type->base->size : 1);
     printf("  push rax\n");
 }
 
-/**
- * Decrement the value on the top of the stack.
- * @param type A type.
- */
+// Decrement the value on the top of the stack.
 void dec(Type *type) {
     printf("  pop rax\n");
     printf("  sub rax, %d\n", type->base ? type->base->size : 1);

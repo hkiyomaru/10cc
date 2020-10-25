@@ -18,12 +18,7 @@ void ensure_int(Node *node);
 
 Node *scale_ptr(NodeKind kind, Node *base, Type *type);
 
-/**
- * Assign a type to a given node.
- * @param node A node.
- * @param decay If true, the given node may be decayed to a pointer.
- * @return A node.
- */
+// Assign a type to a given node.
 Node *do_walk(Node *node, bool decay) {
     switch (node->kind) {
         case ND_NULL:
@@ -158,24 +153,13 @@ Node *do_walk(Node *node, bool decay) {
     }
 }
 
-/**
- * Run do_walk with the decay property enabled.
- * @param node A node.
- * @return A node.
- */
+// Run do_walk with the decay property enabled.
 Node *walk(Node *node) { return do_walk(node, true); }
 
-/**
- * Run do_walk with the decay property disabled.
- * @param node A node.
- * @return A node.
- */
+// Run do_walk with the decay property disabled.
 Node *walk_nodecay(Node *node) { return do_walk(node, false); }
 
-/**
- * Assign a type to each node in a given program.
- * @return A program.
- */
+// Assign a type to each node in a given program.
 Prog *assign_type(Prog *prog) {
     for (int i = 0; i < prog->fns->len; i++) {
         Func *fn = vec_at(prog->fns->vals, i);
@@ -186,12 +170,7 @@ Prog *assign_type(Prog *prog) {
     return prog;
 }
 
-/**
- * Create a type.
- * @param type A type kind.
- * @param size Required bytes to represent the type.
- * @return A type.
- */
+// Create a type.
 Type *new_type(TypeKind type, int size) {
     Type *ret = calloc(1, sizeof(Type));
     ret->kind = type;
@@ -199,41 +178,23 @@ Type *new_type(TypeKind type, int size) {
     return ret;
 }
 
-/**
- * Create an int type.
- * @return An int type.
- */
+// Create an int type.
 Type *int_type() { return new_type(TY_INT, 4); }
 
-/**
- * Create a char type.
- * @return A char type.
- */
+// Create a char type.
 Type *char_type() { return new_type(TY_CHAR, 1); }
 
-/**
- * Create a void type.
- * @return A void type.
- */
+// Create a void type.
 Type *void_type() { return new_type(TY_VOID, 1); }
 
-/**
- * Create a pointer type.
- * @param base A type to be pointed.
- * @return A pointer type.
- */
+// Create a pointer type.
 Type *ptr_to(Type *base) {
     Type *type = new_type(TY_PTR, 8);
     type->base = base;
     return type;
 }
 
-/**
- * Create an array type.
- * @param base A base type.
- * @param size An array size.
- * @return An array type.
- */
+// Create an array type.
 Type *ary_of(Type *base, int array_size) {
     Type *type = calloc(1, sizeof(Type));
     type->kind = TY_ARY;
@@ -243,11 +204,7 @@ Type *ary_of(Type *base, int array_size) {
     return type;
 }
 
-/**
- * Create a struct type.
- * @param members Members.
- * @return A struct type.
- */
+// Create a struct type.
 Type *struct_type(Map *members) {
     Member *last = vec_back(members->vals);
     int size = last->offset + last->type->size;
@@ -256,24 +213,17 @@ Type *struct_type(Map *members) {
     return type;
 }
 
-/**
- * Decay a given node to an pointer if it is an array.
- * @param base A node.
- * @return A node.
- */
+// Decay a given node to an pointer if it is an array.
 Node *decay_array(Node *base) {
     if (base->type->kind != TY_ARY) {
         return base;
     }
-    Node *node = new_node_unary_op(ND_ADDR, base, base->tok);
+    Node *node = new_node_unary(ND_ADDR, base, base->tok);
     node->type = ptr_to(base->type->base);
     return node;
 }
 
-/**
- * Return true if given two types are the same.
- * @return True if given two types are the same.
- */
+// Return true if given two types are the same.
 bool is_same_type(Type *x, Type *y) {
     if (x->kind != y->kind) {
         return false;
@@ -288,10 +238,7 @@ bool is_same_type(Type *x, Type *y) {
     }
 }
 
-/**
- * Ensure that a given node is referable.
- * @param node A node.
- */
+// Ensure that a given node is referable.
 void ensure_referable(Node *node) {
     NodeKind kind = node->kind;
     if (kind != ND_VARREF && kind != ND_DEREF && kind != ND_MEMBER) {
@@ -300,10 +247,7 @@ void ensure_referable(Node *node) {
     }
 }
 
-/**
- * Ensure that a given node is an integer.
- * @param node A node.
- */
+// Ensure that a given node is an integer.
 void ensure_int(Node *node) {
     TypeKind kind = node->type->kind;
     if (kind != TY_INT && kind != TY_CHAR) {
@@ -312,13 +256,9 @@ void ensure_int(Node *node) {
     }
 }
 
-/**
- * Scale a number by the size of a given type.
- * @param kind The kind of a node.
- * @param base A number node.
- * @param type A type.
- * @return A node.
- */
+// Scale a number by the size of a given type.
+// Say kind = ND_MUL, base = ND_NUM(2), and type = TY_INT.
+// In this case, return ND_NUM(2 * 4), where 4 is the size of an integer.
 Node *scale_ptr(NodeKind kind, Node *base, Type *type) {
-    return new_node_bin_op(kind, base, new_node_num(type->base->size, base->tok), base->tok);
+    return new_node_binary(kind, base, new_node_num(type->base->size, base->tok), base->tok);
 }

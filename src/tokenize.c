@@ -2,12 +2,7 @@
 
 Token *ctok;
 
-/**
- * Return the current token if it satisfies given conditions.
- * @param kind The kind of a token.
- * @param str The string expression of a token.
- * @return The current token.
- */
+// Return the current token if it satisfies given conditions. Otherwise, NULL will be returned.
 Token *peek(TokenKind kind, char *str) {
     if (ctok->kind != kind || (str && strcmp(ctok->str, str))) {
         return NULL;
@@ -15,13 +10,7 @@ Token *peek(TokenKind kind, char *str) {
     return ctok;
 }
 
-/**
- * Pop the current token if it satisfies given conditions.
- * Otherwise, NULL will be returned.
- * @param kind The kind of a token.
- * @param str The string expression of a token.
- * @return A consumed token.
- */
+// Pop the current token if it satisfies given conditions. Otherwise, NULL will be returned.
 Token *consume(TokenKind kind, char *str) {
     Token *ret = peek(kind, str);
     if (ret) {
@@ -30,13 +19,7 @@ Token *consume(TokenKind kind, char *str) {
     return ret;
 }
 
-/**
- * Pop the current token if it satisfies given conditions.
- * Otherwise, raise an error.
- * @param kind The kind of a token.
- * @param str The string expression of a token.
- * @return A consumed token.
- */
+// Pop the current token if it satisfies given conditions. Otherwise, raise an error.
 Token *expect(TokenKind kind, char *str) {
     Token *ret = peek(kind, str);
     if (ret) {
@@ -47,16 +30,10 @@ Token *expect(TokenKind kind, char *str) {
     return ret;
 }
 
-/**
- * Return true if the kind of the current token is EOF.
- * @return True if the kind of the current token is EOF.
- */
+// Return true if the kind of the current token is EOF.
 bool at_eof() { return peek(TK_EOF, NULL); }
 
-/**
- * Return true if the kind of the current token is a type name.
- * @return True if the kind of the current token is a type name.
- */
+// Return true if the kind of the current token is a type name.
 bool at_typename() {
     char *typenames[] = {"int", "char", "void", "struct"};
     for (int i = 0; i < sizeof(typenames) / sizeof(typenames[0]); i++) {
@@ -67,11 +44,7 @@ bool at_typename() {
     return false;
 }
 
-/**
- * Read an reserved keyword.
- * @param p The pointer to the current position.
- * @return A reserved keyword.
- */
+// Read an reserved keyword.
 char *read_reserved(char *p) {
     char *kws[] = {"return", "if", "else", "while", "for", "sizeof", "struct", "int", "char", "void"};
     for (int i = 0; i < sizeof(kws) / sizeof(kws[0]); i++) {
@@ -95,14 +68,7 @@ char *read_reserved(char *p) {
     return NULL;
 }
 
-/**
- * Create a token.
- * @param kind A token kind.
- * @param cur The previous token.
- * @param str A string.
- * @param len The length of the string.
- * @return A token.
- */
+// Create a token.
 Token *new_token(TokenKind kind, Token *cur, char *p, int len) {
     char *str = calloc(len + 1, sizeof(char));
     strncpy(str, p, len);
@@ -115,10 +81,7 @@ Token *new_token(TokenKind kind, Token *cur, char *p, int len) {
     return tok;
 }
 
-/**
- * Tokenize a program.
- * @return The head of a linked list of tokens.
- */
+// Tokenize a given file.
 Token *tokenize() {
     Token head;
     head.next = NULL;

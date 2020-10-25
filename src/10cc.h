@@ -18,15 +18,11 @@ typedef struct Prog Prog;
 typedef struct Vector Vector;
 typedef struct Map Map;
 
-/**
- * main.c
- */
+// main.c
 extern char *filename;
 extern char *user_input;
 
-/**
- * tokenize.c
- */
+// tokenize.c
 extern Token *ctok;
 
 typedef enum {
@@ -54,9 +50,7 @@ Token *expect(TokenKind kind, char *str);
 bool at_eof();
 bool at_typename();
 
-/**
- * parse.c
- */
+// parse.c
 typedef enum {
     ND_ADD,
     ND_SUB,
@@ -157,13 +151,11 @@ struct Member {
 Prog *parse();
 
 Node *new_node(NodeKind kind, Token *tok);
-Node *new_node_bin_op(NodeKind kind, Node *lhs, Node *rhs, Token *tok);
-Node *new_node_unary_op(NodeKind kind, Node *lhs, Token *tok);
+Node *new_node_binary(NodeKind kind, Node *lhs, Node *rhs, Token *tok);
+Node *new_node_unary(NodeKind kind, Node *lhs, Token *tok);
 Node *new_node_num(int val, Token *tok);
 
-/**
- * type.c
- */
+// type.c
 typedef enum { TY_INT, TY_PTR, TY_ARY, TY_CHAR, TY_VOID, TY_STRUCT } TypeKind;
 
 struct Type {
@@ -184,9 +176,7 @@ Type *ptr_to(Type *base);
 Type *ary_of(Type *base, int len);
 bool is_same_type(Type *x, Type *y);
 
-/**
- * container.c
- */
+// container.c
 struct Vector {
     void **data;
     int capacity;
@@ -212,14 +202,10 @@ void map_insert(Map *map, char *key, void *val);
 void *map_at(Map *map, char *key);
 bool map_contains(Map *map, char *key);
 
-/**
- * codegen.c
- */
+// codegen.c
 void codegen();
 
-/**
- * util.c
- */
+// util.c
 char *format(char *fmt, ...);
 void debug(char *fmt, ...);
 void error(char *fmt, ...);

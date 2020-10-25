@@ -36,8 +36,8 @@ Type *read_type_postfix(Type *type);
 Type *struct_decl();
 Member *struct_member();
 
-Node *new_node_bin_op(NodeKind kind, Node *lhs, Node *rhs, Token *tok);
-Node *new_node_unary_op(NodeKind kind, Node *lhs, Token *tok);
+Node *new_node_binary(NodeKind kind, Node *lhs, Node *rhs, Token *tok);
+Node *new_node_unary(NodeKind kind, Node *lhs, Token *tok);
 Node *new_node_num(int val, Token *tok);
 Node *new_node_varref(Var *var, Token *tok);
 Node *new_node_func_call(Token *tok);
@@ -156,18 +156,14 @@ Var *new_gvar() {
     return var;
 }
 
-/**
- * Return a statement, where
- *     stmt = "return" expr ";"
- *          | "if" "(" expr ")" stmt ("else" stmt)?
- *          | "while" "(" expr ")" stmt
- *          | "for" "(" expr? ";" expr? ";" expr? ")" stmt
- *          | compound-stmt
- *          | T ident ("=" expr)? ";"
- *          | ";"
- *          | expr_stmt ";"
- * @return A node.
- */
+// stmt = "return" expr ";"
+//      | "if" "(" expr ")" stmt ("else" stmt)?
+//      | "while" "(" expr ")" stmt
+//      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
+//      | compound-stmt
+//      | T ident ("=" expr)? ";"
+//      | ";"
+//      | expr-stmt ";"
 Node *stmt() {
     Token *tok;
 
@@ -232,10 +228,7 @@ Node *stmt() {
     return node;
 }
 
-/**
- * Return a compound statement, where
- *     compound-stmt = "{" stmt* "}"
- */
+// compound-stmt = "{" stmt* "}"
 Node *compound_stmt() {
     Node *node = new_node(ND_BLOCK, ctok);
     node->stmts = vec_create();
@@ -248,29 +241,20 @@ Node *compound_stmt() {
     return node;
 }
 
-/**
- * Return an expression, where
- *     expr = assign
- * @return A node.
- */
+// expr = assign
 Node *expr() { return assign(); }
 
-/**
- * Return an expression statement, where
- *     expr_stmt = expr ";"
- * @return A node.
- */
-Node *expr_stmt() { return new_node_unary_op(ND_EXPR_STMT, expr(), ctok); }
+// expr-stmt = expr ";"
+Node *expr_stmt() { return new_node_unary(ND_EXPR_STMT, expr(), ctok); }
 
-/**
- * Return a statement expression, where
- *     stmt_expr = "(" "{" stmt+ "}" ")"
- * @return A node.
- * @note Parentheses are consumed outside of this function.
- */
+// stmt-expr = "(" "{" stmt+ "}" ")"
 Node *stmt_expr() {
     Node *node = new_node(ND_STMT_EXPR, ctok);
+
+    expect(TK_RESERVED, "(");
     node->stmts = compound_stmt()->stmts;
+    expect(TK_RESERVED, ")");
+
     if (node->stmts->len == 0) {
         error_at(node->tok->loc, "error: void value not ignored as it ought to be\n");
     }
@@ -282,139 +266,115 @@ Node *stmt_expr() {
     return node;
 }
 
-/**
- * Return an assignment expression, where
- *     assign = equality (("=" | "+=", "-=") assign)?
- * @return A node.
- */
+// assign = equality (("=" | "+=", "-=") assign)?
 Node *assign() {
     Node *node = equality();
     Token *tok;
 
     if (tok = consume(TK_RESERVED, "=")) {
-        return new_node_bin_op(ND_ASSIGN, node, assign(), tok);
+        return new_node_binary(ND_ASSIGN, node, assign(), tok);
     }
 
     if (tok = consume(TK_RESERVED, "+=")) {
-        return new_node_bin_op(ND_ASSIGN, node, new_node_bin_op(ND_ADD, node, assign(), tok), tok);
+        return new_node_binary(ND_ASSIGN, node, new_node_binary(ND_ADD, node, assign(), tok), tok);
     }
 
     if (tok = consume(TK_RESERVED, "-=")) {
-        return new_node_bin_op(ND_ASSIGN, node, new_node_bin_op(ND_SUB, node, assign(), tok), tok);
+        return new_node_binary(ND_ASSIGN, node, new_node_binary(ND_SUB, node, assign(), tok), tok);
     }
 
     if (tok = consume(TK_RESERVED, "*=")) {
-        return new_node_bin_op(ND_ASSIGN, node, new_node_bin_op(ND_MUL, node, assign(), tok), tok);
+        return new_node_binary(ND_ASSIGN, node, new_node_binary(ND_MUL, node, assign(), tok), tok);
     }
 
     if (tok = consume(TK_RESERVED, "/=")) {
-        return new_node_bin_op(ND_ASSIGN, node, new_node_bin_op(ND_DIV, node, assign(), tok), tok);
+        return new_node_binary(ND_ASSIGN, node, new_node_binary(ND_DIV, node, assign(), tok), tok);
     }
 
     return node;
 }
 
-/**
- * Return an equality expression, where
- *     equality = relational (("==" | "!=") relational)?
- * @return A node.
- */
+// equality = relational (("==" | "!=") relational)?
 Node *equality() {
     Node *node = relational();
     Token *tok;
     for (;;) {
         if (tok = consume(TK_RESERVED, "==")) {
-            node = new_node_bin_op(ND_EQ, node, relational(), tok);
+            node = new_node_binary(ND_EQ, node, relational(), tok);
         } else if (tok = consume(TK_RESERVED, "!=")) {
-            node = new_node_bin_op(ND_NE, node, relational(), tok);
+            node = new_node_binary(ND_NE, node, relational(), tok);
         } else {
             return node;
         }
     }
 }
 
-/**
- * Return a relational expression, where
- *     relational = add (("<=" | ">=" | "<" | ">") add)?
- * @return A node.
- */
+// relational = add (("<=" | ">=" | "<" | ">") add)?
 Node *relational() {
     Node *node = add();
     Token *tok;
     if (tok = consume(TK_RESERVED, "<=")) {
-        return new_node_bin_op(ND_LE, node, add(), tok);
+        return new_node_binary(ND_LE, node, add(), tok);
     } else if (tok = consume(TK_RESERVED, ">=")) {
-        return new_node_bin_op(ND_LE, add(), node, tok);
+        return new_node_binary(ND_LE, add(), node, tok);
     } else if (tok = consume(TK_RESERVED, "<")) {
-        return new_node_bin_op(ND_LT, node, add(), tok);
+        return new_node_binary(ND_LT, node, add(), tok);
     } else if (tok = consume(TK_RESERVED, ">")) {
-        return new_node_bin_op(ND_LT, add(), node, tok);
+        return new_node_binary(ND_LT, add(), node, tok);
     } else {
         return node;
     }
 }
 
-/**
- * Return an add expression, where
- *     add = mul ("+" unary | "-" unary)*
- * @return A node.
- */
+// add = mul ("+" unary | "-" unary)*
 Node *add() {
     Node *node = mul();
     Token *tok;
     for (;;) {
         if (tok = consume(TK_RESERVED, "+")) {
-            node = new_node_bin_op(ND_ADD, node, mul(), tok);
+            node = new_node_binary(ND_ADD, node, mul(), tok);
         } else if (tok = consume(TK_RESERVED, "-")) {
-            node = new_node_bin_op(ND_SUB, node, mul(), tok);
+            node = new_node_binary(ND_SUB, node, mul(), tok);
         } else {
             return node;
         }
     }
 }
 
-/*
- * Return a mul expression, where
- *     mul = unary (("*" | "/") unary)*
- * @return A node.
- */
+// mul = unary (("*" | "/") unary)*
 Node *mul() {
     Node *node = unary();
     Token *tok;
     for (;;) {
         if (tok = consume(TK_RESERVED, "*")) {
-            node = new_node_bin_op(ND_MUL, node, unary(), tok);
+            node = new_node_binary(ND_MUL, node, unary(), tok);
         } else if (tok = consume(TK_RESERVED, "/")) {
-            node = new_node_bin_op(ND_DIV, node, unary(), tok);
+            node = new_node_binary(ND_DIV, node, unary(), tok);
         } else {
             return node;
         }
     }
 }
 
-/*
- * Return an unary expression, where
- *     unary = ("+" | "-" | "&" | "*")? unary
- *           | ("++", "--") unary
- *           | "sizeof" unary
- *           | "sizeof" "(" type-name ")"
- *           | postfix
- * @return A node.
- */
+// unary = ("+" | "-" | "&" | "*")? unary
+//       | ("++", "--") unary
+//       | "sizeof" unary
+//       | "sizeof" "(" type-name ")"
+//       | postfix
 Node *unary() {
     Token *tok;
     if (tok = consume(TK_RESERVED, "+")) {
         return unary();
     } else if (tok = consume(TK_RESERVED, "-")) {
-        return new_node_bin_op(ND_SUB, new_node_num(0, NULL), unary(), tok);
+        return new_node_binary(ND_SUB, new_node_num(0, NULL), unary(), tok);
     } else if (tok = consume(TK_RESERVED, "&")) {
-        return new_node_unary_op(ND_ADDR, unary(), tok);
+        return new_node_unary(ND_ADDR, unary(), tok);
     } else if (tok = consume(TK_RESERVED, "*")) {
-        return new_node_unary_op(ND_DEREF, unary(), tok);
+        return new_node_unary(ND_DEREF, unary(), tok);
     } else if (tok = consume(TK_RESERVED, "++")) {
-        return new_node_unary_op(ND_PRE_INC, unary(), tok);
+        return new_node_unary(ND_PRE_INC, unary(), tok);
     } else if (tok = consume(TK_RESERVED, "--")) {
-        return new_node_unary_op(ND_PRE_DEC, unary(), tok);
+        return new_node_unary(ND_PRE_DEC, unary(), tok);
     } else if (tok = consume(TK_RESERVED, "sizeof")) {
         if (consume(TK_RESERVED, "(")) {
             if (at_typename()) {
@@ -425,40 +385,36 @@ Node *unary() {
                 ctok = tok->next;
             }
         }
-        return new_node_unary_op(ND_SIZEOF, unary(), tok);
+        return new_node_unary(ND_SIZEOF, unary(), tok);
     } else {
         return postfix();
     }
 }
 
-/**
- * Return a postfix expression, where
- *     postfix = primary ("[" assign "]" | "++" | "--" | "." ident)*
- * @return A node.
- */
+// postfix = primary ("[" assign "]" | "++" | "--" | "." ident)*
 Node *postfix() {
     Node *node = primary();
     Token *tok;
     for (;;) {
         if (tok = consume(TK_RESERVED, "[")) {
-            Node *addr = new_node_bin_op(ND_ADD, node, assign(), tok);
-            node = new_node_unary_op(ND_DEREF, addr, tok);
+            Node *addr = new_node_binary(ND_ADD, node, assign(), tok);
+            node = new_node_unary(ND_DEREF, addr, tok);
             expect(TK_RESERVED, "]");
             continue;
         }
 
         if (tok = consume(TK_RESERVED, "++")) {
-            node = new_node_unary_op(ND_POST_INC, node, tok);
+            node = new_node_unary(ND_POST_INC, node, tok);
             continue;
         }
 
         if (tok = consume(TK_RESERVED, "--")) {
-            node = new_node_unary_op(ND_POST_DEC, node, tok);
+            node = new_node_unary(ND_POST_DEC, node, tok);
             continue;
         }
 
         if (tok = consume(TK_RESERVED, ".")) {
-            node = new_node_unary_op(ND_MEMBER, node, tok);
+            node = new_node_unary(ND_MEMBER, node, tok);
             char *member_name = expect(TK_IDENT, NULL)->str;
             node->member_name = member_name;
             if (map_contains(node->lhs->type->members, member_name)) {
@@ -471,19 +427,23 @@ Node *postfix() {
     }
 }
 
-/**
- * Return a primary expression, where
- *     primary = num
- *             | str
- *             | ident ("(" ")")?
- *             | "(" "{" stmt+ "}" ")"
- *             | "(" expr ")"
- * @return A node.
- */
+// primary = num
+//         | str
+//         | ident ("(" ")")?
+//         | "(" "{" stmt+ "}" ")"
+//         | "(" expr ")"
 Node *primary() {
-    Token *tok;
+    Token *tok = ctok;
+
+    bool is_stmt_expr = consume(TK_RESERVED, "(") && consume(TK_RESERVED, "{");
+    ctok = tok;
+
+    if (is_stmt_expr) {
+        return stmt_expr();
+    }
+
     if (tok = consume(TK_RESERVED, "(")) {
-        Node *node = peek(TK_RESERVED, "{") ? stmt_expr() : expr();
+        Node *node = expr();
         expect(TK_RESERVED, ")");
         return node;
     }
@@ -510,10 +470,7 @@ Node *primary() {
     return new_node_num(tok->val, tok);
 }
 
-/**
- * Read a base type.
- * @return A type.
- */
+// T = ("int" | "char" | "void" | struct-decl) "*"*
 Type *read_base_type() {
     Type *type;
     if (consume(TK_RESERVED, "int")) {
@@ -533,11 +490,7 @@ Type *read_base_type() {
     return type;
 }
 
-/**
- * Read an array size.
- * @param base A base type.
- * @return A type.
- */
+// type-postfix = ("[" num? "]")*
 Type *read_type_postfix(Type *base) {
     if (!consume(TK_RESERVED, "[")) {
         return base;
@@ -549,10 +502,7 @@ Type *read_type_postfix(Type *base) {
     return ary_of(base, size);
 }
 
-/**
- * Read a struct type declaration, where
- *     struct-decl = "struct" "{" struct-member* "}"
- */
+// struct-decl = "struct" "{" struct-member* "}"
 Type *struct_decl() {
     expect(TK_RESERVED, "struct");
     expect(TK_RESERVED, "{");
@@ -570,10 +520,7 @@ Type *struct_decl() {
     return struct_type(members);
 }
 
-/**
- * Read a struct member, where
- *     struct-member = type ident ("[" num "]")* ";"
- */
+// struct-member = type ident ("[" num "]")* ";"
 Member *struct_member() {
     Member *mem = calloc(1, sizeof(Member));
     mem->type = read_base_type();
@@ -583,12 +530,7 @@ Member *struct_member() {
     return mem;
 }
 
-/**
- * Create a node.
- * @param kind A node kind.
- * @param tok A token.
- * @return A node.
- */
+// Create a node.
 Node *new_node(NodeKind kind, Token *tok) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = kind;
@@ -596,40 +538,22 @@ Node *new_node(NodeKind kind, Token *tok) {
     return node;
 }
 
-/**
- * Create a node to represent a binary operation.
- * @param kind A node kind.
- * @param lhs The left-hand side of a binary operation.
- * @param rhs The right-hand side of a binary operation.
- * @param tok A binary operator token.
- * @return A node.
- */
-Node *new_node_bin_op(NodeKind kind, Node *lhs, Node *rhs, Token *tok) {
+// Create a node to represent a binary operation.
+Node *new_node_binary(NodeKind kind, Node *lhs, Node *rhs, Token *tok) {
     Node *node = new_node(kind, tok);
     node->lhs = lhs;
     node->rhs = rhs;
     return node;
 }
 
-/**
- * Create a node to represent a unary operation.
- * @param kind The kind of a node.
- * @param lhs The input of a unary operation.
- * @param tok A token.
- * @return A node.
- */
-Node *new_node_unary_op(NodeKind kind, Node *lhs, Token *tok) {
+// Create a node to represent a unary operation.
+Node *new_node_unary(NodeKind kind, Node *lhs, Token *tok) {
     Node *node = new_node(kind, tok);
     node->lhs = lhs;
     return node;
 }
 
-/**
- * Create a node to represent a number.
- * @param val A number.
- * @param tok A number token.
- * @return A node.
- */
+// Create a node to represent a number.
 Node *new_node_num(int val, Token *tok) {
     Node *node = new_node(ND_NUM, tok);
     node->type = int_type();
@@ -637,12 +561,7 @@ Node *new_node_num(int val, Token *tok) {
     return node;
 }
 
-/**
- * Create a node to refer a variable.
- * @param var A variable to be refered.
- * @param tok A token.
- * @return A node.
- */
+// Create a node to refer a variable.
 Node *new_node_varref(Var *var, Token *tok) {
     Node *node = new_node(ND_VARREF, NULL);
     node->type = var->type;
@@ -650,12 +569,8 @@ Node *new_node_varref(Var *var, Token *tok) {
     return node;
 }
 
-/**
- * Create a node to represent a function call.
- * @param tok An identifiier token.
- * @return A node.
- * @note The function name has already been consumed, so the current token must be '('.
- */
+// func-call = ident "(" args? ")"
+// args = expr ("," expr)*
 Node *new_node_func_call(Token *tok) {
     Func *fn_ = find_func(tok->str);
     if (!fn_) {
@@ -675,12 +590,7 @@ Node *new_node_func_call(Token *tok) {
     return node;
 }
 
-/**
- * Create a node to assign an initial value to a given local variable.
- * @param var A local variable.
- * @param tok A token.
- * @return A node.
- */
+// Create a node to assign an initial value to a given local variable.
 Node *lvar_init(Var *var, Token *tok) {
     switch (var->type->kind) {
         case TY_ARY:
@@ -690,24 +600,14 @@ Node *lvar_init(Var *var, Token *tok) {
     }
 }
 
-/**
- * Create a node to assign an initial value to a given local variable.
- * @param var A variable to be refered.
- * @param tok An representative token.
- * @return A node.
- */
+// Create a node to assign an initial value to a given local variable.
 Node *default_lvar_init(Var *var, Token *tok) {
     Node *lvar = new_node_varref(var, tok);
-    Node *asgn = new_node_bin_op(ND_ASSIGN, lvar, expr(), tok);
-    return new_node_unary_op(ND_EXPR_STMT, asgn, NULL);
+    Node *asgn = new_node_binary(ND_ASSIGN, lvar, expr(), tok);
+    return new_node_unary(ND_EXPR_STMT, asgn, NULL);
 }
 
-/**
- * Create a node to assign an initial value to a given array variable.
- * @param var A variable to be refered.
- * @param tok A token.
- * @return A node.
- */
+// Create a node to assign an initial value to a given array variable.
 Node *ary_init(Var *var, Token *tok) {
     assert(var->type->kind == TY_ARY);
 
@@ -727,10 +627,10 @@ Node *ary_init(Var *var, Token *tok) {
                 error_at(tok->loc, "error: excess elements in array initializer");
             }
             Node *index = new_node_num(i, NULL);
-            Node *addr = new_node_bin_op(ND_ADD, lvar, index, NULL);
-            Node *lval = new_node_unary_op(ND_DEREF, addr, NULL);
-            Node *asgn = new_node_bin_op(ND_ASSIGN, lval, expr(), NULL);
-            vec_push(node->stmts, new_node_unary_op(ND_EXPR_STMT, asgn, NULL));
+            Node *addr = new_node_binary(ND_ADD, lvar, index, NULL);
+            Node *lval = new_node_unary(ND_DEREF, addr, NULL);
+            Node *asgn = new_node_binary(ND_ASSIGN, lval, expr(), NULL);
+            vec_push(node->stmts, new_node_unary(ND_EXPR_STMT, asgn, NULL));
         }
         if (lvar->type->array_size == -1) {
             lvar->type->array_size = node->stmts->len;
@@ -745,16 +645,16 @@ Node *ary_init(Var *var, Token *tok) {
         }
         for (int i = 0; i < strlen(tok->str); i++) {
             Node *index = new_node_num(i, NULL);
-            Node *addr = new_node_bin_op(ND_ADD, lvar, index, NULL);
-            Node *lval = new_node_unary_op(ND_DEREF, addr, NULL);
-            Node *asgn = new_node_bin_op(ND_ASSIGN, lval, new_node_num(tok->str[i], NULL), NULL);
-            vec_push(node->stmts, new_node_unary_op(ND_EXPR_STMT, asgn, NULL));
+            Node *addr = new_node_binary(ND_ADD, lvar, index, NULL);
+            Node *lval = new_node_unary(ND_DEREF, addr, NULL);
+            Node *asgn = new_node_binary(ND_ASSIGN, lval, new_node_num(tok->str[i], NULL), NULL);
+            vec_push(node->stmts, new_node_unary(ND_EXPR_STMT, asgn, NULL));
         }
         Node *index = new_node_num(strlen(tok->str), NULL);
-        Node *addr = new_node_bin_op(ND_ADD, lvar, index, NULL);
-        Node *lval = new_node_unary_op(ND_DEREF, addr, NULL);
-        Node *asgn = new_node_bin_op(ND_ASSIGN, lval, new_node_num(0, NULL), NULL);
-        vec_push(node->stmts, new_node_unary_op(ND_EXPR_STMT, asgn, NULL));
+        Node *addr = new_node_binary(ND_ADD, lvar, index, NULL);
+        Node *lval = new_node_unary(ND_DEREF, addr, NULL);
+        Node *asgn = new_node_binary(ND_ASSIGN, lval, new_node_num(0, NULL), NULL);
+        vec_push(node->stmts, new_node_unary(ND_EXPR_STMT, asgn, NULL));
         if (lvar->type->array_size == -1) {
             lvar->type->array_size = strlen(tok->str);
             lvar->type->size = lvar->type->base->size * strlen(tok->str);
@@ -764,22 +664,15 @@ Node *ary_init(Var *var, Token *tok) {
     }
     for (int i = node->stmts->len; i < lvar->type->array_size; i++) {
         Node *index = new_node_num(i, NULL);
-        Node *addr = new_node_bin_op(ND_ADD, lvar, index, NULL);
-        Node *lval = new_node_unary_op(ND_DEREF, addr, NULL);
-        Node *asgn = new_node_bin_op(ND_ASSIGN, lval, new_node_num(0, NULL), NULL);
-        vec_push(node->stmts, new_node_unary_op(ND_EXPR_STMT, asgn, NULL));
+        Node *addr = new_node_binary(ND_ADD, lvar, index, NULL);
+        Node *lval = new_node_unary(ND_DEREF, addr, NULL);
+        Node *asgn = new_node_binary(ND_ASSIGN, lval, new_node_num(0, NULL), NULL);
+        vec_push(node->stmts, new_node_unary(ND_EXPR_STMT, asgn, NULL));
     }
     return node;
 }
 
-/**
- * Create a variable.
- * @param type The type of a variable.
- * @param name Variable name.
- * @param is_local If true, created as a local variable.
- * @param tok A token.
- * @return A variable.
- */
+// Create a variable.
 Var *new_var(Type *type, char *name, bool is_local, Token *tok) {
     if (type->kind == TY_VOID) {
         error_at(tok->loc, "error: variable or field '%s' declared void", tok->str);
@@ -800,13 +693,7 @@ Var *new_var(Type *type, char *name, bool is_local, Token *tok) {
     return var;
 }
 
-/**
- * Create a local variable, and registers it to the function.
- * @param type The type of a variable.
- * @param name Variable name.
- * @param tok A token.
- * @return A variable.
- */
+// Create a local variable, and registers it to the function.
 Var *new_lvar(Type *type, char *name, Token *tok) {
     if (map_contains(scope->vars, tok->str)) {
         error_at(tok->loc, "error: redeclaration of '%s'", tok->str);
@@ -817,12 +704,7 @@ Var *new_lvar(Type *type, char *name, Token *tok) {
     return var;
 }
 
-/**
- * Create a string literal.
- * @param str A string.
- * @param tok A token.
- * @return A variable.
- */
+// Create a string literal.
 Var *new_strl(char *str, Token *tok) {
     Type *type = ary_of(char_type(), strlen(str) + 1);
     char *name = format(".L.str%d", str_label_cnt++);
@@ -834,11 +716,7 @@ Var *new_strl(char *str, Token *tok) {
     return var;
 }
 
-/**
- * Returns a local variable by reading its declaration, where
- *     declaration = T ident ("[" num? "]")?
- * @return A variable.
- */
+// decl = T ident ("[" num? "]")?
 Var *decl() {
     Token *tok = ctok;
     Type *type = read_base_type();
@@ -847,18 +725,10 @@ Var *decl() {
     return new_lvar(type, tok->str, tok);
 }
 
-/**
- * Return a function with a specific name.
- * If such a function does not exist, return NULL.
- * @param name The name of a function.
- * @return A function.
- */
+// Find a function by name.
 Func *find_func(char *name) { return map_contains(prog->fns, name) ? map_at(prog->fns, name) : NULL; }
 
-/**
- * Create an empty variable scope.
- * @return A variable scope.
- */
+// Create an empty variable scope.
 VarScope *new_scope() {
     VarScope *sc = calloc(1, sizeof(VarScope));
     sc->next = NULL;
@@ -866,32 +736,20 @@ VarScope *new_scope() {
     return sc;
 }
 
-/**
- * Enter a new scope.
- */
+// Enter a new scope.
 void *enter_scope() {
     VarScope *sc = new_scope();
     sc->next = scope;
     scope = sc;
 }
 
-/**
- * Leave the current scope.
- */
+// Leave the current scope.
 void leave_scope() { scope = scope->next; }
 
-/**
- * Push a variable to the current scope.
- * @param var A variable.
- */
+// Push a variable to the current scope.
 void *push_scope(Var *var) { map_insert(scope->vars, var->name, var); }
 
-/**
- * Return a variable with a specific name.
- * If such a variable does not exist, return NULL.
- * @param name Variable name.
- * @return A variable.
- */
+// Find a variable by name.
 Var *find_var(char *name) {
     for (VarScope *sc = scope; sc; sc = sc->next) {
         if (map_contains(sc->vars, name)) {

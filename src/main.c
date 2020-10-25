@@ -5,11 +5,7 @@ char *user_input;
 
 void usage() { error("error: no input files\n"); }
 
-/**
- * Read a file.
- * @param path Path to a file.
- * @return A pointer to the start of the file.
- */
+// Read a file.
 char *read_file(char *path) {
     // Open the file.
     FILE *fp = fopen(path, "r");

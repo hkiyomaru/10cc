@@ -1,10 +1,6 @@
 #include "10cc.h"
 
-/**
- * Return a formatted string.
- * @param fmt The format of a string.
- * @param arg Arguments which will be filled in the string.
- */
+// Return a formatted string.
 char *format(char *fmt, ...) {
     size_t size = 2048;
     char *buff = calloc(size, sizeof(char));
@@ -15,22 +11,14 @@ char *format(char *fmt, ...) {
     return buff;
 }
 
-/**
- * Show an debug message.
- * @param fmt The format of an debug message.
- * @param arg Arguments which will be filled in the message.
- */
+// Show an debug message.
 void debug(char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
     vfprintf(stderr, fmt, ap);
 }
 
-/**
- * Show an error message.
- * @param fmt The format of an error message.
- * @param arg Arguments which will be filled in the message.
- */
+// Show an error message.
 void error(char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
@@ -38,12 +26,7 @@ void error(char *fmt, ...) {
     exit(1);
 }
 
-/**
- * Show an error message with its location information.
- * @param loc The location of an error.
- * @param fmt The format of an error message.
- * @param arg Arguments which will be filled in the message.
- */
+// Show an error message with its location information.
 void error_at(char *loc, char *fmt, ...) {
     // Find the start/end positions of the line.
     char *line = loc;
@@ -80,27 +63,13 @@ void error_at(char *loc, char *fmt, ...) {
     exit(1);
 }
 
-/**
- * Return true if the first string starts with the second string.
- * @param p A string.
- * @param q A string.
- * @return True if the first string starts with the second string.
- */
+// Return true if the first string starts with the second string.
 bool startswith(char *p, char *q) { return memcmp(p, q, strlen(q)) == 0; }
 
-/**
- * Return true if a given character is an alphabet, number, or _.
- * @param c A character.
- * @return True if the given character is an alphabet, number, or _.
- */
+// Return true if a given character is an alphabet, number, or _.
 bool isalnumus(char c) { return isalnum(c) || c == '_'; }
 
-/**
- * Draw the abstract syntax tree of a node.
- * @param node A node.
- * @param depth The depth of the node.
- * @param role The role of the node.
- */
+// Draw the abstract syntax tree of a node.
 void draw_node(Node *node, int depth, char *role) {
     if (node != NULL) {
         for (int i = 0; i < depth; i++) {
@@ -230,10 +199,7 @@ void draw_node(Node *node, int depth, char *role) {
     }
 }
 
-/**
- * Draw the abstract syntax tree of a program.
- * @param prog A program.
- */
+// Draw the abstract syntax tree of a program.
 void draw_ast(Prog *prog) {
     for (int i = 0; i < prog->fns->len; i++) {
         Func *fn = vec_at(prog->fns->vals, i);
