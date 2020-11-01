@@ -570,6 +570,7 @@ Node *lvar_init(Type *type, Node *node, InitValue *iv, Token *tok) {
 //      | "if" "(" expr ")" stmt ("else" stmt)?
 //      | "while" "(" expr ")" stmt
 //      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
+//      | "break" ";"
 //      | compound-stmt
 //      | T ident ("=" expr)? ";"
 //      | "typedef" base T ident ("[" num "]")* ";"
@@ -625,6 +626,10 @@ Node *stmt() {
         node->then = stmt();
         leave_scope();
         return node;
+    }
+
+    if (tok = consume(TK_RESERVED, "break")) {
+        return new_node(ND_BREAK, tok);
     }
 
     if (tok = peek(TK_RESERVED, "{")) {

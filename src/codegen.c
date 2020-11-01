@@ -6,7 +6,8 @@ char *argregs4[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
 char *argregs8[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
 char *funcname;
-int label_cnt = 0;
+int label_cnt;
+int break_cnt;
 
 void gen_data(Prog *prog);
 void gen_text(Prog *prog);
@@ -82,7 +83,6 @@ void gen_text(Prog *prog) {
 
 // Generate assembly code for a given node.
 void gen(Node *node) {
-    int cur_label_cnt;
     switch (node->kind) {
         case ND_NULL:
             return;
@@ -158,8 +158,8 @@ void gen(Node *node) {
             store(node->type);
             inc(node->type);
             return;
-        case ND_IF:
-            cur_label_cnt = label_cnt++;
+        case ND_IF: {
+            int cur_label_cnt = label_cnt++;
             gen(node->cond);
             printf("  pop rax\n");
             printf("  cmp rax, 0\n");
@@ -175,29 +175,44 @@ void gen(Node *node) {
             }
             printf(".Lend%03d:\n", cur_label_cnt);
             return;
-        case ND_WHILE:
-            cur_label_cnt = label_cnt++;
+        }
+        case ND_WHILE: {
+            int cur_label_cnt = label_cnt++;
+            int cur_break_cnt = break_cnt;
+            break_cnt = cur_label_cnt;
             printf(".Lbegin%03d:\n", cur_label_cnt);
             gen(node->cond);
             printf("  pop rax\n");
             printf("  cmp rax, 0\n");
-            printf("  je .Lend%03d\n", cur_label_cnt);
+            printf("  je .Lbreak%03d\n", cur_label_cnt);
             gen(node->then);
             printf("  jmp .Lbegin%03d\n", cur_label_cnt);
-            printf(".Lend%03d:\n", cur_label_cnt);
+            printf(".Lbreak%03d:\n", cur_label_cnt);
+            break_cnt = cur_break_cnt;
             return;
-        case ND_FOR:
-            cur_label_cnt = label_cnt++;
+        }
+        case ND_FOR: {
+            int cur_label_cnt = label_cnt++;
+            int cur_break_cnt = break_cnt;
+            break_cnt = cur_label_cnt;
             gen(node->init);
             printf(".Lbegin%03d:\n", cur_label_cnt);
             gen(node->cond);
             printf("  pop rax\n");
             printf("  cmp rax, 0\n");
-            printf("  je .Lend%03d\n", cur_label_cnt);
+            printf("  je .Lbreak%03d\n", cur_label_cnt);
             gen(node->then);
             gen(node->upd);
             printf("  jmp .Lbegin%03d\n", cur_label_cnt);
-            printf(".Lend%03d:\n", cur_label_cnt);
+            printf(".Lbreak%03d:\n", cur_label_cnt);
+            break_cnt = cur_break_cnt;
+            return;
+        }
+        case ND_BREAK:
+            if (break_cnt == 0) {
+                error_at(node->tok->loc, "break statement not within loop or switch\n");
+            }
+            printf("  jmp .Lbreak%03d\n", break_cnt);
             return;
         case ND_RETURN:
             gen(node->lhs);

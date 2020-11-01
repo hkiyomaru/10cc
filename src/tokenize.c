@@ -35,8 +35,8 @@ bool at_eof() { return peek(TK_EOF, NULL); }
 
 // Read an reserved keyword.
 char *read_reserved(char *p) {
-    char *kws[] = {"return", "if",   "else", "while", "for",  "sizeof", "struct",
-                   "int",    "char", "void", "short", "long", "typedef"};
+    char *kws[] = {"return", "if",   "else", "while", "for",  "sizeof",  "struct",
+                   "int",    "char", "void", "short", "long", "typedef", "break"};
     for (int i = 0; i < sizeof(kws) / sizeof(kws[0]); i++) {
         int len = strlen(kws[i]);
         if (startswith(p, kws[i]) && !isalnumus(p[len])) {

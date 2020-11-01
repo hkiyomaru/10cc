@@ -22,6 +22,7 @@ Node *scale_ptr(NodeKind kind, Node *base, Type *type);
 Node *do_walk(Node *node, bool decay) {
     switch (node->kind) {
         case ND_NULL:
+        case ND_BREAK:
             return node;
         case ND_NUM:
             return node;
