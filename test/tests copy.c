@@ -192,8 +192,5 @@ int main() {
     assert(15, ({ int total = 0; for (int i = 0; i <= 10; i++) { total = total + i; if (i == 5) break; } total; }), "int total = 0; for (int i = 0; i <= 10; i++) { total = total + i; if (i == 5) break; } total;");
     assert(15, ({ int total = 0; for (int i = 0; i <= 10; i++) { if (i > 5) continue; total = total + i; } total; }), "int total = 0; for (int i = 0; i <= 10; i++) { total = total + i; if (i == 5) break; } total;");
     assert(1, ({ 1 ? 1 : 0; }), "1 ? 1 : 0;");
-    assert(0, ({ 0 ? 1 : 0; }), "1 ? 1 : 0;");
-    assert(2, ({ 0 ? 1 : 1 ? 2 : 3; }), "0 ? 1 : 1 ? 2 : 3;");
-    assert(3, ({ 1 ? 0 ? 2 : 3 : 4; }), "1 ? 0 ? 2 : 3 : 4;");
     return 0;
 }

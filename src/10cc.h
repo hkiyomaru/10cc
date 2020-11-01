@@ -64,6 +64,7 @@ typedef enum {
     ND_PRE_DEC,
     ND_POST_DEC,
     ND_ASSIGN,
+    ND_TERNARY,
     ND_EXPR_STMT,
     ND_STMT_EXPR,
     ND_NUM,

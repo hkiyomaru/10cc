@@ -129,6 +129,19 @@ void gen(Node *node) {
             gen(node->rhs);
             store(node->lhs->type);
             return;
+        case ND_TERNARY: {
+            int cur_label_cnt = label_cnt++;
+            gen(node->cond);
+            printf("  pop rax\n");
+            printf("  cmp rax, 0\n");
+            printf("  je .Lelse%03d\n", cur_label_cnt);
+            gen(node->then);
+            printf("  jmp .Lend%03d\n", cur_label_cnt);
+            printf(".Lelse%03d:\n", cur_label_cnt);
+            gen(node->els);
+            printf(".Lend%03d:\n", cur_label_cnt);
+            return;
+        }
         case ND_PRE_INC:
             gen_lval(node->lhs);
             gen_lval(node->lhs);

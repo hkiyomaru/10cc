@@ -75,6 +75,7 @@ Node *expr();
 Node *expr_stmt();
 Node *stmt_expr();
 Node *assign();
+Node *conditional();
 Node *equality();
 Node *relational();
 Node *add();
@@ -702,9 +703,9 @@ Node *stmt_expr() {
     return node;
 }
 
-// assign = equality (("=" | "+=", "-=") assign)?
+// assign = ternary (("=" | "+=" | "-=" | "*=" | "/=") assign)?
 Node *assign() {
-    Node *node = equality();
+    Node *node = conditional();
     Token *tok;
 
     if (tok = consume(TK_RESERVED, "=")) {
@@ -728,6 +729,23 @@ Node *assign() {
     }
 
     return node;
+}
+
+// conditional = equality ("?" expr ":" conditional)?
+Node *conditional() {
+    Node *node = equality();
+
+    Token *tok = consume(TK_RESERVED, "?");
+    if (!tok) {
+        return node;
+    }
+
+    Node *ternary = new_node(ND_TERNARY, tok);
+    ternary->cond = node;
+    ternary->then = expr();
+    expect(TK_RESERVED, ":");
+    ternary->els = conditional();
+    return ternary;
 }
 
 // equality = relational (("==" | "!=") relational)?

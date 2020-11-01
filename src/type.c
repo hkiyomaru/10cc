@@ -89,6 +89,15 @@ Node *do_walk(Node *node, bool decay) {
             node->rhs = walk(node->rhs);
             node->type = node->lhs->type;
             return node;
+        case ND_TERNARY:
+            node->cond = walk(node->cond);
+            node->then = walk(node->then);
+            node->els = walk(node->els);
+            if (!is_same_type(node->then->type, node->els->type)) {
+                error_at(node->tok->loc, "error");
+            }
+            node->type = node->then->type;
+            return node;
         case ND_MUL:
         case ND_DIV:
         case ND_EQ:
