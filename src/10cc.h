@@ -155,7 +155,7 @@ Node *new_node_unary(NodeKind kind, Node *lhs, Token *tok);
 Node *new_node_num(int val, Token *tok);
 
 // type.c
-typedef enum { TY_INT, TY_PTR, TY_ARY, TY_CHAR, TY_VOID, TY_STRUCT } TypeKind;
+typedef enum { TY_LONG, TY_INT, TY_SHORT, TY_PTR, TY_ARY, TY_CHAR, TY_VOID, TY_STRUCT } TypeKind;
 
 struct Type {
     TypeKind kind;
@@ -167,7 +167,9 @@ struct Type {
 
 Prog *assign_type(Prog *prog);
 
+Type *long_type();
 Type *int_type();
+Type *short_type();
 Type *char_type();
 Type *void_type();
 Type *struct_type();

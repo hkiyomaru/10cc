@@ -1,6 +1,7 @@
 #include "10cc.h"
 
 char *argregs1[] = {"dil", "sil", "dl", "cl", "r8b", "r9b"};
+char *argregs2[] = {"di", "si", "dx", "cx", "r8w", "r9w"};
 char *argregs4[] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
 char *argregs8[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
@@ -285,6 +286,9 @@ void load_arg(Var *var, int index) {
         case 1:
             printf("  mov [rbp-%d], %s\n", var->offset, argregs1[index]);
             break;
+        case 2:
+            printf("  mov [rbp-%d], %s\n", var->offset, argregs2[index]);
+            break;
         case 4:
             printf("  mov [rbp-%d], %s\n", var->offset, argregs4[index]);
             break;
@@ -300,6 +304,9 @@ void load(Type *type) {
     switch (type->size) {
         case 1:
             printf("  movsx rax, byte ptr [rax]\n");
+            break;
+        case 2:
+            printf("  movsx rax, word ptr [rax]\n");
             break;
         case 4:
             printf("  movsx rax, dword ptr [rax]\n");
@@ -318,6 +325,9 @@ void store(Type *type) {
     switch (type->size) {
         case 1:
             printf("  mov [rax], dil\n");
+            break;
+        case 2:
+            printf("  mov [rax], di\n");
             break;
         case 4:
             printf("  mov [rax], edi\n");

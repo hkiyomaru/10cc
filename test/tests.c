@@ -182,5 +182,11 @@ int main() {
     assert(1, ({ typedef struct {int x; int y;} Vector; Vector a; a.x = 1; a.y = 2; a.x; }), "typedef struct {int x; int y;} Vector; Vector a; a.x = 1; a.y = 2; a.x;");
     assert(2, ({ typedef struct {int x; int y;} Vector; Vector a; a.x = 1; a.y = 2; a.y; }), "typedef struct {int x; int y;} Vector; Vector a; a.x = 1; a.y = 2; a.y;");
     assert(1, ({ typedef struct {int x; int y;} Vector; Vector a; Vector *pa = &a; pa->x = 1; pa->y = 2; a.x; }), "typedef struct {int x; int y;} Vector; Vector a; Vector *pa = &a; pa->x = 1; pa->y = 2; a.x;");
+    assert(8, ({ sizeof(long); }), "sizeof(long);");
+    assert(2, ({ sizeof(short); }), "sizeof(short);");
+    assert(8, ({ long x; sizeof(x); }), "long x; sizeof(x);");
+    assert(2, ({ short x; sizeof(x); }), "short x; sizeof(x);");
+    assert(2, ({ short x = 4; short y = 2; x - y; }), "short x = 4; short y = 2; x - y;");
+    assert(2, ({ long x = 4; long y = 2; x - y; }), "long x = 4; long y = 2; x - y;");
     return 0;
 }

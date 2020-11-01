@@ -223,7 +223,7 @@ void leave_scope() {
 
 // Return true if the kind of the current token is a type name.
 bool at_typename() {
-    char *typenames[] = {"int", "char", "void", "struct"};
+    char *typenames[] = {"long", "int", "short", "char", "void", "struct"};
     for (int i = 0; i < sizeof(typenames) / sizeof(typenames[0]); i++) {
         if (peek(TK_RESERVED, typenames[i])) {
             return true;
@@ -239,8 +239,12 @@ bool at_typename() {
 // T = ("int" | "char" | "void" | struct-decl | typedef-name) "*"*
 Type *read_base_type() {
     Type *type;
-    if (consume(TK_RESERVED, "int")) {
+    if (consume(TK_RESERVED, "long")) {
+        type = long_type();
+    } else if (consume(TK_RESERVED, "int")) {
         type = int_type();
+    } else if (consume(TK_RESERVED, "short")) {
+        type = short_type();
     } else if (consume(TK_RESERVED, "char")) {
         type = char_type();
     } else if (consume(TK_RESERVED, "void")) {

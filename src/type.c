@@ -180,8 +180,14 @@ Type *new_type(TypeKind type, int size) {
     return ret;
 }
 
+// Create a long type.
+Type *long_type() { return new_type(TY_LONG, 8); }
+
 // Create an int type.
 Type *int_type() { return new_type(TY_INT, 4); }
+
+// Create a short type.
+Type *short_type() { return new_type(TY_SHORT, 2); }
 
 // Create a char type.
 Type *char_type() { return new_type(TY_CHAR, 1); }
