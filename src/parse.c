@@ -2,6 +2,7 @@
 
 typedef struct VarScope VarScope;
 typedef struct TagScope TagScope;
+typedef struct InitValue InitValue;
 
 struct VarScope {
     VarScope *next;
@@ -11,6 +12,11 @@ struct VarScope {
 struct TagScope {
     TagScope *next;
     Map *types;  // Map<Type *>
+};
+
+struct InitValue {
+    Vector *vals;  // Vector<InitValue *>
+    Node *val;
 };
 
 Prog *prog;  // The program
@@ -55,6 +61,9 @@ void gvar();
 
 Node *decl();
 
+InitValue *read_lvar_init_value(Type *type);
+Node *lvar_init(Type *type, Node *node, InitValue *iv, Token *tok);
+
 Node *stmt();
 Node *compound_stmt();
 Node *expr();
@@ -69,9 +78,6 @@ Node *unary();
 Node *postfix();
 Node *primary();
 Node *new_node_func_call(Token *tok);
-Node *lvar_init(Node *assignee, Token *tok);
-Node *default_lvar_init(Node *assignee, Token *tok);
-Node *ary_init(Node *assignee, Token *tok);
 
 // Create a variable.
 Var *new_var(Type *type, char *name, bool is_local, Token *tok) {
@@ -443,9 +449,74 @@ Node *decl() {
     }
 
     tok = expect(TK_RESERVED, "=");
-    Node *node = lvar_init(new_node_varref(var, tok), tok);
+    InitValue *iv = read_lvar_init_value(var->type);
     expect(TK_RESERVED, ";");
-    return node;
+    return lvar_init(var->type, new_node_varref(var, tok), iv, tok);
+}
+
+// Read initial values.
+InitValue *read_lvar_init_value(Type *type) {
+    InitValue *iv = calloc(1, sizeof(InitValue));
+    switch (type->kind) {
+        case TY_ARY:
+            iv->vals = vec_create();
+            if (consume(TK_RESERVED, "{")) {
+                while (!consume(TK_RESERVED, "}")) {
+                    if (iv->vals->len > 0) {
+                        expect(TK_RESERVED, ",");
+                    }
+                    vec_push(iv->vals, read_lvar_init_value(type->base));
+                }
+            } else if (consume(TK_RESERVED, "\"")) {
+                Token *strl = expect(TK_STR, NULL);
+                expect(TK_RESERVED, "\"");
+                for (int i = 0; i < strlen(strl->str); i++) {
+                    InitValue *v = calloc(1, sizeof(InitValue));
+                    v->val = new_node_num(strl->str[i], NULL);
+                    vec_push(iv->vals, v);
+                }
+                InitValue *v = calloc(1, sizeof(InitValue));
+                v->val = new_node_num('\0', NULL);
+                vec_push(iv->vals, v);
+            } else {
+                error_at(ctok->loc, "error: expected expression before '%s'", ctok->str);
+            }
+            break;
+        default:
+            iv->val = expr();
+            break;
+    }
+    return iv;
+}
+
+// Create a node to assign an initial value to a given local variable.
+Node *lvar_init(Type *type, Node *node, InitValue *iv, Token *tok) {
+    Node *initializer = new_node(ND_BLOCK, tok);
+    initializer->stmts = vec_create();
+    if (type->kind == TY_ARY) {
+        for (int i = 0; i < iv->vals->len; i++) {
+            Node *node_i = new_node_binary(ND_ADD, node, new_node_num(i, NULL), NULL);
+            node_i = new_node_unary(ND_DEREF, node_i, NULL);
+            vec_push(initializer->stmts, lvar_init(type->base, node_i, vec_at(iv->vals, i), tok));
+        }
+
+        if (type->array_size == -1) {
+            type->array_size = iv->vals->len;
+            type->size = type->base->size * type->array_size;
+        }
+
+        for (int i = iv->vals->len; i < type->array_size; i++) {
+            Node *node_i = new_node_binary(ND_ADD, node, new_node_num(i, NULL), NULL);
+            node_i = new_node_unary(ND_DEREF, node_i, NULL);
+            InitValue *iv = calloc(1, sizeof(InitValue));
+            iv->val = new_node_num(0, NULL);
+            vec_push(initializer->stmts, lvar_init(type->base, node_i, iv, tok));
+        }
+    } else {
+        Node *asgn = new_node_binary(ND_ASSIGN, node, iv->val, NULL);
+        vec_push(initializer->stmts, new_node_unary(ND_EXPR_STMT, asgn, NULL));
+    }
+    return initializer;
 }
 
 // stmt = "return" expr ";"
@@ -768,86 +839,6 @@ Node *primary() {
 
     tok = expect(TK_NUM, NULL);
     return new_node_num(tok->val, tok);
-}
-
-// Create a node to assign an initial value to a given local variable.
-Node *lvar_init(Node *assignee, Token *tok) {
-    switch (assignee->type->kind) {
-        case TY_ARY:
-            return ary_init(assignee, tok);
-        default:
-            return default_lvar_init(assignee, tok);
-    }
-}
-
-// Create a node to assign an initial value to a given local variable.
-Node *default_lvar_init(Node *assignee, Token *tok) {
-    Node *asgn = new_node_binary(ND_ASSIGN, assignee, expr(), tok);
-    return new_node_unary(ND_EXPR_STMT, asgn, NULL);
-}
-
-// Create a node to assign an initial value to a given array variable.
-Node *ary_init(Node *assignee, Token *tok) {
-    assert(assignee->type->kind == TY_ARY);
-
-    Node *node = new_node(ND_BLOCK, tok);
-    node->stmts = vec_create();
-    if (tok = consume(TK_RESERVED, "{")) {
-        // {expr, ...}
-        for (int i = 0;; i++) {
-            if (consume(TK_RESERVED, "}")) {
-                break;
-            }
-            if (node->stmts->len > 0) {
-                tok = expect(TK_RESERVED, ",");
-            }
-            if (assignee->type->array_size != -1 && i >= assignee->type->array_size) {
-                error_at(tok->loc, "error: excess elements in array initializer");
-            }
-            Node *index = new_node_num(i, NULL);
-            Node *addr = new_node_binary(ND_ADD, assignee, index, NULL);
-            Node *lval = new_node_unary(ND_DEREF, addr, NULL);
-            Node *asgn = new_node_binary(ND_ASSIGN, lval, expr(), NULL);
-            vec_push(node->stmts, new_node_unary(ND_EXPR_STMT, asgn, NULL));
-        }
-        if (assignee->type->array_size == -1) {
-            assignee->type->array_size = node->stmts->len;
-            assignee->type->size = assignee->type->base->size * node->stmts->len;
-        }
-    } else if (tok = consume(TK_RESERVED, "\"")) {
-        // string literal
-        Token *tok = expect(TK_STR, NULL);
-        expect(TK_RESERVED, "\"");
-        if (assignee->type->array_size != -1 && strlen(tok->str) > assignee->type->array_size - 1) {
-            error_at(tok->loc, "error: initializer-string for array of chars is too long");
-        }
-        for (int i = 0; i < strlen(tok->str); i++) {
-            Node *index = new_node_num(i, NULL);
-            Node *addr = new_node_binary(ND_ADD, assignee, index, NULL);
-            Node *lval = new_node_unary(ND_DEREF, addr, NULL);
-            Node *asgn = new_node_binary(ND_ASSIGN, lval, new_node_num(tok->str[i], NULL), NULL);
-            vec_push(node->stmts, new_node_unary(ND_EXPR_STMT, asgn, NULL));
-        }
-        Node *index = new_node_num(strlen(tok->str), NULL);
-        Node *addr = new_node_binary(ND_ADD, assignee, index, NULL);
-        Node *lval = new_node_unary(ND_DEREF, addr, NULL);
-        Node *asgn = new_node_binary(ND_ASSIGN, lval, new_node_num(0, NULL), NULL);
-        vec_push(node->stmts, new_node_unary(ND_EXPR_STMT, asgn, NULL));
-        if (assignee->type->array_size == -1) {
-            assignee->type->array_size = strlen(tok->str);
-            assignee->type->size = assignee->type->base->size * strlen(tok->str);
-        }
-    } else {
-        error_at(ctok->loc, "error: expected expression before '%s'", ctok->str);
-    }
-    for (int i = node->stmts->len; i < assignee->type->array_size; i++) {
-        Node *index = new_node_num(i, NULL);
-        Node *addr = new_node_binary(ND_ADD, assignee, index, NULL);
-        Node *lval = new_node_unary(ND_DEREF, addr, NULL);
-        Node *asgn = new_node_binary(ND_ASSIGN, lval, new_node_num(0, NULL), NULL);
-        vec_push(node->stmts, new_node_unary(ND_EXPR_STMT, asgn, NULL));
-    }
-    return node;
 }
 
 // program = top-level*
