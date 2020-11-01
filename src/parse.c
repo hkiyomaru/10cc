@@ -629,7 +629,13 @@ Node *stmt() {
     }
 
     if (tok = consume(TK_RESERVED, "break")) {
+        expect(TK_RESERVED, ";");
         return new_node(ND_BREAK, tok);
+    }
+
+    if (tok = consume(TK_RESERVED, "continue")) {
+        expect(TK_RESERVED, ";");
+        return new_node(ND_CONTINUE, tok);
     }
 
     if (tok = peek(TK_RESERVED, "{")) {

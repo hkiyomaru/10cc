@@ -23,6 +23,7 @@ Node *do_walk(Node *node, bool decay) {
     switch (node->kind) {
         case ND_NULL:
         case ND_BREAK:
+        case ND_CONTINUE:
             return node;
         case ND_NUM:
             return node;

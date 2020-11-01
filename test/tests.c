@@ -190,5 +190,6 @@ int main() {
     assert(2, ({ long x = 4; long y = 2; x - y; }), "long x = 4; long y = 2; x - y;");
     assert(5, ({ int i = 0; while (1) { i++; if (i == 5) break; } i; }), "int i = 0; while (1) { i++; if (i == 5) break; } i;");
     assert(15, ({ int total = 0; for (int i = 0; i <= 10; i++) { total = total + i; if (i == 5) break; } total; }), "int total = 0; for (int i = 0; i <= 10; i++) { total = total + i; if (i == 5) break; } total;");
+    assert(15, ({ int total = 0; for (int i = 0; i <= 10; i++) { if (i > 5) continue; total = total + i; } total; }), "int total = 0; for (int i = 0; i <= 10; i++) { total = total + i; if (i == 5) break; } total;");
     return 0;
 }

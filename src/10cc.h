@@ -74,6 +74,7 @@ typedef enum {
     ND_WHILE,
     ND_FOR,
     ND_BREAK,
+    ND_CONTINUE,
     ND_FUNC_CALL,
     ND_BLOCK,
     ND_ADDR,
