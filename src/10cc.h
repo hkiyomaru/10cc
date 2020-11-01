@@ -48,7 +48,6 @@ Token *consume(TokenKind kind, char *str);
 Token *expect(TokenKind kind, char *str);
 
 bool at_eof();
-bool at_typename();
 
 // parse.c
 typedef enum {

@@ -179,5 +179,8 @@ int main() {
     assert(2, ({ struct Vector {int x; int y;}; struct Vector a; struct Vector *pa = &a; pa->x = 1; pa->y = 2; pa->y; }), "struct Vector {int x; int y;}; struct Vector a; struct Vector *pa = &a; pa->x = 1; pa->y = 2; pa->y;");
     assert(2, ({ struct Vector {int x; int y;}; struct Vector a; struct Vector *pa = &a; pa->x = 1; pa->y = 2; a.y; }), "struct Vector {int x; int y;}; struct Vector a; struct Vector *pa = &a; pa->x = 1; pa->y = 2; a.y;");
     assert(55, ({ int total = 0; for (int i = 0; i <= 10; i++) total = total + i; total; }), "int total = 0; for (int i = 0; i <= 10; i++) total = total + i; total;");
+    assert(1, ({ typedef struct {int x; int y;} Vector; Vector a; a.x = 1; a.y = 2; a.x; }), "typedef struct {int x; int y;} Vector; Vector a; a.x = 1; a.y = 2; a.x;");
+    assert(2, ({ typedef struct {int x; int y;} Vector; Vector a; a.x = 1; a.y = 2; a.y; }), "typedef struct {int x; int y;} Vector; Vector a; a.x = 1; a.y = 2; a.y;");
+    assert(1, ({ typedef struct {int x; int y;} Vector; Vector a; Vector *pa = &a; pa->x = 1; pa->y = 2; a.x; }), "typedef struct {int x; int y;} Vector; Vector a; Vector *pa = &a; pa->x = 1; pa->y = 2; a.x;");
     return 0;
 }

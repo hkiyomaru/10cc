@@ -6,7 +6,8 @@ typedef struct InitValue InitValue;
 
 struct VarScope {
     VarScope *next;
-    Map *vars;  // Map<Var *>
+    Map *vars;      // Map<Var *>
+    Map *typedefs;  // Map<Type *>
 };
 
 struct TagScope {
@@ -38,11 +39,15 @@ Var *find_var(char *name);
 Type *push_tag(char *tag, Type *type);
 Type *find_tag(char *name);
 
+Type *push_typedef(char *name, Type *type);
+Type *find_typedef(char *name);
+
 VarScope *new_var_scope();
 TagScope *new_tag_scope();
 void *enter_scope();
 void leave_scope();
 
+bool at_typename();
 Type *read_base_type();
 Type *read_type_postfix(Type *type);
 Type *struct_decl();
@@ -166,11 +171,28 @@ Type *find_tag(char *name) {
     return NULL;
 }
 
+// Push a typedef to the current scope.
+Type *push_typedef(char *name, Type *type) {
+    map_insert(var_scope->typedefs, name, type);
+    return type;
+}
+
+// Find a typedef by name.
+Type *find_typedef(char *name) {
+    for (VarScope *sc = var_scope; sc; sc = sc->next) {
+        if (map_contains(sc->typedefs, name)) {
+            return map_at(sc->typedefs, name);
+        }
+    }
+    return NULL;
+}
+
 // Create an empty variable scope.
 VarScope *new_var_scope() {
     VarScope *sc = calloc(1, sizeof(VarScope));
     sc->next = NULL;
     sc->vars = map_create();
+    sc->typedefs = map_create();
     return sc;
 }
 
@@ -199,7 +221,22 @@ void leave_scope() {
     tag_scope = tag_scope->next;
 }
 
-// T = ("int" | "char" | "void" | struct-decl) "*"*
+// Return true if the kind of the current token is a type name.
+bool at_typename() {
+    char *typenames[] = {"int", "char", "void", "struct"};
+    for (int i = 0; i < sizeof(typenames) / sizeof(typenames[0]); i++) {
+        if (peek(TK_RESERVED, typenames[i])) {
+            return true;
+        }
+    }
+    Token *tok = peek(TK_IDENT, NULL);
+    if (tok && find_typedef(tok->str)) {
+        return true;
+    }
+    return false;
+}
+
+// T = ("int" | "char" | "void" | struct-decl | typedef-name) "*"*
 Type *read_base_type() {
     Type *type;
     if (consume(TK_RESERVED, "int")) {
@@ -211,6 +248,12 @@ Type *read_base_type() {
     } else if (peek(TK_RESERVED, "struct")) {
         type = struct_decl();
     } else {
+        Token *tok = consume(TK_IDENT, NULL);
+        if (tok) {
+            type = find_typedef(tok->str);
+        }
+    }
+    if (!type) {
         error_at(ctok->loc, "error: unknown type name '%s'\n", ctok->str);
     }
     while ((consume(TK_RESERVED, "*"))) {
@@ -525,6 +568,7 @@ Node *lvar_init(Type *type, Node *node, InitValue *iv, Token *tok) {
 //      | "for" "(" expr? ";" expr? ";" expr? ")" stmt
 //      | compound-stmt
 //      | T ident ("=" expr)? ";"
+//      | "typedef" base T ident ("[" num "]")* ";"
 //      | ";"
 //      | expr-stmt ";"
 Node *stmt() {
@@ -585,6 +629,15 @@ Node *stmt() {
 
     if (at_typename()) {
         return decl();
+    }
+
+    if (tok = consume(TK_RESERVED, "typedef")) {
+        Type *type = read_base_type();
+        Token *tok = consume(TK_IDENT, NULL);
+        type = read_type_postfix(type);
+        expect(TK_RESERVED, ";");
+        push_typedef(tok->str, type);
+        return new_node(ND_NULL, tok);
     }
 
     if (tok = consume(TK_RESERVED, ";")) {

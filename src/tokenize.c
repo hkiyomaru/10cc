@@ -33,20 +33,9 @@ Token *expect(TokenKind kind, char *str) {
 // Return true if the kind of the current token is EOF.
 bool at_eof() { return peek(TK_EOF, NULL); }
 
-// Return true if the kind of the current token is a type name.
-bool at_typename() {
-    char *typenames[] = {"int", "char", "void", "struct"};
-    for (int i = 0; i < sizeof(typenames) / sizeof(typenames[0]); i++) {
-        if (peek(TK_RESERVED, typenames[i])) {
-            return true;
-        }
-    }
-    return false;
-}
-
 // Read an reserved keyword.
 char *read_reserved(char *p) {
-    char *kws[] = {"return", "if", "else", "while", "for", "sizeof", "struct", "int", "char", "void"};
+    char *kws[] = {"return", "if", "else", "while", "for", "sizeof", "struct", "int", "char", "void", "typedef"};
     for (int i = 0; i < sizeof(kws) / sizeof(kws[0]); i++) {
         int len = strlen(kws[i]);
         if (startswith(p, kws[i]) && !isalnumus(p[len])) {
