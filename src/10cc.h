@@ -49,6 +49,9 @@ Token *expect(TokenKind kind, char *str);
 
 bool at_eof();
 
+// preprocess.c
+Token *preprocess(Token *tok);
+
 // parse.c
 typedef enum {
     ND_ADD,

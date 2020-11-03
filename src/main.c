@@ -42,6 +42,7 @@ int main(int argc, char **argv) {
     filename = argv[1];
     user_input = read_file(filename);
     ctok = tokenize();
+    ctok = preprocess(ctok);
     Prog *prog = parse();
     prog = assign_type(prog);
     // draw_ast(prog);
