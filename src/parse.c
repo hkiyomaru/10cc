@@ -831,8 +831,7 @@ Node *mul() {
     }
 }
 
-// unary = ("+" | "-" | "&" | "*")? unary
-//       | ("++", "--") unary
+// unary = ("+" | "-" | "&" | "*" | "++" | "--" | "!")? unary
 //       | "sizeof" unary
 //       | "sizeof" "(" type-name ")"
 //       | postfix
@@ -852,6 +851,8 @@ Node *unary() {
     } else if ((tok = consume(TK_RESERVED, "--"))) {
         Node *node = unary();
         return new_node_binop(ND_ASSIGN, node, new_node_binop(ND_SUB, node, new_node_num(1, tok), tok), tok);
+    } else if ((tok = consume(TK_RESERVED, "!"))) {
+        return new_node_uniop(ND_NOT, unary(), tok);
     } else if ((tok = consume(TK_RESERVED, "sizeof"))) {
         if (consume(TK_RESERVED, "(")) {
             if (at_typename()) {
