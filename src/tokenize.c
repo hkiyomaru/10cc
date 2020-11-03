@@ -2,6 +2,8 @@
 
 Token *ctok;
 
+bool is_bol;
+
 // Return the current token if it satisfies given conditions. Otherwise, NULL will be returned.
 Token *peek(TokenKind kind, char *str) {
     if (ctok->kind != kind || (str && strcmp(ctok->str, str))) {
@@ -50,7 +52,7 @@ char *read_reserved(char *p) {
         }
     }
     char *single_ops[] = {"+", "-", "*", "/", "(", ")", "<", ">", "=", ";",
-                          "{", "}", ",", "[", "]", "&", ".", ":", "?"};
+                          "{", "}", ",", "[", "]", "&", ".", ":", "?", "#"};
     for (int i = 0; i < sizeof(single_ops) / sizeof(single_ops[0]); i++) {
         if (startswith(p, single_ops[i])) {
             return single_ops[i];
@@ -68,25 +70,22 @@ Token *new_token(TokenKind kind, Token *cur, char *p, int len) {
     tok->kind = kind;
     tok->str = str;
     tok->loc = p;
+    tok->is_bol = is_bol;
     cur->next = tok;
+    is_bol = false;
     return tok;
 }
 
 // Tokenize a given file.
 Token *tokenize() {
-    Token head;
-    head.next = NULL;
-
+    Token head = {};
     Token *cur = &head;
 
     char *p = user_input;
-    while (*p) {
-        // Skip white space.
-        if (isspace(*p)) {
-            p++;
-            continue;
-        }
 
+    is_bol = true;
+
+    while (*p) {
         // Skip a line comment.
         if (strncmp(p, "//", 2) == 0) {
             p += 2;
@@ -103,6 +102,19 @@ Token *tokenize() {
                 error_at(p, "error: unterminated comment\n");
             }
             p = q + 2;
+            continue;
+        }
+
+        // Skip newline.
+        if (*p == '\n') {
+            p++;
+            is_bol = true;
+            continue;
+        }
+
+        // Skip white space.
+        if (isspace(*p)) {
+            p++;
             continue;
         }
 

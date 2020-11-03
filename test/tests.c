@@ -1,3 +1,6 @@
+// null directive
+#
+
 // A line comment.
 
 /**

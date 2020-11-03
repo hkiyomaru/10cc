@@ -36,9 +36,10 @@ typedef enum {
 struct Token {
     TokenKind kind;
     Token *next;
-    int val;
+    bool is_bol;
     char *str;
     char *loc;
+    int val;
 };
 
 Token *tokenize();
