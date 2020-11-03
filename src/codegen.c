@@ -142,36 +142,6 @@ void gen(Node *node) {
             printf(".Lend%03d:\n", cur_label_cnt);
             return;
         }
-        case ND_PRE_INC:
-            gen_lval(node->lhs);
-            gen_lval(node->lhs);
-            load(node->type);
-            inc(node->type);
-            store(node->type);
-            return;
-        case ND_POST_INC:
-            gen_lval(node->lhs);
-            gen_lval(node->lhs);
-            load(node->type);
-            inc(node->type);
-            store(node->type);
-            dec(node->type);
-            return;
-        case ND_PRE_DEC:
-            gen_lval(node->lhs);
-            gen_lval(node->lhs);
-            load(node->type);
-            dec(node->type);
-            store(node->type);
-            return;
-        case ND_POST_DEC:
-            gen_lval(node->lhs);
-            gen_lval(node->lhs);
-            load(node->type);
-            dec(node->type);
-            store(node->type);
-            inc(node->type);
-            return;
         case ND_IF: {
             int cur_label_cnt = label_cnt++;
             gen(node->cond);
@@ -390,18 +360,4 @@ void store(Type *type) {
             error("  error: cannot store a %d-byte variable", type->size);
     }
     printf("  push rdi\n");
-}
-
-// Increment the value on the top of the stack.
-void inc(Type *type) {
-    printf("  pop rax\n");
-    printf("  add rax, %d\n", type->base ? type->base->size : 1);
-    printf("  push rax\n");
-}
-
-// Decrement the value on the top of the stack.
-void dec(Type *type) {
-    printf("  pop rax\n");
-    printf("  sub rax, %d\n", type->base ? type->base->size : 1);
-    printf("  push rax\n");
 }

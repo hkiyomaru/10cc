@@ -67,8 +67,8 @@ Type *read_type_postfix(Type *type);
 Type *struct_decl();
 Member *struct_member();
 
-Node *new_node_binary(NodeKind kind, Node *lhs, Node *rhs, Token *tok);
-Node *new_node_unary(NodeKind kind, Node *lhs, Token *tok);
+Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs, Token *tok);
+Node *new_node_uniop(NodeKind kind, Node *lhs, Token *tok);
 Node *new_node_num(int val, Token *tok);
 Node *new_node_varref(Var *var, Token *tok);
 
@@ -377,7 +377,7 @@ Node *new_node(NodeKind kind, Token *tok) {
 }
 
 // Create a node to represent a binary operation.
-Node *new_node_binary(NodeKind kind, Node *lhs, Node *rhs, Token *tok) {
+Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs, Token *tok) {
     Node *node = new_node(kind, tok);
     node->lhs = lhs;
     node->rhs = rhs;
@@ -385,7 +385,7 @@ Node *new_node_binary(NodeKind kind, Node *lhs, Node *rhs, Token *tok) {
 }
 
 // Create a node to represent a unary operation.
-Node *new_node_unary(NodeKind kind, Node *lhs, Token *tok) {
+Node *new_node_uniop(NodeKind kind, Node *lhs, Token *tok) {
     Node *node = new_node(kind, tok);
     node->lhs = lhs;
     return node;
@@ -564,8 +564,8 @@ Node *lvar_init(Type *type, Node *node, InitValue *iv, Token *tok) {
     initializer->stmts = vec_create();
     if (type->kind == TY_ARY) {
         for (int i = 0; i < iv->vals->len; i++) {
-            Node *node_i = new_node_binary(ND_ADD, node, new_node_num(i, NULL), NULL);
-            node_i = new_node_unary(ND_DEREF, node_i, NULL);
+            Node *node_i = new_node_binop(ND_ADD, node, new_node_num(i, NULL), NULL);
+            node_i = new_node_uniop(ND_DEREF, node_i, NULL);
             vec_push(initializer->stmts, lvar_init(type->base, node_i, vec_at(iv->vals, i), tok));
         }
 
@@ -575,15 +575,15 @@ Node *lvar_init(Type *type, Node *node, InitValue *iv, Token *tok) {
         }
 
         for (int i = iv->vals->len; i < type->array_size; i++) {
-            Node *node_i = new_node_binary(ND_ADD, node, new_node_num(i, NULL), NULL);
-            node_i = new_node_unary(ND_DEREF, node_i, NULL);
+            Node *node_i = new_node_binop(ND_ADD, node, new_node_num(i, NULL), NULL);
+            node_i = new_node_uniop(ND_DEREF, node_i, NULL);
             InitValue *iv = calloc(1, sizeof(InitValue));
             iv->val = new_node_num(0, NULL);
             vec_push(initializer->stmts, lvar_init(type->base, node_i, iv, tok));
         }
     } else {
-        Node *asgn = new_node_binary(ND_ASSIGN, node, iv->val, NULL);
-        vec_push(initializer->stmts, new_node_unary(ND_EXPR_STMT, asgn, NULL));
+        Node *asgn = new_node_binop(ND_ASSIGN, node, iv->val, NULL);
+        vec_push(initializer->stmts, new_node_uniop(ND_EXPR_STMT, asgn, NULL));
     }
     return initializer;
 }
@@ -703,7 +703,7 @@ Node *compound_stmt() {
 Node *expr() { return assign(); }
 
 // expr-stmt = expr
-Node *expr_stmt() { return new_node_unary(ND_EXPR_STMT, expr(), ctok); }
+Node *expr_stmt() { return new_node_uniop(ND_EXPR_STMT, expr(), ctok); }
 
 // stmt-expr = "(" "{" stmt+ "}" ")"
 Node *stmt_expr() {
@@ -730,23 +730,23 @@ Node *assign() {
     Token *tok;
 
     if ((tok = consume(TK_RESERVED, "="))) {
-        return new_node_binary(ND_ASSIGN, node, assign(), tok);
+        return new_node_binop(ND_ASSIGN, node, assign(), tok);
     }
 
     if ((tok = consume(TK_RESERVED, "+="))) {
-        return new_node_binary(ND_ASSIGN, node, new_node_binary(ND_ADD, node, assign(), tok), tok);
+        return new_node_binop(ND_ASSIGN, node, new_node_binop(ND_ADD, node, assign(), tok), tok);
     }
 
     if ((tok = consume(TK_RESERVED, "-="))) {
-        return new_node_binary(ND_ASSIGN, node, new_node_binary(ND_SUB, node, assign(), tok), tok);
+        return new_node_binop(ND_ASSIGN, node, new_node_binop(ND_SUB, node, assign(), tok), tok);
     }
 
     if ((tok = consume(TK_RESERVED, "*="))) {
-        return new_node_binary(ND_ASSIGN, node, new_node_binary(ND_MUL, node, assign(), tok), tok);
+        return new_node_binop(ND_ASSIGN, node, new_node_binop(ND_MUL, node, assign(), tok), tok);
     }
 
     if ((tok = consume(TK_RESERVED, "/="))) {
-        return new_node_binary(ND_ASSIGN, node, new_node_binary(ND_DIV, node, assign(), tok), tok);
+        return new_node_binop(ND_ASSIGN, node, new_node_binop(ND_DIV, node, assign(), tok), tok);
     }
 
     return node;
@@ -775,9 +775,9 @@ Node *equality() {
     Token *tok;
     for (;;) {
         if ((tok = consume(TK_RESERVED, "=="))) {
-            node = new_node_binary(ND_EQ, node, relational(), tok);
+            node = new_node_binop(ND_EQ, node, relational(), tok);
         } else if ((tok = consume(TK_RESERVED, "!="))) {
-            node = new_node_binary(ND_NE, node, relational(), tok);
+            node = new_node_binop(ND_NE, node, relational(), tok);
         } else {
             return node;
         }
@@ -789,13 +789,13 @@ Node *relational() {
     Node *node = add();
     Token *tok;
     if ((tok = consume(TK_RESERVED, "<="))) {
-        return new_node_binary(ND_LE, node, add(), tok);
+        return new_node_binop(ND_LE, node, add(), tok);
     } else if ((tok = consume(TK_RESERVED, ">="))) {
-        return new_node_binary(ND_LE, add(), node, tok);
+        return new_node_binop(ND_LE, add(), node, tok);
     } else if ((tok = consume(TK_RESERVED, "<"))) {
-        return new_node_binary(ND_LT, node, add(), tok);
+        return new_node_binop(ND_LT, node, add(), tok);
     } else if ((tok = consume(TK_RESERVED, ">"))) {
-        return new_node_binary(ND_LT, add(), node, tok);
+        return new_node_binop(ND_LT, add(), node, tok);
     } else {
         return node;
     }
@@ -807,9 +807,9 @@ Node *add() {
     Token *tok;
     for (;;) {
         if ((tok = consume(TK_RESERVED, "+"))) {
-            node = new_node_binary(ND_ADD, node, mul(), tok);
+            node = new_node_binop(ND_ADD, node, mul(), tok);
         } else if ((tok = consume(TK_RESERVED, "-"))) {
-            node = new_node_binary(ND_SUB, node, mul(), tok);
+            node = new_node_binop(ND_SUB, node, mul(), tok);
         } else {
             return node;
         }
@@ -822,9 +822,9 @@ Node *mul() {
     Token *tok;
     for (;;) {
         if ((tok = consume(TK_RESERVED, "*"))) {
-            node = new_node_binary(ND_MUL, node, unary(), tok);
+            node = new_node_binop(ND_MUL, node, unary(), tok);
         } else if ((tok = consume(TK_RESERVED, "/"))) {
-            node = new_node_binary(ND_DIV, node, unary(), tok);
+            node = new_node_binop(ND_DIV, node, unary(), tok);
         } else {
             return node;
         }
@@ -841,15 +841,17 @@ Node *unary() {
     if ((tok = consume(TK_RESERVED, "+"))) {
         return unary();
     } else if ((tok = consume(TK_RESERVED, "-"))) {
-        return new_node_binary(ND_SUB, new_node_num(0, NULL), unary(), tok);
+        return new_node_binop(ND_SUB, new_node_num(0, NULL), unary(), tok);
     } else if ((tok = consume(TK_RESERVED, "&"))) {
-        return new_node_unary(ND_ADDR, unary(), tok);
+        return new_node_uniop(ND_ADDR, unary(), tok);
     } else if ((tok = consume(TK_RESERVED, "*"))) {
-        return new_node_unary(ND_DEREF, unary(), tok);
+        return new_node_uniop(ND_DEREF, unary(), tok);
     } else if ((tok = consume(TK_RESERVED, "++"))) {
-        return new_node_unary(ND_PRE_INC, unary(), tok);
+        Node *node = unary();
+        return new_node_binop(ND_ASSIGN, node, new_node_binop(ND_ADD, node, new_node_num(1, tok), tok), tok);
     } else if ((tok = consume(TK_RESERVED, "--"))) {
-        return new_node_unary(ND_PRE_DEC, unary(), tok);
+        Node *node = unary();
+        return new_node_binop(ND_ASSIGN, node, new_node_binop(ND_SUB, node, new_node_num(1, tok), tok), tok);
     } else if ((tok = consume(TK_RESERVED, "sizeof"))) {
         if (consume(TK_RESERVED, "(")) {
             if (at_typename()) {
@@ -860,7 +862,7 @@ Node *unary() {
                 ctok = tok->next;
             }
         }
-        return new_node_unary(ND_SIZEOF, unary(), tok);
+        return new_node_uniop(ND_SIZEOF, unary(), tok);
     } else {
         return postfix();
     }
@@ -872,31 +874,33 @@ Node *postfix() {
     Token *tok;
     for (;;) {
         if ((tok = consume(TK_RESERVED, "["))) {
-            Node *addr = new_node_binary(ND_ADD, node, assign(), tok);
-            node = new_node_unary(ND_DEREF, addr, tok);
+            Node *addr = new_node_binop(ND_ADD, node, assign(), tok);
+            node = new_node_uniop(ND_DEREF, addr, tok);
             expect(TK_RESERVED, "]");
             continue;
         }
 
         if ((tok = consume(TK_RESERVED, "++"))) {
-            node = new_node_unary(ND_POST_INC, node, tok);
+            Node *asgn = new_node_binop(ND_ASSIGN, node, new_node_binop(ND_ADD, node, new_node_num(1, tok), tok), tok);
+            node = new_node_binop(ND_SUB, asgn, new_node_num(1, tok), tok);
             continue;
         }
 
         if ((tok = consume(TK_RESERVED, "--"))) {
-            node = new_node_unary(ND_POST_DEC, node, tok);
+            Node *asgn = new_node_binop(ND_ASSIGN, node, new_node_binop(ND_SUB, node, new_node_num(1, tok), tok), tok);
+            node = new_node_binop(ND_ADD, asgn, new_node_num(1, tok), tok);
             continue;
         }
 
         if ((tok = consume(TK_RESERVED, "."))) {
-            node = new_node_unary(ND_MEMBER, node, tok);
+            node = new_node_uniop(ND_MEMBER, node, tok);
             node->member_name = expect(TK_IDENT, NULL)->str;
             continue;
         }
 
         if ((tok = consume(TK_RESERVED, "->"))) {
-            node = new_node_unary(ND_DEREF, node, tok);
-            node = new_node_unary(ND_MEMBER, node, tok);
+            node = new_node_uniop(ND_DEREF, node, tok);
+            node = new_node_uniop(ND_MEMBER, node, tok);
             node->member_name = expect(TK_IDENT, NULL)->str;
             continue;
         }

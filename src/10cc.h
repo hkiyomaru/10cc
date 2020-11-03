@@ -63,10 +63,6 @@ typedef enum {
     ND_NE,
     ND_LE,
     ND_LT,
-    ND_PRE_INC,
-    ND_POST_INC,
-    ND_PRE_DEC,
-    ND_POST_DEC,
     ND_ASSIGN,
     ND_TERNARY,
     ND_EXPR_STMT,
@@ -157,8 +153,8 @@ struct Member {
 Prog *parse();
 
 Node *new_node(NodeKind kind, Token *tok);
-Node *new_node_binary(NodeKind kind, Node *lhs, Node *rhs, Token *tok);
-Node *new_node_unary(NodeKind kind, Node *lhs, Token *tok);
+Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs, Token *tok);
+Node *new_node_uniop(NodeKind kind, Node *lhs, Token *tok);
 Node *new_node_num(int val, Token *tok);
 
 // type.c

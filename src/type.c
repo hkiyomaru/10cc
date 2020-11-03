@@ -110,13 +110,6 @@ Node *do_walk(Node *node, bool decay) {
             ensure_int(node->rhs);
             node->type = int_type();
             return node;
-        case ND_PRE_INC:
-        case ND_POST_INC:
-        case ND_PRE_DEC:
-        case ND_POST_DEC:
-            node->lhs = walk(node->lhs);
-            node->type = node->lhs->type;
-            return node;
         case ND_ADDR:
             node->lhs = walk(node->lhs);
             ensure_referable(node->lhs);
@@ -238,7 +231,7 @@ Node *decay_array(Node *base) {
     if (base->type->kind != TY_ARY) {
         return base;
     }
-    Node *node = new_node_unary(ND_ADDR, base, base->tok);
+    Node *node = new_node_uniop(ND_ADDR, base, base->tok);
     node->type = ptr_to(base->type->base);
     return node;
 }
@@ -280,5 +273,5 @@ void ensure_int(Node *node) {
 // Say kind = ND_MUL, base = ND_NUM(2), and type = TY_INT.
 // In this case, return ND_NUM(2 * 4), where 4 is the size of an integer.
 Node *scale_ptr(NodeKind kind, Node *base, Type *type) {
-    return new_node_binary(kind, base, new_node_num(type->base->size, base->tok), base->tok);
+    return new_node_binop(kind, base, new_node_num(type->base->size, base->tok), base->tok);
 }
