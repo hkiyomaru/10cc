@@ -83,6 +83,9 @@ Node *decl();
 InitValue *read_lvar_init_value(Type *type);
 Node *lvar_init(Type *type, Node *node, InitValue *iv, Token *tok);
 
+Node *increment();
+Node *decrement();
+
 Node *stmt();
 Node *compound_stmt();
 Node *expr();
@@ -588,6 +591,16 @@ Node *lvar_init(Type *type, Node *node, InitValue *iv, Token *tok) {
     return initializer;
 }
 
+// Increment a node.
+Node *increment(Node *node, Token *tok) {
+    return new_node_binop(ND_ASSIGN, node, new_node_binop(ND_ADD, node, new_node_num(1, tok), tok), tok);
+}
+
+// Decrement a node.
+Node *decrement(Node *node, Token *tok) {
+    return new_node_binop(ND_ASSIGN, node, new_node_binop(ND_SUB, node, new_node_num(1, tok), tok), tok);
+}
+
 // stmt = "return" expr ";"
 //      | "if" "(" expr ")" stmt ("else" stmt)?
 //      | "while" "(" expr ")" stmt
@@ -846,11 +859,9 @@ Node *unary() {
     } else if ((tok = consume(TK_RESERVED, "*"))) {
         return new_node_uniop(ND_DEREF, unary(), tok);
     } else if ((tok = consume(TK_RESERVED, "++"))) {
-        Node *node = unary();
-        return new_node_binop(ND_ASSIGN, node, new_node_binop(ND_ADD, node, new_node_num(1, tok), tok), tok);
+        return increment(unary(), tok);
     } else if ((tok = consume(TK_RESERVED, "--"))) {
-        Node *node = unary();
-        return new_node_binop(ND_ASSIGN, node, new_node_binop(ND_SUB, node, new_node_num(1, tok), tok), tok);
+        return decrement(unary(), tok);
     } else if ((tok = consume(TK_RESERVED, "!"))) {
         return new_node_uniop(ND_NOT, unary(), tok);
     } else if ((tok = consume(TK_RESERVED, "sizeof"))) {
@@ -882,14 +893,12 @@ Node *postfix() {
         }
 
         if ((tok = consume(TK_RESERVED, "++"))) {
-            Node *asgn = new_node_binop(ND_ASSIGN, node, new_node_binop(ND_ADD, node, new_node_num(1, tok), tok), tok);
-            node = new_node_binop(ND_SUB, asgn, new_node_num(1, tok), tok);
+            node = new_node_binop(ND_SUB, increment(node, tok), new_node_num(1, tok), tok);
             continue;
         }
 
         if ((tok = consume(TK_RESERVED, "--"))) {
-            Node *asgn = new_node_binop(ND_ASSIGN, node, new_node_binop(ND_SUB, node, new_node_num(1, tok), tok), tok);
-            node = new_node_binop(ND_ADD, asgn, new_node_num(1, tok), tok);
+            node = new_node_binop(ND_ADD, decrement(node, tok), new_node_num(1, tok), tok);
             continue;
         }
 
