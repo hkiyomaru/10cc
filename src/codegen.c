@@ -254,6 +254,8 @@ void gen(Node *node) {
                 gen(vec_at(node->stmts, i));
             }
             return;
+        default:
+            break;
     }
     gen(node->lhs);
     gen(node->rhs);
@@ -293,6 +295,8 @@ void gen(Node *node) {
             printf("  cqo\n");
             printf("  idiv rdi\n");
             break;
+        default:
+            break;
     }
     printf("  push rax\n");
 }
@@ -316,7 +320,10 @@ void gen_lval(Node *node) {
             printf("  pop rax\n");
             printf("  add rax, %d\n", node->member->offset);
             printf("  push rax\n");
-            return;
+            break;
+        default:
+            // note: this error must be raised at assign_type().
+            error_at(node->tok->loc, "error: lvalue required as left operand of assignment\n");
     }
 }
 
@@ -335,6 +342,8 @@ void load_arg(Var *var, int index) {
         case 8:
             printf("  mov [rbp-%d], %s\n", var->offset, argregs8[index]);
             break;
+        default:
+            error("  error: cannot load the %d-th argument as a %d-byte variable", index, var->type->size);
     }
 }
 
@@ -354,6 +363,8 @@ void load(Type *type) {
         case 8:
             printf("  mov rax, [rax]\n");
             break;
+        default:
+            error("  error: cannot load a %d-byte variable", type->size);
     }
     printf("  push rax\n");
 }
@@ -375,6 +386,8 @@ void store(Type *type) {
         case 8:
             printf("  mov [rax], rdi\n");
             break;
+        default:
+            error("  error: cannot store a %d-byte variable", type->size);
     }
     printf("  push rdi\n");
 }

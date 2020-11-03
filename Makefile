@@ -2,7 +2,7 @@ SRCDIR := src
 BLDDIR := bld
 
 TARGET := $(BLDDIR)/10cc
-CFLAGS := -std=c11 -g -static
+CFLAGS := -std=c11 -g -static -Wall
 
 SRCS := $(wildcard $(SRCDIR)/*.c)
 HDRS := $(wildcard $(SRCDIR)/*.h)

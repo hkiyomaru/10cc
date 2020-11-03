@@ -163,6 +163,7 @@ Node *do_walk(Node *node, bool decay) {
             return node;
         default:
             error_at(node->tok->loc, "error: failed to assign type\n");
+            return NULL;
     }
 }
 

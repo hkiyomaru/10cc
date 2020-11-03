@@ -602,14 +602,14 @@ Node *lvar_init(Type *type, Node *node, InitValue *iv, Token *tok) {
 Node *stmt() {
     Token *tok;
 
-    if (tok = consume(TK_RESERVED, "return")) {
+    if ((tok = consume(TK_RESERVED, "return"))) {
         Node *node = new_node(ND_RETURN, tok);
         node->lhs = expr();
         expect(TK_RESERVED, ";");
         return node;
     }
 
-    if (tok = consume(TK_RESERVED, "if")) {
+    if ((tok = consume(TK_RESERVED, "if"))) {
         Node *node = new_node(ND_IF, tok);
         expect(TK_RESERVED, "(");
         node->cond = expr();
@@ -619,7 +619,7 @@ Node *stmt() {
         return node;
     }
 
-    if (tok = consume(TK_RESERVED, "while")) {
+    if ((tok = consume(TK_RESERVED, "while"))) {
         Node *node = new_node(ND_WHILE, tok);
         expect(TK_RESERVED, "(");
         node->cond = expr();
@@ -628,7 +628,7 @@ Node *stmt() {
         return node;
     }
 
-    if (tok = consume(TK_RESERVED, "for")) {
+    if ((tok = consume(TK_RESERVED, "for"))) {
         Node *node = new_node(ND_FOR, tok);
         Scope *sc = enter_scope();
         expect(TK_RESERVED, "(");
@@ -651,17 +651,17 @@ Node *stmt() {
         return node;
     }
 
-    if (tok = consume(TK_RESERVED, "break")) {
+    if ((tok = consume(TK_RESERVED, "break"))) {
         expect(TK_RESERVED, ";");
         return new_node(ND_BREAK, tok);
     }
 
-    if (tok = consume(TK_RESERVED, "continue")) {
+    if ((tok = consume(TK_RESERVED, "continue"))) {
         expect(TK_RESERVED, ";");
         return new_node(ND_CONTINUE, tok);
     }
 
-    if (tok = peek(TK_RESERVED, "{")) {
+    if ((tok = peek(TK_RESERVED, "{"))) {
         return compound_stmt();
     }
 
@@ -669,7 +669,7 @@ Node *stmt() {
         return decl();
     }
 
-    if (tok = consume(TK_RESERVED, "typedef")) {
+    if ((tok = consume(TK_RESERVED, "typedef"))) {
         Type *type = read_base_type();
         Token *tok = consume(TK_IDENT, NULL);
         type = read_type_postfix(type);
@@ -678,7 +678,7 @@ Node *stmt() {
         return new_node(ND_NULL, tok);
     }
 
-    if (tok = consume(TK_RESERVED, ";")) {
+    if ((tok = consume(TK_RESERVED, ";"))) {
         return new_node(ND_NULL, tok);
     }
 
@@ -730,23 +730,23 @@ Node *assign() {
     Node *node = conditional();
     Token *tok;
 
-    if (tok = consume(TK_RESERVED, "=")) {
+    if ((tok = consume(TK_RESERVED, "="))) {
         return new_node_binary(ND_ASSIGN, node, assign(), tok);
     }
 
-    if (tok = consume(TK_RESERVED, "+=")) {
+    if ((tok = consume(TK_RESERVED, "+="))) {
         return new_node_binary(ND_ASSIGN, node, new_node_binary(ND_ADD, node, assign(), tok), tok);
     }
 
-    if (tok = consume(TK_RESERVED, "-=")) {
+    if ((tok = consume(TK_RESERVED, "-="))) {
         return new_node_binary(ND_ASSIGN, node, new_node_binary(ND_SUB, node, assign(), tok), tok);
     }
 
-    if (tok = consume(TK_RESERVED, "*=")) {
+    if ((tok = consume(TK_RESERVED, "*="))) {
         return new_node_binary(ND_ASSIGN, node, new_node_binary(ND_MUL, node, assign(), tok), tok);
     }
 
-    if (tok = consume(TK_RESERVED, "/=")) {
+    if ((tok = consume(TK_RESERVED, "/="))) {
         return new_node_binary(ND_ASSIGN, node, new_node_binary(ND_DIV, node, assign(), tok), tok);
     }
 
@@ -775,9 +775,9 @@ Node *equality() {
     Node *node = relational();
     Token *tok;
     for (;;) {
-        if (tok = consume(TK_RESERVED, "==")) {
+        if ((tok = consume(TK_RESERVED, "=="))) {
             node = new_node_binary(ND_EQ, node, relational(), tok);
-        } else if (tok = consume(TK_RESERVED, "!=")) {
+        } else if ((tok = consume(TK_RESERVED, "!="))) {
             node = new_node_binary(ND_NE, node, relational(), tok);
         } else {
             return node;
@@ -789,13 +789,13 @@ Node *equality() {
 Node *relational() {
     Node *node = add();
     Token *tok;
-    if (tok = consume(TK_RESERVED, "<=")) {
+    if ((tok = consume(TK_RESERVED, "<="))) {
         return new_node_binary(ND_LE, node, add(), tok);
-    } else if (tok = consume(TK_RESERVED, ">=")) {
+    } else if ((tok = consume(TK_RESERVED, ">="))) {
         return new_node_binary(ND_LE, add(), node, tok);
-    } else if (tok = consume(TK_RESERVED, "<")) {
+    } else if ((tok = consume(TK_RESERVED, "<"))) {
         return new_node_binary(ND_LT, node, add(), tok);
-    } else if (tok = consume(TK_RESERVED, ">")) {
+    } else if ((tok = consume(TK_RESERVED, ">"))) {
         return new_node_binary(ND_LT, add(), node, tok);
     } else {
         return node;
@@ -807,9 +807,9 @@ Node *add() {
     Node *node = mul();
     Token *tok;
     for (;;) {
-        if (tok = consume(TK_RESERVED, "+")) {
+        if ((tok = consume(TK_RESERVED, "+"))) {
             node = new_node_binary(ND_ADD, node, mul(), tok);
-        } else if (tok = consume(TK_RESERVED, "-")) {
+        } else if ((tok = consume(TK_RESERVED, "-"))) {
             node = new_node_binary(ND_SUB, node, mul(), tok);
         } else {
             return node;
@@ -822,9 +822,9 @@ Node *mul() {
     Node *node = unary();
     Token *tok;
     for (;;) {
-        if (tok = consume(TK_RESERVED, "*")) {
+        if ((tok = consume(TK_RESERVED, "*"))) {
             node = new_node_binary(ND_MUL, node, unary(), tok);
-        } else if (tok = consume(TK_RESERVED, "/")) {
+        } else if ((tok = consume(TK_RESERVED, "/"))) {
             node = new_node_binary(ND_DIV, node, unary(), tok);
         } else {
             return node;
@@ -839,19 +839,19 @@ Node *mul() {
 //       | postfix
 Node *unary() {
     Token *tok;
-    if (tok = consume(TK_RESERVED, "+")) {
+    if ((tok = consume(TK_RESERVED, "+"))) {
         return unary();
-    } else if (tok = consume(TK_RESERVED, "-")) {
+    } else if ((tok = consume(TK_RESERVED, "-"))) {
         return new_node_binary(ND_SUB, new_node_num(0, NULL), unary(), tok);
-    } else if (tok = consume(TK_RESERVED, "&")) {
+    } else if ((tok = consume(TK_RESERVED, "&"))) {
         return new_node_unary(ND_ADDR, unary(), tok);
-    } else if (tok = consume(TK_RESERVED, "*")) {
+    } else if ((tok = consume(TK_RESERVED, "*"))) {
         return new_node_unary(ND_DEREF, unary(), tok);
-    } else if (tok = consume(TK_RESERVED, "++")) {
+    } else if ((tok = consume(TK_RESERVED, "++"))) {
         return new_node_unary(ND_PRE_INC, unary(), tok);
-    } else if (tok = consume(TK_RESERVED, "--")) {
+    } else if ((tok = consume(TK_RESERVED, "--"))) {
         return new_node_unary(ND_PRE_DEC, unary(), tok);
-    } else if (tok = consume(TK_RESERVED, "sizeof")) {
+    } else if ((tok = consume(TK_RESERVED, "sizeof"))) {
         if (consume(TK_RESERVED, "(")) {
             if (at_typename()) {
                 Node *node = new_node_num(read_base_type()->size, tok);
@@ -872,30 +872,30 @@ Node *postfix() {
     Node *node = primary();
     Token *tok;
     for (;;) {
-        if (tok = consume(TK_RESERVED, "[")) {
+        if ((tok = consume(TK_RESERVED, "["))) {
             Node *addr = new_node_binary(ND_ADD, node, assign(), tok);
             node = new_node_unary(ND_DEREF, addr, tok);
             expect(TK_RESERVED, "]");
             continue;
         }
 
-        if (tok = consume(TK_RESERVED, "++")) {
+        if ((tok = consume(TK_RESERVED, "++"))) {
             node = new_node_unary(ND_POST_INC, node, tok);
             continue;
         }
 
-        if (tok = consume(TK_RESERVED, "--")) {
+        if ((tok = consume(TK_RESERVED, "--"))) {
             node = new_node_unary(ND_POST_DEC, node, tok);
             continue;
         }
 
-        if (tok = consume(TK_RESERVED, ".")) {
+        if ((tok = consume(TK_RESERVED, "."))) {
             node = new_node_unary(ND_MEMBER, node, tok);
             node->member_name = expect(TK_IDENT, NULL)->str;
             continue;
         }
 
-        if (tok = consume(TK_RESERVED, "->")) {
+        if ((tok = consume(TK_RESERVED, "->"))) {
             node = new_node_unary(ND_DEREF, node, tok);
             node = new_node_unary(ND_MEMBER, node, tok);
             node->member_name = expect(TK_IDENT, NULL)->str;
@@ -921,13 +921,13 @@ Node *primary() {
         return stmt_expr();
     }
 
-    if (tok = consume(TK_RESERVED, "(")) {
+    if ((tok = consume(TK_RESERVED, "("))) {
         Node *node = expr();
         expect(TK_RESERVED, ")");
         return node;
     }
 
-    if (tok = consume(TK_IDENT, NULL)) {
+    if ((tok = consume(TK_IDENT, NULL))) {
         if (peek(TK_RESERVED, "(")) {
             return new_node_func_call(tok);
         } else {
@@ -939,7 +939,7 @@ Node *primary() {
         }
     }
 
-    if (tok = consume(TK_RESERVED, "\"")) {
+    if ((tok = consume(TK_RESERVED, "\""))) {
         tok = expect(TK_STR, NULL);
         expect(TK_RESERVED, "\"");
         return new_node_varref(new_strl(tok->str, tok), tok);
