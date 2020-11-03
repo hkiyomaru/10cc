@@ -419,7 +419,6 @@ void top_level() {
     read_base_type();
     bool isfunc = consume(TK_IDENT, NULL) && consume(TK_RESERVED, "(");
     ctok = tok;
-
     if (isfunc) {
         func();
     } else {
@@ -436,10 +435,11 @@ Var *func_param() {
     return new_lvar(type, name, tok);
 }
 
-// params = (param ("," param)*)?
+// params = "(" (param ("," param)*)? ")"
 Vector *func_params() {
     Vector *params = vec_create();
-    while (!peek(TK_RESERVED, ")")) {
+    expect(TK_RESERVED, "(");
+    while (!consume(TK_RESERVED, ")")) {
         if (params->len > 0) {
             expect(TK_RESERVED, ",");
         }
@@ -459,9 +459,7 @@ void func() {
     Scope *sc = enter_scope();
 
     // Parse the arguments.
-    expect(TK_RESERVED, "(");
     fn->args = func_params();
-    expect(TK_RESERVED, ")");
 
     // Check conflict.
     Func *fn_ = find_func(fn->name);
