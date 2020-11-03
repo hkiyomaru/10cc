@@ -222,8 +222,10 @@ void gen(Node *node) {
             printf("  jmp .Lcontinue%03d\n", continue_cnt);
             return;
         case ND_RETURN:
-            gen(node->lhs);
-            printf("  pop rax\n");
+            if (node->lhs) {
+                gen(node->lhs);
+                printf("  pop rax\n");
+            }
             printf("  jmp .Lreturn.%s\n", funcname);
             return;
         case ND_EXPR_STMT:
