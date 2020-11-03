@@ -79,6 +79,7 @@ typedef enum {
     ND_CONTINUE,
     ND_FUNC_CALL,
     ND_BLOCK,
+    ND_COMMA,
     ND_ADDR,
     ND_DEREF,
     ND_SIZEOF,

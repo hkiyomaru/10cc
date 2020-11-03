@@ -366,7 +366,7 @@ Node *new_node_func_call(Token *tok) {
         if (0 < node->args->len) {
             expect(TK_RESERVED, ",");
         }
-        vec_push(node->args, expr());
+        vec_push(node->args, assign());
     }
     return node;
 }
@@ -553,7 +553,7 @@ InitValue *read_lvar_init_value(Type *type) {
             }
             break;
         default:
-            iv->val = expr();
+            iv->val = assign();
             break;
     }
     return iv;
@@ -710,8 +710,16 @@ Node *compound_stmt() {
     return node;
 }
 
-// expr = assign
-Node *expr() { return assign(); }
+// expr = assign ("," assign)*
+Node *expr() {
+    Node *node = assign();
+    Token *tok;
+    while ((tok = consume(TK_RESERVED, ","))) {
+        node = new_node_uniop(ND_EXPR_STMT, node, node->tok);
+        node = new_node_binop(ND_COMMA, node, assign(), tok);
+    }
+    return node;
+}
 
 // expr-stmt = expr
 Node *expr_stmt() { return new_node_uniop(ND_EXPR_STMT, expr(), ctok); }

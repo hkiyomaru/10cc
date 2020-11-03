@@ -89,6 +89,11 @@ Node *do_walk(Node *node, bool decay) {
             node->rhs = walk(node->rhs);
             node->type = node->lhs->type;
             return node;
+        case ND_COMMA:
+            node->lhs = walk(node->lhs);
+            node->rhs = walk(node->rhs);
+            node->type = node->rhs->type;
+            return node;
         case ND_TERNARY:
             node->cond = walk(node->cond);
             node->then = walk(node->then);

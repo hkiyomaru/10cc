@@ -137,6 +137,10 @@ void gen(Node *node) {
             gen(node->rhs);
             store(node->lhs->type);
             return;
+        case ND_COMMA:
+            gen(node->lhs);
+            gen(node->rhs);
+            return;
         case ND_TERNARY: {
             int cur_label_cnt = label_cnt++;
             gen(node->cond);
