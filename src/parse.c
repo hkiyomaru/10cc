@@ -1,18 +1,30 @@
 #include "10cc.h"
 
+typedef struct Scope Scope;
 typedef struct VarScope VarScope;
 typedef struct TagScope TagScope;
 typedef struct InitValue InitValue;
 
+struct Scope {
+    VarScope *var_scope;
+    TagScope *tag_scope;
+};
+
 struct VarScope {
     VarScope *next;
-    Map *vars;      // Map<Var *>
-    Map *typedefs;  // Map<Type *>
+    char *name;
+    int depth;
+
+    Var *var;
+    Type *type_def;
 };
 
 struct TagScope {
     TagScope *next;
-    Map *types;  // Map<Type *>
+    char *name;
+    int depth;
+
+    Type *type;
 };
 
 struct InitValue {
@@ -25,27 +37,29 @@ Func *fn;    // The function being parsed
 
 VarScope *var_scope;
 TagScope *tag_scope;
+int scope_depth;
 
-int str_label_cnt = 1;
+int str_label_cnt;
 
 Var *new_var(Type *type, char *name, bool is_local, Token *tok);
 Var *new_gvar(Type *type, char *name, Token *tok);
 Var *new_lvar(Type *type, char *name, Token *tok);
 Var *new_strl(char *str, Token *tok);
 
-Var *push_var(Var *var);
-Var *find_var(char *name);
+VarScope *push_var_scope(char *name);
+TagScope *push_tag_scope(char *name);
 
-Type *push_tag(char *tag, Type *type);
-Type *find_tag(char *name);
+Var *push_var(char *name, Var *var);
+Var *find_var(char *name);
 
 Type *push_typedef(char *name, Type *type);
 Type *find_typedef(char *name);
 
-VarScope *new_var_scope();
-TagScope *new_tag_scope();
-void *enter_scope();
-void leave_scope();
+Type *push_tag(char *name, Type *type);
+Type *find_tag(char *name);
+
+Scope *enter_scope();
+void leave_scope(Scope *sc);
 
 bool at_typename();
 Type *read_base_type();
@@ -108,36 +122,62 @@ Var *new_var(Type *type, char *name, bool is_local, Token *tok) {
 
 // Create a global variable, and registers it to the program.
 Var *new_gvar(Type *type, char *name, Token *tok) {
-    if (map_contains(var_scope->vars, name)) {
-        Var *var = map_at(var_scope->vars, name);
+    Var *var = find_var(name);
+    if (var) {
         if (!is_same_type(type, var->type)) {
             error_at(tok->loc, "error: conflicting types for '%s'", name);
         }
         return var;
     }
-    return push_var(new_var(type, name, false, tok));
+    return push_var(name, new_var(type, name, false, tok));
 }
 
 // Create a local variable, and registers it to the function.
 Var *new_lvar(Type *type, char *name, Token *tok) {
-    if (map_contains(var_scope->vars, tok->str)) {
-        error_at(tok->loc, "error: redeclaration of '%s'", tok->str);
+    // Try to find a variable from the scope of the same depth.
+    for (VarScope *sc = var_scope; sc; sc = sc->next) {
+        if (sc->depth != scope_depth) {
+            break;
+        }
+        if (!strcmp(name, sc->name)) {
+            error_at(tok->loc, "error: redeclaration of '%s'", tok->str);
+        }
     }
-    return push_var(new_var(type, name, true, tok));
+    return push_var(name, new_var(type, name, true, tok));
 }
 
 // Create a string literal.
 Var *new_strl(char *str, Token *tok) {
     Type *type = ary_of(char_type(), strlen(str) + 1);
-    char *name = format(".L.str%d", str_label_cnt++);
+    char *name = format(".Lstr%d", str_label_cnt++);
     Var *var = new_var(type, name, false, tok);
     var->data = tok->str;
-    return push_var(var);
+    return push_var(name, var);
+}
+
+// Push a variable scope.
+VarScope *push_var_scope(char *name) {
+    VarScope *sc = calloc(1, sizeof(VarScope));
+    sc->next = var_scope;
+    sc->name = name;
+    sc->depth = scope_depth;
+    var_scope = sc;
+    return sc;
+}
+
+// Push a tag cope.
+TagScope *push_tag_scope(char *name) {
+    TagScope *sc = calloc(1, sizeof(TagScope));
+    sc->next = tag_scope;
+    sc->name = name;
+    sc->depth = scope_depth;
+    tag_scope = sc;
+    return sc;
 }
 
 // Push a variable to the current scope.
-Var *push_var(Var *var) {
-    map_insert(var_scope->vars, var->name, var);
+Var *push_var(char *name, Var *var) {
+    push_var_scope(name)->var = var;
     if (var->is_local) {
         vec_push(fn->lvars, var);
     } else {
@@ -149,24 +189,8 @@ Var *push_var(Var *var) {
 // Find a variable by name.
 Var *find_var(char *name) {
     for (VarScope *sc = var_scope; sc; sc = sc->next) {
-        if (map_contains(sc->vars, name)) {
-            return map_at(sc->vars, name);
-        }
-    }
-    return NULL;
-}
-
-// Push a tag to the current scope.
-Type *push_tag(char *tag, Type *type) {
-    map_insert(tag_scope->types, tag, type);
-    return type;
-}
-
-// Find a type by name.
-Type *find_tag(char *name) {
-    for (TagScope *sc = tag_scope; sc; sc = sc->next) {
-        if (map_contains(sc->types, name)) {
-            return map_at(sc->types, name);
+        if (!strcmp(name, sc->name)) {
+            return sc->var;
         }
     }
     return NULL;
@@ -174,52 +198,50 @@ Type *find_tag(char *name) {
 
 // Push a typedef to the current scope.
 Type *push_typedef(char *name, Type *type) {
-    map_insert(var_scope->typedefs, name, type);
+    push_var_scope(name)->type_def = type;
     return type;
 }
 
 // Find a typedef by name.
 Type *find_typedef(char *name) {
     for (VarScope *sc = var_scope; sc; sc = sc->next) {
-        if (map_contains(sc->typedefs, name)) {
-            return map_at(sc->typedefs, name);
+        if (!strcmp(name, sc->name)) {
+            return sc->type_def;
         }
     }
     return NULL;
 }
 
-// Create an empty variable scope.
-VarScope *new_var_scope() {
-    VarScope *sc = calloc(1, sizeof(VarScope));
-    sc->next = NULL;
-    sc->vars = map_create();
-    sc->typedefs = map_create();
-    return sc;
+// Push a tag to the current scope.
+Type *push_tag(char *name, Type *type) {
+    push_tag_scope(name)->type = type;
+    return type;
 }
 
-// Create an empty tag scope.
-TagScope *new_tag_scope() {
-    TagScope *sc = calloc(1, sizeof(TagScope));
-    sc->next = NULL;
-    sc->types = map_create();
-    return sc;
+// Find a type by name.
+Type *find_tag(char *name) {
+    for (TagScope *sc = tag_scope; sc; sc = sc->next) {
+        if (!strcmp(name, sc->name)) {
+            return sc->type;
+        }
+    }
+    return NULL;
 }
 
 // Enter a new scope.
-void *enter_scope() {
-    VarScope *var_sc = new_var_scope();
-    var_sc->next = var_scope;
-    var_scope = var_sc;
-
-    TagScope *tag_sc = new_tag_scope();
-    tag_sc->next = tag_scope;
-    tag_scope = tag_sc;
+Scope *enter_scope() {
+    Scope *sc = calloc(1, sizeof(Scope));
+    sc->var_scope = var_scope;
+    sc->tag_scope = tag_scope;
+    scope_depth++;
+    return sc;
 }
 
 // Leave the current scope.
-void leave_scope() {
-    var_scope = var_scope->next;
-    tag_scope = tag_scope->next;
+void leave_scope(Scope *sc) {
+    var_scope = sc->var_scope;
+    tag_scope = sc->tag_scope;
+    scope_depth--;
 }
 
 // Return true if the kind of the current token is a type name.
@@ -431,7 +453,7 @@ void func() {
     fn->name = fn->tok->str;
     fn->lvars = vec_create();
 
-    enter_scope();
+    Scope *sc = enter_scope();
 
     // Parse the arguments.
     expect(TK_RESERVED, "(");
@@ -466,7 +488,7 @@ void func() {
     if (!consume(TK_RESERVED, ";")) {
         fn->body = compound_stmt();
     }
-    leave_scope();
+    leave_scope(sc);
 }
 
 // gvar = T ident ("[" num "]")* ";"
@@ -608,8 +630,8 @@ Node *stmt() {
 
     if (tok = consume(TK_RESERVED, "for")) {
         Node *node = new_node(ND_FOR, tok);
+        Scope *sc = enter_scope();
         expect(TK_RESERVED, "(");
-        enter_scope();
         if (consume(TK_RESERVED, ";")) {
             node->init = new_node(ND_NULL, NULL);
         } else {
@@ -625,7 +647,7 @@ Node *stmt() {
         node->upd = peek(TK_RESERVED, ")") ? new_node(ND_NULL, NULL) : expr_stmt();
         expect(TK_RESERVED, ")");
         node->then = stmt();
-        leave_scope();
+        leave_scope(sc);
         return node;
     }
 
@@ -668,13 +690,13 @@ Node *stmt() {
 // compound-stmt = "{" stmt* "}"
 Node *compound_stmt() {
     Node *node = new_node(ND_BLOCK, ctok);
+    Scope *sc = enter_scope();
     node->stmts = vec_create();
-    enter_scope();
     expect(TK_RESERVED, "{");
     while (!consume(TK_RESERVED, "}")) {
         vec_push(node->stmts, (void *)stmt());
     }
-    leave_scope();
+    leave_scope(sc);
     return node;
 }
 
@@ -930,8 +952,6 @@ Node *primary() {
 // program = top-level*
 Prog *parse() {
     prog = calloc(1, sizeof(Prog));
-    var_scope = new_var_scope();
-    tag_scope = new_tag_scope();
     prog->fns = map_create();
     prog->gvars = vec_create();
     while (!at_eof()) {
