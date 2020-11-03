@@ -537,9 +537,8 @@ InitValue *read_lvar_init_value(Type *type) {
                     }
                     vec_push(iv->vals, read_lvar_init_value(type->base));
                 }
-            } else if (consume(TK_RESERVED, "\"")) {
+            } else if (peek(TK_STR, NULL)) {
                 Token *strl = expect(TK_STR, NULL);
-                expect(TK_RESERVED, "\"");
                 for (int i = 0; i < strlen(strl->str); i++) {
                     InitValue *v = calloc(1, sizeof(InitValue));
                     v->val = new_node_num(strl->str[i], NULL);
@@ -939,9 +938,8 @@ Node *primary() {
         }
     }
 
-    if ((tok = consume(TK_RESERVED, "\""))) {
+    if ((tok = peek(TK_STR, NULL))) {
         tok = expect(TK_STR, NULL);
-        expect(TK_RESERVED, "\"");
         return new_node_varref(new_strl(tok->str, tok), tok);
     }
 

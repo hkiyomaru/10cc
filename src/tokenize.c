@@ -24,11 +24,29 @@ Token *consume(TokenKind kind, char *str) {
 // Pop the current token if it satisfies given conditions. Otherwise, raise an error.
 Token *expect(TokenKind kind, char *str) {
     Token *ret = peek(kind, str);
-    if (ret) {
-        ctok = ctok->next;
-    } else {
+    if (!ret) {
+        if (!str) {
+            switch (kind) {
+                case TK_RESERVED:
+                    str = "reserved token";
+                    break;
+                case TK_IDENT:
+                    str = "identifier";
+                    break;
+                case TK_NUM:
+                    str = "number";
+                    break;
+                case TK_STR:
+                    str = "string literal";
+                    break;
+                case TK_EOF:
+                    str = "EOF";
+                    break;
+            }
+        }
         error_at(ctok->loc, "error: expected '%s' before '%s' token\n", str, ctok->str);
     }
+    ctok = ctok->next;
     return ret;
 }
 
@@ -129,8 +147,7 @@ Token *tokenize() {
 
         // Read a string literal.
         if (*p == '"') {
-            cur = new_token(TK_RESERVED, cur, p, 1);
-            p++;
+            p++;  // skip "
             int len = 0;
             while (p[len] && p[len] != '"') {
                 if (p[len] == '\\') {
@@ -140,8 +157,7 @@ Token *tokenize() {
             }
             cur = new_token(TK_STR, cur, p, len);
             p += len;
-            cur = new_token(TK_RESERVED, cur, p, 1);
-            p++;
+            p++;  // skip "
             continue;
         }
 
