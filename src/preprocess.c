@@ -19,7 +19,7 @@ Token *preprocess(Token *tok) {
             continue;
         }
 
-        error_at(tok->loc, "invalid preprocessor directive '#%s'\n", tok->str);
+        error_at(tok->loc, "invalid preprocessor directive '#%s'", tok->str);
     }
 
     cur->next = tok;

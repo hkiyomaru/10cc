@@ -44,7 +44,7 @@ Token *expect(TokenKind kind, char *str) {
                     break;
             }
         }
-        error_at(ctok->loc, "error: expected '%s' before '%s' token\n", str, ctok->str);
+        error_at(ctok->loc, "expected '%s' before '%s' token", str, ctok->str);
     }
     ctok = ctok->next;
     return ret;
@@ -117,7 +117,7 @@ Token *tokenize() {
         if (strncmp(p, "/*", 2) == 0) {
             char *q = strstr(p + 2, "*/");
             if (!q) {
-                error_at(p, "error: unterminated comment\n");
+                error_at(p, "unterminated comment");
             }
             p = q + 2;
             continue;
@@ -178,7 +178,7 @@ Token *tokenize() {
             cur->val = strtol(p, &p, 10);  // strtol increments `p`
             continue;
         }
-        error_at(p, "error: stray '%c' in program\n", *p);
+        error_at(p, "stray '%c' in program", *p);
     }
     new_token(TK_EOF, cur, p, 0);
     return head.next;

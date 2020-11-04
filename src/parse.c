@@ -78,14 +78,8 @@ Node *decl();
 InitValue *read_lvar_init_value(Type *type);
 Node *lvar_init(Type *type, Node *node, InitValue *iv, Token *tok);
 
-Node *compound_stmt();
-Node *expr_stmt();
-Node *selection_stmt();
-Node *iteration_stmt();
-Node *jump_stmt();
 Node *stmt();
 Node *expr();
-Node *stmt_expr();
 Node *assign();
 Node *conditional();
 Node *equality();
@@ -105,7 +99,7 @@ Func *find_func(char *name) { return map_contains(prog->fns, name) ? map_at(prog
 // Create a variable.
 Var *new_var(Type *type, char *name, bool is_local, Token *tok) {
     if (type->kind == TY_VOID) {
-        error_at(tok->loc, "error: variable or field '%s' declared void", tok->str);
+        error_at(tok->loc, "variable or field '%s' declared void", tok->str);
     }
     if (type->kind == TY_ARY) {
         Type *base = type->base;
@@ -113,7 +107,7 @@ Var *new_var(Type *type, char *name, bool is_local, Token *tok) {
             base = base->base;
         }
         if (base->kind == TY_VOID) {
-            error_at(tok->loc, "error: declaration of '%s' as array of voids", tok->str);
+            error_at(tok->loc, "declaration of '%s' as array of voids", tok->str);
         }
     }
     Var *var = calloc(1, sizeof(Var));
@@ -128,7 +122,7 @@ Var *new_gvar(Type *type, char *name, Token *tok) {
     Var *var = find_var(name);
     if (var) {
         if (!is_same_type(type, var->type)) {
-            error_at(tok->loc, "error: conflicting types for '%s'", name);
+            error_at(tok->loc, "conflicting types for '%s'", name);
         }
         return var;
     }
@@ -143,7 +137,7 @@ Var *new_lvar(Type *type, char *name, Token *tok) {
             break;
         }
         if (!strcmp(name, sc->name)) {
-            error_at(tok->loc, "error: redeclaration of '%s'", tok->str);
+            error_at(tok->loc, "redeclaration of '%s'", tok->str);
         }
     }
     return push_var(name, new_var(type, name, true, tok));
@@ -193,6 +187,9 @@ Var *push_var(char *name, Var *var) {
 Var *find_var(char *name) {
     for (VarScope *sc = var_scope; sc; sc = sc->next) {
         if (!strcmp(name, sc->name)) {
+            if (!sc->var) {
+                error_at(ctok->loc, "unexpected type name '%s'", name);
+            }
             return sc->var;
         }
     }
@@ -323,7 +320,7 @@ Type *read_base_type() {
         }
     }
     if (!type) {
-        error_at(ctok->loc, "error: unknown type name '%s'\n", ctok->str);
+        error_at(ctok->loc, "unknown type name '%s'", ctok->str);
     }
     while ((consume(TK_RESERVED, "*"))) {
         type = ptr_to(type);
@@ -363,7 +360,7 @@ Type *struct_decl() {
     if (tag && !peek(TK_RESERVED, "{")) {
         Type *type = find_tag(tag->str);
         if (!type) {
-            error_at(tag->loc, "error: undefined struct '%s'", tag->str);
+            error_at(tag->loc, "undefined struct '%s'", tag->str);
         }
         return type;
     }
@@ -374,7 +371,7 @@ Type *struct_decl() {
     while (!consume(TK_RESERVED, "}")) {
         Member *mem = struct_member();
         if (map_contains(members, mem->name)) {
-            error_at(ctok->loc, "error: duplicate member '%s'", mem->name);
+            error_at(ctok->loc, "duplicate member '%s'", mem->name);
         }
         mem->offset = offset;
         offset += mem->type->size;
@@ -413,7 +410,7 @@ InitValue *read_lvar_init_value(Type *type) {
                 v->val = new_node_num('\0', NULL);
                 vec_push(iv->vals, v);
             } else {
-                error_at(ctok->loc, "error: expected expression before '%s'", ctok->str);
+                error_at(ctok->loc, "expected expression before '%s'", ctok->str);
             }
             break;
         default:
@@ -639,25 +636,6 @@ Node *expr() {
     return node;
 }
 
-// stmt-expr = "(" "{" stmt+ "}" ")"
-Node *stmt_expr() {
-    Node *node = new_node(ND_STMT_EXPR, ctok);
-
-    expect(TK_RESERVED, "(");
-    node->stmts = compound_stmt()->stmts;
-    expect(TK_RESERVED, ")");
-
-    if (node->stmts->len == 0) {
-        error_at(node->tok->loc, "error: void value not ignored as it ought to be\n");
-    }
-    Node *last = vec_back(node->stmts);
-    if (last->kind != ND_EXPR_STMT) {
-        error_at(last->tok->loc, "error: void value not ignored as it ought to be\n");
-    }
-    vec_set(node->stmts, node->stmts->len - 1, last->lhs);
-    return node;
-}
-
 // assign = conditional (assign-operator assign)?
 // assign-operator = "=" | "+=" | "-=" | "*=" | "/="
 Node *assign() {
@@ -869,7 +847,7 @@ Node *func_call() {
     Token *tok = expect(TK_IDENT, NULL);
     Func *fn_ = find_func(tok->str);
     if (!fn_) {
-        error_at(tok->loc, "error: undefined reference to `%s'\n", tok->str);
+        error_at(tok->loc, "undefined reference to `%s'", tok->str);
     }
     Node *node = new_node(ND_FUNC_CALL, tok);
     node->funcname = tok->str;
@@ -878,11 +856,30 @@ Node *func_call() {
     return node;
 }
 
+// stmt-expr = "(" "{" stmt+ "}" ")"
+Node *stmt_expr() {
+    Node *node = new_node(ND_STMT_EXPR, ctok);
+
+    expect(TK_RESERVED, "(");
+    node->stmts = compound_stmt()->stmts;
+    expect(TK_RESERVED, ")");
+
+    if (node->stmts->len == 0) {
+        error_at(node->tok->loc, "void value not ignored as it ought to be");
+    }
+    Node *last = vec_back(node->stmts);
+    if (last->kind != ND_EXPR_STMT) {
+        error_at(last->tok->loc, "void value not ignored as it ought to be");
+    }
+    vec_set(node->stmts, node->stmts->len - 1, last->lhs);
+    return node;
+}
+
 // primary = func-call
 //         | ident
 //         | num
 //         | str
-//         | "(" "{" stmt+ "}" ")"
+//         | stmt-expr
 //         | "(" expr ")"
 Node *primary() {
     Token *tok = ctok;
@@ -897,7 +894,7 @@ Node *primary() {
     if ((tok = consume(TK_IDENT, NULL))) {
         Var *var = find_var(tok->str);
         if (!var) {
-            error_at(tok->loc, "error: '%s' undeclared\n", tok->str);
+            error_at(tok->loc, "'%s' undeclared", tok->str);
         }
         return new_node_varref(var, tok);
     }
@@ -977,19 +974,19 @@ void func() {
     Func *fn_ = find_func(fn->name);
     if (fn_) {
         if (fn_->body) {
-            error_at(fn->tok->loc, "error: redefinition of '%s'\n", fn->tok->str);
+            error_at(fn->tok->loc, "redefinition of '%s'", fn->tok->str);
         }
         if (!is_same_type(fn->rtype, fn_->rtype)) {
-            error_at(fn->tok->loc, "error: conflicting types for '%s'", fn->tok->str);
+            error_at(fn->tok->loc, "conflicting types for '%s'", fn->tok->str);
         }
         if (fn->args->len != fn_->args->len) {
-            error_at(fn->tok->loc, "error: conflicting types for '%s'", fn->tok->str);
+            error_at(fn->tok->loc, "conflicting types for '%s'", fn->tok->str);
         }
         for (int i = 0; i < fn->args->len; i++) {
             Var *x = vec_at(fn->args, i);
             Var *y = vec_at(fn_->args, i);
             if (!is_same_type(x->type, y->type)) {
-                error_at(fn->tok->loc, "error: conflicting types for '%s'", fn->tok->str);
+                error_at(fn->tok->loc, "conflicting types for '%s'", fn->tok->str);
             }
         }
     }

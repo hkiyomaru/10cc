@@ -15,14 +15,18 @@ char *format(char *fmt, ...) {
 void debug(char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
+    fprintf(stderr, "\033[36mdebug\033[m: ");
     vfprintf(stderr, fmt, ap);
+    fprintf(stderr, "\n");
 }
 
 // Show an error message.
 void error(char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
+    fprintf(stderr, "\033[31merror\033[m: ");
     vfprintf(stderr, fmt, ap);
+    fprintf(stderr, "\n");
     exit(1);
 }
 
@@ -58,6 +62,7 @@ void error_at(char *loc, char *fmt, ...) {
     // Display an error message.
     va_list ap;
     va_start(ap, fmt);
+    fprintf(stderr, "\033[31merror\033[m: ");
     vfprintf(stderr, fmt, ap);
     fprintf(stderr, "\n");
     exit(1);
@@ -71,95 +76,111 @@ bool isalnumus(char c) { return isalnum(c) || c == '_'; }
 
 // Draw the abstract syntax tree of a node.
 void draw_node(Node *node, int depth, char *role) {
-    if (node != NULL) {
+    if (node && node->kind != ND_NULL) {
         for (int i = 0; i < depth; i++) {
-            debug("  ");
+            fprintf(stderr, "  ");
         }
         if (strlen(role)) {
-            debug("%s: ", role);
+            fprintf(stderr, "%s: ", role);
         }
         switch (node->kind) {
+            case ND_NOT:
+                fprintf(stderr, "NOT\n");
+                draw_node(node->lhs, depth + 1, "");
+                break;
             case ND_ADD:
-                debug("ADD\n");
+                fprintf(stderr, "ADD\n");
                 draw_node(node->lhs, depth + 1, "lhs");
                 draw_node(node->rhs, depth + 1, "rhs");
                 break;
             case ND_SUB:
-                debug("SUB\n");
+                fprintf(stderr, "SUB\n");
                 draw_node(node->lhs, depth + 1, "lhs");
                 draw_node(node->rhs, depth + 1, "rhs");
                 break;
             case ND_MUL:
-                debug("MUL\n");
+                fprintf(stderr, "MUL\n");
                 draw_node(node->lhs, depth + 1, "lhs");
                 draw_node(node->rhs, depth + 1, "rhs");
                 break;
             case ND_DIV:
-                debug("DIV\n");
+                fprintf(stderr, "DIV\n");
                 draw_node(node->lhs, depth + 1, "lhs");
                 draw_node(node->rhs, depth + 1, "rhs");
                 break;
             case ND_EQ:
-                debug("EQ\n");
+                fprintf(stderr, "EQ\n");
                 draw_node(node->lhs, depth + 1, "lhs");
                 draw_node(node->rhs, depth + 1, "rhs");
                 break;
             case ND_NE:
-                debug("NE\n");
+                fprintf(stderr, "NE\n");
                 draw_node(node->lhs, depth + 1, "lhs");
                 draw_node(node->rhs, depth + 1, "rhs");
                 break;
             case ND_LE:
-                debug("LE\n");
+                fprintf(stderr, "LE\n");
                 draw_node(node->lhs, depth + 1, "lhs");
                 draw_node(node->rhs, depth + 1, "rhs");
                 break;
             case ND_LT:
-                debug("LT\n");
+                fprintf(stderr, "LT\n");
                 draw_node(node->lhs, depth + 1, "lhs");
                 draw_node(node->rhs, depth + 1, "rhs");
                 break;
             case ND_ASSIGN:
-                debug("ASSIGN\n");
+                fprintf(stderr, "ASSIGN\n");
                 draw_node(node->lhs, depth + 1, "lhs");
                 draw_node(node->rhs, depth + 1, "rhs");
                 break;
             case ND_RETURN:
-                debug("RETURN\n");
+                fprintf(stderr, "RETURN\n");
                 draw_node(node->lhs, depth + 1, "");
                 break;
+            case ND_TERNARY:
+                fprintf(stderr, "TERNARY\n");
+                draw_node(node->cond, depth + 1, "cond");
+                draw_node(node->then, depth + 1, "then");
+                draw_node(node->els, depth + 1, "else");
+                break;
             case ND_IF:
-                debug("IF\n");
+                fprintf(stderr, "IF\n");
                 draw_node(node->cond, depth + 1, "cond");
                 draw_node(node->then, depth + 1, "then");
                 draw_node(node->els, depth + 1, "else");
                 break;
             case ND_WHILE:
-                debug("WHILE\n");
+                fprintf(stderr, "WHILE\n");
                 draw_node(node->cond, depth + 1, "cond");
                 draw_node(node->then, depth + 1, "then");
                 break;
             case ND_FOR:
-                debug("FOR\n");
+                fprintf(stderr, "FOR\n");
                 draw_node(node->init, depth + 1, "init");
                 draw_node(node->cond, depth + 1, "cond");
                 draw_node(node->upd, depth + 1, "update");
                 draw_node(node->then, depth + 1, "then");
                 break;
+            case ND_BREAK:
+                fprintf(stderr, "BREAK\n");
+                break;
+            case ND_CONTINUE:
+                fprintf(stderr, "CONTINUE\n");
+                break;
             case ND_BLOCK:
-                debug("BLOCK\n");
+                fprintf(stderr, "BLOCK\n");
                 for (int i = 0; i < node->stmts->len; i++) {
                     draw_node(node->stmts->data[i], depth + 1, "");
                 }
                 break;
             case ND_STMT_EXPR:
-                debug("STMT_EXPR\n");
+                fprintf(stderr, "STMT_EXPR\n");
                 for (int i = 0; i < node->stmts->len; i++) {
                     draw_node(node->stmts->data[i], depth + 1, "");
                 }
                 break;
             case ND_FUNC_CALL:
-                debug("FUNC_CALL(name: %s)\n", node->funcname);
+                fprintf(stderr, "FUNC_CALL(name: %s)\n", node->funcname);
                 for (int i = 0; i < node->args->len; i++) {
                     char *prefix = format("arg%d", i);
                     draw_node(node->args->data[i], depth + 1, prefix);
@@ -167,32 +188,36 @@ void draw_node(Node *node, int depth, char *role) {
                 break;
             case ND_VARREF:
                 if (node->var->is_local) {
-                    debug("VARREF(name: %s, local)\n", node->var->name);
+                    fprintf(stderr, "VARREF(name: %s, local)\n", node->var->name);
                 } else {
-                    debug("VARREF(name: %s, global)\n", node->var->name);
+                    fprintf(stderr, "VARREF(name: %s, global)\n", node->var->name);
                 }
                 break;
             case ND_NUM:
-                debug("NUM(%d)\n", node->val);
+                fprintf(stderr, "NUM(%d)\n", node->val);
                 break;
             case ND_ADDR:
-                debug("ADDR\n");
+                fprintf(stderr, "ADDR\n");
                 draw_node(node->lhs, depth + 1, "");
                 break;
             case ND_DEREF:
-                debug("DEREF\n");
+                fprintf(stderr, "DEREF\n");
                 draw_node(node->lhs, depth + 1, "");
                 break;
             case ND_EXPR_STMT:
-                debug("EXPR_STMT\n");
+                fprintf(stderr, "EXPR_STMT\n");
                 draw_node(node->lhs, depth + 1, "");
                 break;
             case ND_SIZEOF:
-                debug("SIZEOF\n");
+                fprintf(stderr, "SIZEOF\n");
                 draw_node(node->lhs, depth + 1, "");
-            case ND_NULL:
-                debug("NULL\n");
+            case ND_MEMBER:
+                fprintf(stderr, "MEMBER(name: %s)\n", node->member_name);
                 break;
+            case ND_COMMA:
+                fprintf(stderr, "COMMA\n");
+                draw_node(node->lhs, depth + 1, "");
+                draw_node(node->rhs, depth + 1, "");
             default:
                 break;
         }
@@ -203,8 +228,8 @@ void draw_node(Node *node, int depth, char *role) {
 void draw_ast(Prog *prog) {
     for (int i = 0; i < prog->fns->len; i++) {
         Func *fn = vec_at(prog->fns->vals, i);
-        debug("%s()\n", fn->name);
+        fprintf(stderr, "%s()\n", fn->name);
         draw_node(fn->body, 1, "");
-        debug("\n");
+        fprintf(stderr, "\n");
     }
 }

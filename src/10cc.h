@@ -72,7 +72,6 @@ typedef enum {
     ND_VARREF,
     ND_RETURN,
     ND_IF,
-    ND_ELSE,
     ND_WHILE,
     ND_FOR,
     ND_BREAK,

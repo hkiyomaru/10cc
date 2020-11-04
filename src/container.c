@@ -26,7 +26,7 @@ void vec_pushi(Vector *vec, int item) { vec_push(vec, (void *)(intptr_t)item); }
 // Get an item from a vector. If no such item exists, raise an error.
 void *vec_at(Vector *vec, int index) {
     if (vec->len <= index) {
-        error("error: out of range\n");
+        error("out of range");
     }
     return vec->data[index];
 }
@@ -37,7 +37,7 @@ int vec_ati(Vector *vec, int index) { return (intptr_t)(vec_at(vec, index)); }
 // Set an item to a vector. If no such item exists, raise an error.
 void *vec_set(Vector *vec, int index, void *item) {
     if (vec->len <= index) {
-        error("error: out of range\n");
+        error("out of range");
     }
     vec->data[index] = item;
     return item;
@@ -75,7 +75,7 @@ void *map_at(Map *map, char *key) {
             return vec_at(map->vals, i);
         }
     }
-    error("error: out of range\n");
+    error("out of range");
     return NULL;
 }
 

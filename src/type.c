@@ -99,7 +99,7 @@ Node *do_walk(Node *node, bool decay) {
             node->then = walk(node->then);
             node->els = walk(node->els);
             if (!is_same_type(node->then->type, node->els->type)) {
-                error_at(node->tok->loc, "error");
+                error_at(node->tok->loc, "type mismatch in conditional expression");
             }
             node->type = node->then->type;
             return node;
@@ -132,7 +132,9 @@ Node *do_walk(Node *node, bool decay) {
             }
             return node;
         case ND_RETURN:
-            node->lhs = walk(node->lhs);
+            if (node->lhs) {
+                node->lhs = walk(node->lhs);
+            }
             return node;
         case ND_FUNC_CALL:
             for (int i = 0; i < node->args->len; i++) {
@@ -154,16 +156,16 @@ Node *do_walk(Node *node, bool decay) {
         case ND_MEMBER:
             node->lhs = walk(node->lhs);
             if (node->lhs->type->kind != TY_STRUCT) {
-                error_at(node->tok->loc, "error: member reference base type is not a structure\n");
+                error_at(node->tok->loc, "member reference base type is not a structure");
             }
             if (!map_contains(node->lhs->type->members, node->member_name)) {
-                error_at(node->tok->loc, "error: no member named '%s'", node->member_name);
+                error_at(node->tok->loc, "no member named '%s'", node->member_name);
             }
             node->member = map_at(node->lhs->type->members, node->member_name);
             node->type = node->member->type;
             return node;
         default:
-            error_at(node->tok->loc, "error: failed to assign type\n");
+            error_at(node->tok->loc, "failed to assign type");
             return NULL;
     }
 }
@@ -263,8 +265,7 @@ bool is_same_type(Type *x, Type *y) {
 void ensure_referable(Node *node) {
     NodeKind kind = node->kind;
     if (kind != ND_VARREF && kind != ND_DEREF && kind != ND_MEMBER) {
-        char *loc = node->tok->loc;
-        error_at(loc, "error: lvalue required as left operand of assignment\n");
+        error_at(node->tok->loc, "lvalue required as left operand of assignment");
     }
 }
 
@@ -272,8 +273,7 @@ void ensure_referable(Node *node) {
 void ensure_int(Node *node) {
     TypeKind kind = node->type->kind;
     if (kind != TY_INT && kind != TY_CHAR) {
-        char *loc = node->tok->loc;
-        error_at(loc, "error: not an integer\n");
+        error_at(node->tok->loc, "not an integer");
     }
 }
 

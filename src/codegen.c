@@ -211,13 +211,13 @@ void gen(Node *node) {
         }
         case ND_BREAK:
             if (break_cnt == 0) {
-                error_at(node->tok->loc, "break statement not within loop or switch\n");
+                error_at(node->tok->loc, "break statement not within loop or switch");
             }
             printf("  jmp .Lend%03d\n", break_cnt);
             return;
         case ND_CONTINUE:
             if (continue_cnt == 0) {
-                error_at(node->tok->loc, "continue statement not within loop or switch\n");
+                error_at(node->tok->loc, "continue statement not within loop or switch");
             }
             printf("  jmp .Lcontinue%03d\n", continue_cnt);
             return;
@@ -307,7 +307,7 @@ void gen_lval(Node *node) {
             break;
         default:
             // note: this error must be raised at assign_type().
-            error_at(node->tok->loc, "error: lvalue required as left operand of assignment\n");
+            error_at(node->tok->loc, "lvalue required as left operand of assignment");
     }
 }
 
@@ -327,7 +327,7 @@ void load_arg(Var *var, int index) {
             printf("  mov [rbp-%d], %s\n", var->offset, argregs8[index]);
             break;
         default:
-            error("  error: cannot load the %d-th argument as a %d-byte variable", index, var->type->size);
+            error("cannot load the %d-th argument as a %d-byte variable", index, var->type->size);
     }
 }
 
@@ -348,7 +348,7 @@ void load(Type *type) {
             printf("  mov rax, [rax]\n");
             break;
         default:
-            error("  error: cannot load a %d-byte variable", type->size);
+            error("cannot load a %d-byte variable", type->size);
     }
     printf("  push rax\n");
 }
@@ -371,7 +371,7 @@ void store(Type *type) {
             printf("  mov [rax], rdi\n");
             break;
         default:
-            error("  error: cannot store a %d-byte variable", type->size);
+            error("cannot store a %d-byte variable", type->size);
     }
     printf("  push rdi\n");
 }

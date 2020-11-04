@@ -49,6 +49,13 @@ void do_nothing() {
     int c = 1;
 }
 
+void do_nothing2() {
+    int a = 1;
+    int b = 1;
+    int c = 1;
+    return;
+}
+
 int int_gvar;
 int *intptr_gvar;
 int intary_gvar[2];
