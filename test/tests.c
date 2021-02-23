@@ -215,5 +215,8 @@ int main() {
     assert(1, ({ _Bool x = 1; x; }), "_Bool x = 1; x;");
     assert(1, ({ _Bool x = 2; x; }), "_Bool x = 2; x;");
     assert(1, ({ _Bool x = -1; x; }), "_Bool x = -1; x;");
+    assert(2, ({ sizeof "\n"; }), "sizeof \"\\n\";");
+    assert(2, ({ sizeof "\a"; }), "sizeof \"\\a\";");
+    assert(2, ({ sizeof "\""; }), "sizeof \"\\\"\";");
     return 0;
 }

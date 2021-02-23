@@ -34,7 +34,12 @@ void gen_data(Prog *prog) {
         Var *var = vec_at(prog->gvars, i);
         printf("%s:\n", var->name);
         if (var->data) {
-            printf("  .string \"%s\"\n", var->data);
+            for (int i = 0;; i++) {
+                printf("  .byte %d\n", var->data[i]);
+                if (!var->data[i]) {
+                    break;
+                }
+            }
         } else {
             printf("  .zero %d\n", var->type->size);
         }

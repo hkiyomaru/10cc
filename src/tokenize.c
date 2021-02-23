@@ -123,26 +123,58 @@ bool skip_space(char **p) {
     return true;
 }
 
-// Get a string.
-char *get_str(TokenKind kind, char **p) {
-    if (kind == TK_STR) {
+// Get an escaped character.
+char get_escape_char(char c) {
+    switch (c) {
+        case 'a':
+            return '\a';
+        case 'b':
+            return '\b';
+        case 't':
+            return '\t';
+        case 'n':
+            return '\n';
+        case 'v':
+            return '\v';
+        case 'f':
+            return '\f';
+        case 'r':
+            return '\r';
+        case 'e':
+            return 27;
+        case '0':
+            return 0;
+        default:
+            return c;
+    }
+}
+
+char *get_string_literal(char **p) {
+    char *buf = calloc(256, sizeof(char));
+    int len = 0;
+    (*p)++;
+    while (**p != '"') {
+        if (**p == '\\') {
+            (*p)++;
+            buf[len++] = get_escape_char(**p);
+        } else {
+            buf[len++] = **p;
+        }
         (*p)++;
     }
+    buf[len] = '\0';
+    (*p)++;
+    return buf;
+}
 
-    char *str = calloc(256, sizeof(char));
-    int len = 0;
+// Get a string.
+char *get_str(TokenKind kind, char **p) {
+    int len;
     switch (kind) {
+        case TK_STR:
+            return get_string_literal(p);
         case TK_RESERVED: {
             len = strlen(read_reserved(*p));
-            break;
-        }
-        case TK_STR: {
-            while ((*p)[len] && (*p)[len] != '"') {
-                if ((*p)[len] == '\\') {
-                    len++;
-                }
-                len++;
-            }
             break;
         }
         case TK_IDENT: {
@@ -153,30 +185,18 @@ char *get_str(TokenKind kind, char **p) {
             break;
         }
         default:
+            len = 0;
             break;
     }
-    strncpy(str, *p, len);
-    str[len] = '\0';
+    char *buf = calloc(256, sizeof(char));
+    strncpy(buf, *p, len);
+    buf[len] = '\0';
     *p += len;
-
-    if (kind == TK_STR) {
-        (*p)++;
-    }
-    return str;
+    return buf;
 }
 
 // Get a value.
-int get_val(TokenKind kind, char **p) {
-    int val;
-    switch (kind) {
-        case TK_NUM:
-            val = strtol(*p, p, 10);
-            break;
-        default:
-            break;
-    }
-    return val;
-}
+int get_val(TokenKind kind, char **p) { return kind == TK_NUM ? strtol(*p, p, 10) : 0; }
 
 // Create a token.
 Token *new_token(TokenKind kind, Token *cur, char **p) {
