@@ -86,7 +86,7 @@ bool skip_line_comment(char **p) {
     }
     *p += 2;
     while (**p != '\n') {
-        *p += 1;
+        (*p)++;
     }
     return true;
 }
@@ -109,7 +109,7 @@ bool skip_newline(char **p) {
     if (**p != '\n') {
         return false;
     }
-    *p += 1;
+    (*p)++;
     is_bol = true;
     return true;
 }
@@ -119,7 +119,7 @@ bool skip_space(char **p) {
     if (!isspace(**p)) {
         return false;
     }
-    *p += 1;
+    (*p)++;
     return true;
 }
 
@@ -152,7 +152,7 @@ char get_escape_char(char c) {
 char *get_string_literal(char **p) {
     char *buf = calloc(256, sizeof(char));
     int len = 0;
-    (*p)++;
+    (*p)++;  // "
     while (**p != '"') {
         if (**p == '\\') {
             (*p)++;
@@ -163,7 +163,7 @@ char *get_string_literal(char **p) {
         (*p)++;
     }
     buf[len] = '\0';
-    (*p)++;
+    (*p)++;  // "
     return buf;
 }
 
@@ -178,7 +178,7 @@ char *get_str(TokenKind kind, char **p) {
             break;
         }
         case TK_IDENT: {
-            len = 1;
+            len = 1;  // the first character has been verified in tokenize().
             while (isalnumus((*p)[len])) {
                 len++;
             }
@@ -221,16 +221,7 @@ Token *tokenize() {
     is_bol = true;
 
     while (*p) {
-        if (skip_line_comment(&p)) {
-            continue;
-        }
-        if (skip_block_comment(&p)) {
-            continue;
-        }
-        if (skip_newline(&p)) {
-            continue;
-        }
-        if (skip_space(&p)) {
+        if (skip_line_comment(&p) || skip_block_comment(&p) || skip_newline(&p) || skip_space(&p)) {
             continue;
         }
         if (read_reserved(p)) {
