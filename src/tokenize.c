@@ -2,7 +2,7 @@
 
 Token *ctok;
 
-bool is_bol;
+bool is_bol;  // true if `cur` is at beginning of a line
 
 // Return the current token if it satisfies given conditions. Otherwise, NULL will be returned.
 Token *peek(TokenKind kind, char *str) {
@@ -79,15 +79,112 @@ char *read_reserved(char *p) {
     return NULL;
 }
 
-// Create a token.
-Token *new_token(TokenKind kind, Token *cur, char *p, int len) {
-    char *str = calloc(len + 1, sizeof(char));
-    strncpy(str, p, len);
+// Skip a line comment.
+bool skip_line_comment(char **p) {
+    if (strncmp(*p, "//", 2) != 0) {
+        return false;
+    }
+    *p += 2;
+    while (**p != '\n') {
+        *p += 1;
+    }
+    return true;
+}
+
+// Skip a block comment.
+bool skip_block_comment(char **p) {
+    if (strncmp(*p, "/*", 2) != 0) {
+        return false;
+    }
+    char *q = strstr(*p + 2, "*/");
+    if (!q) {
+        error_at(*p, "unterminated comment");
+    }
+    *p = q + 2;
+    return true;
+}
+
+// Skip a new line.
+bool skip_newline(char **p) {
+    if (**p != '\n') {
+        return false;
+    }
+    *p += 1;
+    is_bol = true;
+    return true;
+}
+
+// Skip a white space.
+bool skip_space(char **p) {
+    if (!isspace(**p)) {
+        return false;
+    }
+    *p += 1;
+    return true;
+}
+
+// Get a string.
+char *get_str(TokenKind kind, char **p) {
+    if (kind == TK_STR) {
+        (*p)++;
+    }
+
+    char *str = calloc(256, sizeof(char));
+    int len = 0;
+    switch (kind) {
+        case TK_RESERVED: {
+            len = strlen(read_reserved(*p));
+            break;
+        }
+        case TK_STR: {
+            while ((*p)[len] && (*p)[len] != '"') {
+                if ((*p)[len] == '\\') {
+                    len++;
+                }
+                len++;
+            }
+            break;
+        }
+        case TK_IDENT: {
+            len = 1;
+            while (isalnumus((*p)[len])) {
+                len++;
+            }
+            break;
+        }
+        default:
+            break;
+    }
+    strncpy(str, *p, len);
     str[len] = '\0';
+    *p += len;
+
+    if (kind == TK_STR) {
+        (*p)++;
+    }
+    return str;
+}
+
+// Get a value.
+int get_val(TokenKind kind, char **p) {
+    int val;
+    switch (kind) {
+        case TK_NUM:
+            val = strtol(*p, p, 10);
+            break;
+        default:
+            break;
+    }
+    return val;
+}
+
+// Create a token.
+Token *new_token(TokenKind kind, Token *cur, char **p) {
     Token *tok = calloc(1, sizeof(Token));
     tok->kind = kind;
-    tok->str = str;
-    tok->loc = p;
+    tok->loc = *p;
+    tok->str = get_str(kind, p);
+    tok->val = get_val(kind, p);
     tok->is_bol = is_bol;
     cur->next = tok;
     is_bol = false;
@@ -104,82 +201,36 @@ Token *tokenize() {
     is_bol = true;
 
     while (*p) {
-        // Skip a line comment.
-        if (strncmp(p, "//", 2) == 0) {
-            p += 2;
-            while (*p != '\n') {
-                p++;
-            }
+        if (skip_line_comment(&p)) {
             continue;
         }
-
-        // Skip a block comment.
-        if (strncmp(p, "/*", 2) == 0) {
-            char *q = strstr(p + 2, "*/");
-            if (!q) {
-                error_at(p, "unterminated comment");
-            }
-            p = q + 2;
+        if (skip_block_comment(&p)) {
             continue;
         }
-
-        // Skip newline.
-        if (*p == '\n') {
-            p++;
-            is_bol = true;
+        if (skip_newline(&p)) {
             continue;
         }
-
-        // Skip white space.
-        if (isspace(*p)) {
-            p++;
+        if (skip_space(&p)) {
             continue;
         }
-
-        // Read a reserved keyword.
-        char *kw = read_reserved(p);
-        if (kw) {
-            int len = strlen(kw);
-            cur = new_token(TK_RESERVED, cur, p, len);
-            p += len;
+        if (read_reserved(p)) {
+            cur = new_token(TK_RESERVED, cur, &p);
             continue;
         }
-
-        // Read a string literal.
         if (*p == '"') {
-            p++;  // skip "
-            int len = 0;
-            while (p[len] && p[len] != '"') {
-                if (p[len] == '\\') {
-                    len++;
-                }
-                len++;
-            }
-            cur = new_token(TK_STR, cur, p, len);
-            p += len;
-            p++;  // skip "
+            cur = new_token(TK_STR, cur, &p);
             continue;
         }
-
-        // Read an identifier.
         if (isalpha(*p) || *p == '_') {
-            int len = 1;
-            while (isalnumus(p[len])) {
-                len++;
-            }
-            cur = new_token(TK_IDENT, cur, p, len);
-            p += len;
+            cur = new_token(TK_IDENT, cur, &p);
             continue;
         }
-
-        // Read a number.
         if (isdigit(*p)) {
-            cur = new_token(TK_NUM, cur, p, 0);
-            cur->val = strtol(p, &p, 10);  // strtol increments `p`
+            cur = new_token(TK_NUM, cur, &p);
             continue;
         }
         error_at(p, "stray '%c' in program", *p);
     }
-    new_token(TK_EOF, cur, p, 0);
+    new_token(TK_EOF, cur, &p);
     return head.next;
 }
