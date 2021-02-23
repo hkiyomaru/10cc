@@ -39,6 +39,9 @@ Token *expect(TokenKind kind, char *str) {
                 case TK_STR:
                     str = "string literal";
                     break;
+                case TK_CHAR:
+                    str = "char literal";
+                    break;
                 case TK_EOF:
                     str = "EOF";
                     break;
@@ -156,11 +159,10 @@ char *get_string_literal(char **p) {
     while (**p != '"') {
         if (**p == '\\') {
             (*p)++;
-            buf[len++] = get_escape_char(**p);
+            buf[len++] = get_escape_char(*((*p)++));
         } else {
-            buf[len++] = **p;
+            buf[len++] = *((*p)++);
         }
-        (*p)++;
     }
     buf[len] = '\0';
     (*p)++;  // "
@@ -195,13 +197,38 @@ char *get_str(TokenKind kind, char **p) {
     return buf;
 }
 
+char get_char_literal(char **p) {
+    char c;
+    (*p)++;  // '
+    if (**p == '\\') {
+        (*p)++;
+        c = get_escape_char(*((*p)++));
+    } else {
+        c = *((*p)++);
+    }
+    if (**p != '\'') {
+        error_at(*p, "multi-character character constant");
+    }
+    (*p)++;  // '
+    return c;
+}
+
 // Get a value.
-int get_val(TokenKind kind, char **p) { return kind == TK_NUM ? strtol(*p, p, 10) : 0; }
+int get_val(TokenKind kind, char **p) {
+    switch (kind) {
+        case TK_NUM:
+            return strtol(*p, p, 10);
+        case TK_CHAR:
+            return get_char_literal(p);
+        default:
+            return 0;
+    }
+}
 
 // Create a token.
 Token *new_token(TokenKind kind, Token *cur, char **p) {
     Token *tok = calloc(1, sizeof(Token));
-    tok->kind = kind;
+    tok->kind = kind == TK_CHAR ? TK_NUM : kind;  // TK_CHAR is treated as TK_NUM during parsing.
     tok->loc = *p;
     tok->str = get_str(kind, p);
     tok->val = get_val(kind, p);
@@ -230,6 +257,10 @@ Token *tokenize() {
         }
         if (*p == '"') {
             cur = new_token(TK_STR, cur, &p);
+            continue;
+        }
+        if (*p == '\'') {
+            cur = new_token(TK_CHAR, cur, &p);
             continue;
         }
         if (isalpha(*p) || *p == '_') {

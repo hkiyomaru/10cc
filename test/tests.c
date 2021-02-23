@@ -218,5 +218,7 @@ int main() {
     assert(2, ({ sizeof "\n"; }), "sizeof \"\\n\";");
     assert(2, ({ sizeof "\a"; }), "sizeof \"\\a\";");
     assert(2, ({ sizeof "\""; }), "sizeof \"\\\"\";");
+    assert(65, 'A', "'A';");
+    assert(10, '\n', "\'\\n\'");
     return 0;
 }

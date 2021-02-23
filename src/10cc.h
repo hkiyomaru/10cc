@@ -30,6 +30,7 @@ typedef enum {
     TK_IDENT,     // identifier
     TK_NUM,       // number
     TK_STR,       // string literal
+    TK_CHAR,      // char literal
     TK_EOF        // EOF
 } TokenKind;
 
