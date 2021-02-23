@@ -246,7 +246,7 @@ void leave_scope(Scope *sc) {
 
 // Return true if the kind of the current token is a type name.
 bool at_typename() {
-    char *typenames[] = {"long", "int", "short", "char", "void", "struct", "typedef"};
+    char *typenames[] = {"void", "_Bool", "char", "short", "int", "long", "struct", "typedef"};
     for (int i = 0; i < sizeof(typenames) / sizeof(typenames[0]); i++) {
         if (peek(TK_RESERVED, typenames[i])) {
             return true;
@@ -301,23 +301,22 @@ Node *new_node_varref(Var *var, Token *tok) {
 // T = ("int" | "char" | "void" | struct-decl | typedef-name) "*"*
 Type *read_base_type() {
     Type *type;
-    if (consume(TK_RESERVED, "long")) {
-        type = long_type();
-    } else if (consume(TK_RESERVED, "int")) {
-        type = int_type();
-    } else if (consume(TK_RESERVED, "short")) {
-        type = short_type();
+    if (consume(TK_RESERVED, "void")) {
+        type = void_type();
+    } else if (consume(TK_RESERVED, "_Bool")) {
+        type = bool_type();
     } else if (consume(TK_RESERVED, "char")) {
         type = char_type();
-    } else if (consume(TK_RESERVED, "void")) {
-        type = void_type();
+    } else if (consume(TK_RESERVED, "short")) {
+        type = short_type();
+    } else if (consume(TK_RESERVED, "int")) {
+        type = int_type();
+    } else if (consume(TK_RESERVED, "long")) {
+        type = long_type();
     } else if (peek(TK_RESERVED, "struct")) {
         type = struct_decl();
     } else {
-        Token *tok = consume(TK_IDENT, NULL);
-        if (tok) {
-            type = find_typedef(tok->str);
-        }
+        type = find_typedef(expect(TK_IDENT, NULL)->str);
     }
     if (!type) {
         error_at(ctok->loc, "unknown type name '%s'", ctok->str);

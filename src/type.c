@@ -195,29 +195,32 @@ Type *new_type(TypeKind type, int size) {
     return ret;
 }
 
-// Create a long type.
-Type *long_type() { return new_type(TY_LONG, 8); }
-
-// Create an int type.
-Type *int_type() { return new_type(TY_INT, 4); }
-
-// Create a short type.
-Type *short_type() { return new_type(TY_SHORT, 2); }
-
-// Create a char type.
-Type *char_type() { return new_type(TY_CHAR, 1); }
-
-// Create a void type.
+// Create void type.
 Type *void_type() { return new_type(TY_VOID, 1); }
 
-// Create a pointer type.
+// Create bool type.
+Type *bool_type() { return new_type(TY_BOOL, 1); }
+
+// Create char type.
+Type *char_type() { return new_type(TY_CHAR, 1); }
+
+// Create short type.
+Type *short_type() { return new_type(TY_SHORT, 2); }
+
+// Create int type.
+Type *int_type() { return new_type(TY_INT, 4); }
+
+// Create long type.
+Type *long_type() { return new_type(TY_LONG, 8); }
+
+// Create pointer type.
 Type *ptr_to(Type *base) {
     Type *type = new_type(TY_PTR, 8);
     type->base = base;
     return type;
 }
 
-// Create an array type.
+// Create array type.
 Type *ary_of(Type *base, int array_size) {
     Type *type = calloc(1, sizeof(Type));
     type->kind = TY_ARY;

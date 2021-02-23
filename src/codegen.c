@@ -311,7 +311,7 @@ void gen_lval(Node *node) {
     }
 }
 
-// Push a value to a pre-defined address, which follows the function calling convention.
+// Push a value to a pre-defined address, following the function calling convention.
 void load_arg(Var *var, int index) {
     switch (var->type->size) {
         case 1:
@@ -353,10 +353,18 @@ void load(Type *type) {
     printf("  push rax\n");
 }
 
-// Load a value and an address from the top of the stack. The loaded value is stored to the loaded address.
+// Load a value and an address from the top of the stack, and push the loaded value to the loaded address.
 void store(Type *type) {
-    printf("  pop rdi\n");
-    printf("  pop rax\n");
+    printf("  pop rdi\n");  // value
+    printf("  pop rax\n");  // address
+
+    // A boolean value takes 0 if the value compares equal to 0; otherwise, 1.
+    if (type->kind == TY_BOOL) {
+        printf("  cmp rdi, 0\n");
+        printf("  setne dil\n");
+        printf("  movzb rdi, dil\n");
+    }
+
     switch (type->size) {
         case 1:
             printf("  mov [rax], dil\n");

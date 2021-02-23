@@ -211,5 +211,9 @@ int main() {
     assert(3, ({ int a; (a = 3, a); }), "int a; (a = 3, a);");
     assert(1, ({ 0 < 1 < 2; }), "0 < 1 < 2;");  // same as (0 < 1) < 2;
     assert(0, ({ 0 < 1 < 1; }), "0 < 1 < 1;");  // same as (0 < 1) < 1;
+    assert(0, ({ _Bool x = 0; x; }), "_Bool x = 0; x;");
+    assert(1, ({ _Bool x = 1; x; }), "_Bool x = 1; x;");
+    assert(1, ({ _Bool x = 2; x; }), "_Bool x = 2; x;");
+    assert(1, ({ _Bool x = -1; x; }), "_Bool x = -1; x;");
     return 0;
 }
