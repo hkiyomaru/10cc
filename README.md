@@ -23,7 +23,7 @@ $ docker run -it --rm -v $(pwd):/10cc -w /10cc 10cc make
 You will find an executable file, `10cc`, in the `bld` directory.
 
 ```commandline
-$ docker run -it --rm -v $(pwd):/10cc -w /10cc 10cc ls -l bld/10cc
+$ docker run -it --rm -v $(pwd):/10cc -w /10cc 10cc ls -l ./bld/10cc
 ```
 
 ### Test
@@ -32,6 +32,30 @@ To test 10cc, run `make test`.
 
 ```commandline
 $ docker run -it --rm -v $(pwd):/10cc -w /10cc 10cc make test
+```
+
+### Compile a C program
+
+The [examples](./examples) directory includes several C programs that can be compiled using 10cc.
+To compile [fibo.c](./examples/fibo.c) and run the executable file, run the following commands:
+
+```commandline
+$ docker run -it --rm -v $(pwd):/10cc -w /10cc 10cc         # Get into the docker container's shell.
+$ make                                                      # Build 10cc.
+$ ./bld/10cc examples/fibo.c > fibo.s                       # Compile fibo.c using 10cc.
+$ cc -std=c11 -static -c -o test_tools.o test/test_tools.c  # Compile the dependency using *cc*.
+$ cc -std=c11 -g -static fibo.s test_tools.o -o fibo        # Link them to create an executable file.
+$ ./fibo                                                    # Run.
+0
+1
+1
+2
+3
+5
+8
+13
+21
+34
 ```
 
 ## How 10cc works
