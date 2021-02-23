@@ -12,9 +12,23 @@ A reimplementation of [9cc](https://github.com/rui314/9cc).
 $ docker build -t 10cc .
 ```
 
-### Build & Test
+### Build
 
-To build and test 10cc, run `make test`.
+To build 10cc, run `make`.
+
+```commandline
+$ docker run -it --rm -v $(pwd):/10cc -w /10cc 10cc make
+```
+
+You will find an executable file, `10cc`, in the `bld` directory.
+
+```commandline
+$ docker run -it --rm -v $(pwd):/10cc -w /10cc 10cc ls -l bld/10cc
+```
+
+### Test
+
+To test 10cc, run `make test`.
 
 ```commandline
 $ docker run -it --rm -v $(pwd):/10cc -w /10cc 10cc make test
@@ -25,9 +39,9 @@ $ docker run -it --rm -v $(pwd):/10cc -w /10cc 10cc make test
 10cc consists of four stages.
 
 1. [Tokenization](./src/tokenize.c): A tokenizer takes code and breaks it into a list of tokens.
-2. [Preprocessing]((./src/preprocess.c)): A preprocessor takes a list of tokens and creates a new list by expanding macros.
+2. [Preprocessing](./src/preprocess.c): A preprocessor takes a list of tokens and creates a new list by expanding macros.
 3. [Parsing](./src/parse.c): A recursive descent parser takes a list of macro-expanded tokens and builds abstract syntax trees (ASTs).
-4. [Code generation](./codegen.c): A code generator takes ASTs and emits assembly code for them.
+4. [Code generation](./src/codegen.c): A code generator takes ASTs and emits assembly code for them.
 
 ## Reference
 
