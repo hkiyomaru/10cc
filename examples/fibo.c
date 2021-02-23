@@ -1,10 +1,10 @@
 /**
  * How to build:
- *   $ make                                                      # Build 10cc.
- *   $ ./bld/10cc examples/fibo.c > fibo.s                       # Compile fibo.c using 10cc.
- *   $ cc -std=c11 -static -c -o test_tools.o test/test_tools.c  # Compile test tools using *cc*.
- *   $ cc -std=c11 -g -static fibo.s test_tools.o -o fibo        # Link them to create an executable file.
- *   $ ./fibo                                                    # Run.
+ *   $ make                                                # Build 10cc.
+ *   $ ./bld/10cc examples/fibo.c > fibo.s                 # Compile fibo.c using 10cc.
+ *   $ cc -std=c11 -static -c -o testkit.o test/testkit.c  # Compile test tools using *cc*.
+ *   $ cc -std=c11 -g -static fibo.s testkit.o -o fibo     # Link them to create an executable file.
+ *   $ ./fibo                                              # Run.
  */
 void printf();
 

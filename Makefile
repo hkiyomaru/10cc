@@ -22,15 +22,15 @@ $(BLDDIR)/%.o: $(SRCDIR)/%.c $(HDRS)
 test: test/test
 	./$<
 
-test/test: test/test.s test/test_tools.o
+test/test: test/test.s test/testkit.o
 	$(CC) $(CFLAGS) -o $@ $^
 
 test/test.s: $(TARGET) test/tests.c
 	./$< test/tests.c > $@
 
-test/test_tools.o: test/test_tools.c
+test/testkit.o: test/testkit.c
 	$(CC) $(CFLAGS) -c -o $@ $^
 
 .PHONY: clean
 clean:
-	rm -f $(BLDDIR)/* test/test test/test.s test/test_tools.o
+	rm -f $(BLDDIR)/* test/test test/test.s test/testkit.o
