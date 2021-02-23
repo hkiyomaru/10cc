@@ -63,7 +63,7 @@ $ ./fibo                                              # Run.
 ## Reference
 
 - [低レイヤを知りたい人のためのCコンパイラ作成入門](https://www.sigbus.info/compilerbook): A compiler textbook written in Japanese.
-- [9cc](https://github.com/rui314/9cc): A small C compiler. This project is a reimplementation of this.
-- [chibicc](https://github.com/rui314/chibicc): Yet another small C compiler. A successor of 9cc.
+- [9cc](https://github.com/rui314/9cc): A small C compiler.
+- [chibicc](https://github.com/rui314/chibicc): Yet another small C compiler.
 - [N1570](http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf): The final draft of C11.
 - [Compiler Explorer](https://godbolt.org): An online compiler.
