@@ -194,7 +194,7 @@ void draw_node(Node *node, int depth, char *role) {
                 }
                 break;
             case ND_NUM:
-                fprintf(stderr, "NUM(%d)\n", node->val);
+                fprintf(stderr, "NUM(%ld)\n", node->val);
                 break;
             case ND_ADDR:
                 fprintf(stderr, "ADDR\n");

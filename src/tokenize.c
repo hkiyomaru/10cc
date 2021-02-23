@@ -214,7 +214,7 @@ char get_char_literal(char **p) {
 }
 
 // Get a value.
-int get_val(TokenKind kind, char **p) {
+long get_val(TokenKind kind, char **p) {
     switch (kind) {
         case TK_NUM:
             return strtol(*p, p, 10);

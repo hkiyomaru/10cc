@@ -6,7 +6,7 @@
 /**
  * A block comment.
  */
-void assert(int expected, int actual, char *code);
+void assert(long expected, long actual, char *code);
 
 int ret3() {
     return 3;
@@ -220,5 +220,8 @@ int main() {
     assert(2, ({ sizeof "\""; }), "sizeof \"\\\"\";");
     assert(65, 'A', "'A';");
     assert(10, '\n', "\'\\n\'");
+    assert(2147483648, 2147483648, "2147483648");
+    assert(8, sizeof(2147483648), "sizeof(2147483648)");
+    assert(4, sizeof(2147483647), "sizeof(2147483647)");
     return 0;
 }

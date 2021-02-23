@@ -67,7 +67,7 @@ bool at_typename();
 
 Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs, Token *tok);
 Node *new_node_uniop(NodeKind kind, Node *lhs, Token *tok);
-Node *new_node_num(int val, Token *tok);
+Node *new_node_num(long val, Token *tok);
 Node *new_node_varref(Var *var, Token *tok);
 
 Type *read_base_type();
@@ -283,7 +283,7 @@ Node *new_node_uniop(NodeKind kind, Node *lhs, Token *tok) {
 }
 
 // Create a node to represent a number.
-Node *new_node_num(int val, Token *tok) {
+Node *new_node_num(long val, Token *tok) {
     Node *node = new_node(ND_NUM, tok);
     node->type = int_type();
     node->val = val;

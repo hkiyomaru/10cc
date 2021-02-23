@@ -26,6 +26,11 @@ Node *do_walk(Node *node, bool decay) {
         case ND_CONTINUE:
             return node;
         case ND_NUM:
+            if (node->val == (int)node->val) {
+                node->type = int_type();
+            } else {
+                node->type = long_type();
+            }
             return node;
         case ND_VARREF:
             if (decay) {

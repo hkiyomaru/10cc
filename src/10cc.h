@@ -40,7 +40,7 @@ struct Token {
     bool is_bol;
     char *str;
     char *loc;
-    int val;
+    long val;
 };
 
 Token *tokenize();
@@ -127,7 +127,7 @@ struct Node {
     Var *var;
 
     // Number literal
-    int val;
+    long val;
 
     // Struct member
     char *member_name;
@@ -157,7 +157,7 @@ Prog *parse();
 Node *new_node(NodeKind kind, Token *tok);
 Node *new_node_binop(NodeKind kind, Node *lhs, Node *rhs, Token *tok);
 Node *new_node_uniop(NodeKind kind, Node *lhs, Token *tok);
-Node *new_node_num(int val, Token *tok);
+Node *new_node_num(long val, Token *tok);
 
 // type.c
 typedef enum { TY_VOID, TY_BOOL, TY_CHAR, TY_SHORT, TY_INT, TY_LONG, TY_PTR, TY_ARY, TY_STRUCT } TypeKind;
