@@ -1,5 +1,8 @@
 # 10cc
 
+[![Build](https://github.com/hkiyomaru/10cc/actions/workflows/build.yml/badge.svg)](https://github.com/hkiyomaru/10cc/actions/workflows/build.yml)
+[![Test](https://github.com/hkiyomaru/10cc/actions/workflows/test.yml/badge.svg)](https://github.com/hkiyomaru/10cc/actions/workflows/test.yml)
+
 A reimplementation of [9cc](https://github.com/rui314/9cc).
 
 ## Getting started
