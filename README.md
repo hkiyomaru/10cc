@@ -46,16 +46,6 @@ $ ./bld/10cc examples/fibo.c > fibo.s                       # Compile fibo.c usi
 $ cc -std=c11 -static -c -o test_tools.o test/test_tools.c  # Compile the dependency using *cc*.
 $ cc -std=c11 -g -static fibo.s test_tools.o -o fibo        # Link them to create an executable file.
 $ ./fibo                                                    # Run.
-0
-1
-1
-2
-3
-5
-8
-13
-21
-34
 ```
 
 ## How 10cc works
