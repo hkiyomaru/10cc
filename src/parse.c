@@ -3,7 +3,7 @@
 typedef struct Scope Scope;
 typedef struct VarScope VarScope;
 typedef struct TagScope TagScope;
-typedef struct InitValue InitValue;
+typedef struct InitVal InitVal;
 
 struct Scope {
     VarScope *var_scope;
@@ -27,7 +27,7 @@ struct TagScope {
     Type *type;
 };
 
-struct InitValue {
+struct InitVal {
     Vector *vals;  // Vector<InitValue *>
     Node *val;
 };
@@ -52,7 +52,7 @@ VarScope *push_var_scope(char *name);
 TagScope *push_tag_scope(char *name);
 
 Var *push_var(char *name, Var *var);
-Var *find_var(char *name);
+VarScope *find_var(char *name);
 
 Type *push_typedef(char *name, Type *type);
 Type *find_typedef(char *name);
@@ -75,8 +75,8 @@ Type *read_type_postfix(Type *type);
 Type *struct_decl();
 Node *decl();
 
-InitValue *read_lvar_init_value(Type *type);
-Node *lvar_init(Type *type, Node *node, InitValue *iv, Token *tok);
+InitVal *read_lvar_init_val(Type *type);
+Node *lvar_init(Type *type, Node *node, InitVal *iv, Token *tok);
 
 Node *stmt();
 Node *expr();
@@ -90,8 +90,8 @@ Node *unary();
 Node *postfix();
 Node *primary();
 
-Node *increment();
-Node *decrement();
+Node *inc();
+Node *dec();
 
 // Find a function by name.
 Func *find_func(char *name) { return map_contains(prog->fns, name) ? map_at(prog->fns, name) : NULL; }
@@ -119,8 +119,9 @@ Var *new_var(Type *type, char *name, bool is_local, Token *tok) {
 
 // Create a global variable, and registers it to the program.
 Var *new_gvar(Type *type, char *name, Token *tok) {
-    Var *var = find_var(name);
-    if (var) {
+    VarScope *sc = find_var(name);
+    if (sc) {
+        Var *var = sc->var;
         if (!is_same_type(type, var->type)) {
             error_at(tok->loc, "conflicting types for '%s'", name);
         }
@@ -131,7 +132,6 @@ Var *new_gvar(Type *type, char *name, Token *tok) {
 
 // Create a local variable, and registers it to the function.
 Var *new_lvar(Type *type, char *name, Token *tok) {
-    // Try to find a variable from the scope of the same depth.
     for (VarScope *sc = var_scope; sc; sc = sc->next) {
         if (sc->depth != scope_depth) {
             break;
@@ -175,22 +175,18 @@ TagScope *push_tag_scope(char *name) {
 // Push a variable to the current scope.
 Var *push_var(char *name, Var *var) {
     push_var_scope(name)->var = var;
-    if (var->is_local) {
-        vec_push(fn->lvars, var);
-    } else {
-        vec_push(prog->gvars, var);
-    }
+    vec_push(var->is_local ? fn->lvars : prog->gvars, var);
     return var;
 }
 
 // Find a variable by name.
-Var *find_var(char *name) {
+VarScope *find_var(char *name) {
     for (VarScope *sc = var_scope; sc; sc = sc->next) {
         if (!strcmp(name, sc->name)) {
             if (!sc->var) {
                 error_at(ctok->loc, "unexpected type name '%s'", name);
             }
-            return sc->var;
+            return sc;
         }
     }
     return NULL;
@@ -354,7 +350,6 @@ Member *struct_member() {
 Type *struct_decl() {
     expect(TK_RESERVED, "struct");
 
-    // Read a tag.
     Token *tag = consume(TK_IDENT, NULL);
     if (tag && !peek(TK_RESERVED, "{")) {
         Type *type = find_tag(tag->str);
@@ -378,6 +373,7 @@ Type *struct_decl() {
     }
 
     Type *type = struct_type(members);
+
     if (tag) {
         push_tag(tag->str, type);
     }
@@ -386,8 +382,8 @@ Type *struct_decl() {
 }
 
 // Read initial values.
-InitValue *read_lvar_init_value(Type *type) {
-    InitValue *iv = calloc(1, sizeof(InitValue));
+InitVal *read_lvar_init_val(Type *type) {
+    InitVal *iv = calloc(1, sizeof(InitVal));
     Token *tok;
     switch (type->kind) {
         case TY_ARY:
@@ -397,21 +393,22 @@ InitValue *read_lvar_init_value(Type *type) {
                     if (iv->vals->len > 0) {
                         expect(TK_RESERVED, ",");
                     }
-                    vec_push(iv->vals, read_lvar_init_value(type->base));
+                    vec_push(iv->vals, read_lvar_init_val(type->base));
                 }
-            } else if ((tok = consume(TK_STR, NULL))) {
+                break;
+            }
+            if ((tok = consume(TK_STR, NULL))) {
                 for (int i = 0; i < strlen(tok->str); i++) {
-                    InitValue *v = calloc(1, sizeof(InitValue));
+                    InitVal *v = calloc(1, sizeof(InitVal));
                     v->val = new_node_num(tok->str[i], NULL);
                     vec_push(iv->vals, v);
                 }
-                InitValue *v = calloc(1, sizeof(InitValue));
+                InitVal *v = calloc(1, sizeof(InitVal));
                 v->val = new_node_num('\0', NULL);
                 vec_push(iv->vals, v);
-            } else {
-                error_at(ctok->loc, "expected expression before '%s'", ctok->str);
+                break;
             }
-            break;
+            error_at(ctok->loc, "expected expression before '%s'", ctok->str);
         default:
             iv->val = assign();
             break;
@@ -420,7 +417,7 @@ InitValue *read_lvar_init_value(Type *type) {
 }
 
 // Create a node to assign an initial value to a given local variable.
-Node *lvar_init(Type *type, Node *node, InitValue *iv, Token *tok) {
+Node *lvar_init(Type *type, Node *node, InitVal *iv, Token *tok) {
     Node *initializer = new_node(ND_BLOCK, tok);
     initializer->stmts = vec_create();
     if (type->kind == TY_ARY) {
@@ -429,16 +426,14 @@ Node *lvar_init(Type *type, Node *node, InitValue *iv, Token *tok) {
             node_i = new_node_uniop(ND_DEREF, node_i, NULL);
             vec_push(initializer->stmts, lvar_init(type->base, node_i, vec_at(iv->vals, i), tok));
         }
-
         if (type->array_size == -1) {
             type->array_size = iv->vals->len;
             type->size = type->base->size * type->array_size;
         }
-
         for (int i = iv->vals->len; i < type->array_size; i++) {
             Node *node_i = new_node_binop(ND_ADD, node, new_node_num(i, NULL), NULL);
             node_i = new_node_uniop(ND_DEREF, node_i, NULL);
-            InitValue *iv = calloc(1, sizeof(InitValue));
+            InitVal *iv = calloc(1, sizeof(InitVal));
             iv->val = new_node_num(0, NULL);
             vec_push(initializer->stmts, lvar_init(type->base, node_i, iv, tok));
         }
@@ -481,7 +476,7 @@ Node *decl() {
     }
 
     tok = expect(TK_RESERVED, "=");
-    InitValue *iv = read_lvar_init_value(var->type);
+    InitVal *iv = read_lvar_init_val(var->type);
     expect(TK_RESERVED, ";");
     return lvar_init(var->type, new_node_varref(var, tok), iv, tok);
 }
@@ -493,7 +488,7 @@ Node *compound_stmt() {
     node->stmts = vec_create();
     expect(TK_RESERVED, "{");
     while (!consume(TK_RESERVED, "}")) {
-        vec_push(node->stmts, (void *)stmt());
+        vec_push(node->stmts, stmt());
     }
     leave_scope(sc);
     return node;
@@ -527,7 +522,6 @@ Node *selection_stmt() {
 //                | "for" "(" decl? ";" expr? ";" expr? ")" stmt
 Node *iteration_stmt() {
     Token *tok;
-
     if ((tok = consume(TK_RESERVED, "while"))) {
         Node *node = new_node(ND_WHILE, tok);
         expect(TK_RESERVED, "(");
@@ -536,7 +530,6 @@ Node *iteration_stmt() {
         node->then = stmt();
         return node;
     }
-
     if ((tok = consume(TK_RESERVED, "for"))) {
         Node *node = new_node(ND_FOR, tok);
         Scope *sc = enter_scope();
@@ -544,11 +537,7 @@ Node *iteration_stmt() {
         if (consume(TK_RESERVED, ";")) {
             node->init = new_node(ND_NULL, NULL);
         } else {
-            if (at_typename()) {
-                node->init = decl();
-            } else {
-                node->init = expr_stmt();
-            }
+            node->init = at_typename() ? decl() : expr_stmt();
         }
         node->cond = peek(TK_RESERVED, ";") ? new_node_num(1, NULL) : expr();
         expect(TK_RESERVED, ";");
@@ -558,7 +547,6 @@ Node *iteration_stmt() {
         leave_scope(sc);
         return node;
     }
-
     return NULL;
 }
 
@@ -567,23 +555,19 @@ Node *iteration_stmt() {
 //           | "return" expr? ";"
 Node *jump_stmt() {
     Token *tok;
-
     if ((tok = consume(TK_RESERVED, "continue"))) {
         expect(TK_RESERVED, ";");
         return new_node(ND_CONTINUE, tok);
     }
-
     if ((tok = consume(TK_RESERVED, "break"))) {
         expect(TK_RESERVED, ";");
         return new_node(ND_BREAK, tok);
     }
-
     if ((tok = expect(TK_RESERVED, "return"))) {
         Node *node = new_node_uniop(ND_RETURN, expr(), tok);
         expect(TK_RESERVED, ";");
         return node;
     }
-
     return NULL;
 }
 
@@ -596,31 +580,24 @@ Node *jump_stmt() {
 //      | ";"
 Node *stmt() {
     Token *tok;
-
     if (peek(TK_RESERVED, "{")) {
         return compound_stmt();
     }
-
     if (peek(TK_RESERVED, "if")) {
         return selection_stmt();
     }
-
     if (peek(TK_RESERVED, "for") || peek(TK_RESERVED, "while")) {
         return iteration_stmt();
     }
-
     if (peek(TK_RESERVED, "continue") || peek(TK_RESERVED, "break") || peek(TK_RESERVED, "return")) {
         return jump_stmt();
     }
-
     if (at_typename()) {
         return decl();
     }
-
     if ((tok = consume(TK_RESERVED, ";"))) {
         return new_node(ND_NULL, tok);
     }
-
     return expr_stmt();
 }
 
@@ -640,27 +617,21 @@ Node *expr() {
 Node *assign() {
     Node *node = conditional();
     Token *tok;
-
     if ((tok = consume(TK_RESERVED, "="))) {
         return new_node_binop(ND_ASSIGN, node, assign(), tok);
     }
-
     if ((tok = consume(TK_RESERVED, "+="))) {
         return new_node_binop(ND_ASSIGN, node, new_node_binop(ND_ADD, node, assign(), tok), tok);
     }
-
     if ((tok = consume(TK_RESERVED, "-="))) {
         return new_node_binop(ND_ASSIGN, node, new_node_binop(ND_SUB, node, assign(), tok), tok);
     }
-
     if ((tok = consume(TK_RESERVED, "*="))) {
         return new_node_binop(ND_ASSIGN, node, new_node_binop(ND_MUL, node, assign(), tok), tok);
     }
-
     if ((tok = consume(TK_RESERVED, "/="))) {
         return new_node_binop(ND_ASSIGN, node, new_node_binop(ND_DIV, node, assign(), tok), tok);
     }
-
     return node;
 }
 
@@ -688,11 +659,13 @@ Node *equality() {
     for (;;) {
         if ((tok = consume(TK_RESERVED, "=="))) {
             node = new_node_binop(ND_EQ, node, relational(), tok);
-        } else if ((tok = consume(TK_RESERVED, "!="))) {
-            node = new_node_binop(ND_NE, node, relational(), tok);
-        } else {
-            return node;
+            continue;
         }
+        if ((tok = consume(TK_RESERVED, "!="))) {
+            node = new_node_binop(ND_NE, node, relational(), tok);
+            continue;
+        }
+        return node;
     }
 }
 
@@ -706,13 +679,16 @@ Node *relational() {
         if ((tok = consume(TK_RESERVED, "<="))) {
             node = new_node_binop(ND_LE, node, relational(), tok);
             continue;
-        } else if ((tok = consume(TK_RESERVED, ">="))) {
+        }
+        if ((tok = consume(TK_RESERVED, ">="))) {
             node = new_node_binop(ND_LE, relational(), node, tok);
             continue;
-        } else if ((tok = consume(TK_RESERVED, "<"))) {
+        }
+        if ((tok = consume(TK_RESERVED, "<"))) {
             node = new_node_binop(ND_LT, node, relational(), tok);
             continue;
-        } else if ((tok = consume(TK_RESERVED, ">"))) {
+        }
+        if ((tok = consume(TK_RESERVED, ">"))) {
             node = new_node_binop(ND_LT, relational(), node, tok);
             continue;
         }
@@ -727,11 +703,13 @@ Node *add() {
     for (;;) {
         if ((tok = consume(TK_RESERVED, "+"))) {
             node = new_node_binop(ND_ADD, node, mul(), tok);
-        } else if ((tok = consume(TK_RESERVED, "-"))) {
-            node = new_node_binop(ND_SUB, node, mul(), tok);
-        } else {
-            return node;
+            continue;
         }
+        if ((tok = consume(TK_RESERVED, "-"))) {
+            node = new_node_binop(ND_SUB, node, mul(), tok);
+            continue;
+        }
+        return node;
     }
 }
 
@@ -742,11 +720,13 @@ Node *mul() {
     for (;;) {
         if ((tok = consume(TK_RESERVED, "*"))) {
             node = new_node_binop(ND_MUL, node, unary(), tok);
-        } else if ((tok = consume(TK_RESERVED, "/"))) {
-            node = new_node_binop(ND_DIV, node, unary(), tok);
-        } else {
-            return node;
+            continue;
         }
+        if ((tok = consume(TK_RESERVED, "/"))) {
+            node = new_node_binop(ND_DIV, node, unary(), tok);
+            continue;
+        }
+        return node;
     }
 }
 
@@ -759,33 +739,38 @@ Node *mul() {
 Node *unary() {
     Token *tok;
     if ((tok = consume(TK_RESERVED, "++"))) {
-        return increment(unary(), tok);
-    } else if ((tok = consume(TK_RESERVED, "--"))) {
-        return decrement(unary(), tok);
-    } else if ((tok = consume(TK_RESERVED, "+"))) {
+        return inc(unary(), tok);
+    }
+    if ((tok = consume(TK_RESERVED, "--"))) {
+        return dec(unary(), tok);
+    }
+    if ((tok = consume(TK_RESERVED, "+"))) {
         return unary();
-    } else if ((tok = consume(TK_RESERVED, "-"))) {
+    }
+    if ((tok = consume(TK_RESERVED, "-"))) {
         return new_node_binop(ND_SUB, new_node_num(0, NULL), unary(), tok);
-    } else if ((tok = consume(TK_RESERVED, "&"))) {
+    }
+    if ((tok = consume(TK_RESERVED, "&"))) {
         return new_node_uniop(ND_ADDR, unary(), tok);
-    } else if ((tok = consume(TK_RESERVED, "*"))) {
+    }
+    if ((tok = consume(TK_RESERVED, "*"))) {
         return new_node_uniop(ND_DEREF, unary(), tok);
-    } else if ((tok = consume(TK_RESERVED, "!"))) {
+    }
+    if ((tok = consume(TK_RESERVED, "!"))) {
         return new_node_uniop(ND_NOT, unary(), tok);
-    } else if ((tok = consume(TK_RESERVED, "sizeof"))) {
+    }
+    if ((tok = consume(TK_RESERVED, "sizeof"))) {
         if (consume(TK_RESERVED, "(")) {
             if (at_typename()) {
                 Node *node = new_node_num(read_base_type()->size, tok);
                 expect(TK_RESERVED, ")");
                 return node;
-            } else {
-                ctok = tok->next;
             }
+            ctok = tok->next;
         }
         return new_node_uniop(ND_SIZEOF, unary(), tok);
-    } else {
-        return postfix();
     }
+    return postfix();
 }
 
 // postfix = primary
@@ -800,36 +785,31 @@ Node *postfix() {
             expect(TK_RESERVED, "]");
             continue;
         }
-
         if ((tok = consume(TK_RESERVED, "."))) {
             node = new_node_uniop(ND_MEMBER, node, tok);
             node->member_name = expect(TK_IDENT, NULL)->str;
             continue;
         }
-
         if ((tok = consume(TK_RESERVED, "->"))) {
             node = new_node_uniop(ND_DEREF, node, tok);
             node = new_node_uniop(ND_MEMBER, node, tok);
             node->member_name = expect(TK_IDENT, NULL)->str;
             continue;
         }
-
         if ((tok = consume(TK_RESERVED, "++"))) {
-            node = new_node_binop(ND_SUB, increment(node, tok), new_node_num(1, tok), tok);
+            node = new_node_binop(ND_SUB, inc(node, tok), new_node_num(1, tok), tok);
             continue;
         }
-
         if ((tok = consume(TK_RESERVED, "--"))) {
-            node = new_node_binop(ND_ADD, decrement(node, tok), new_node_num(1, tok), tok);
+            node = new_node_binop(ND_ADD, dec(node, tok), new_node_num(1, tok), tok);
             continue;
         }
-
         return node;
     }
 }
 
-// func-args = "(" (expr ("," expr)*)? ")"
-Vector *func_args() {
+// args = "(" (expr ("," expr)*)? ")"
+Vector *args() {
     Vector *args = vec_create();
     expect(TK_RESERVED, "(");
     while (!consume(TK_RESERVED, ")")) {
@@ -841,17 +821,17 @@ Vector *func_args() {
     return args;
 }
 
-// func-call = ident func-args
-Node *func_call() {
+// call = ident args
+Node *call() {
     Token *tok = expect(TK_IDENT, NULL);
     Func *fn_ = find_func(tok->str);
     if (!fn_) {
         error_at(tok->loc, "undefined reference to `%s'", tok->str);
     }
     Node *node = new_node(ND_FUNC_CALL, tok);
-    node->funcname = tok->str;
+    node->func_name = tok->str;
     node->type = fn_->rtype;
-    node->args = func_args();
+    node->args = args();
     return node;
 }
 
@@ -874,7 +854,7 @@ Node *stmt_expr() {
     return node;
 }
 
-// primary = func-call
+// primary = call
 //         | ident
 //         | num
 //         | str
@@ -882,76 +862,69 @@ Node *stmt_expr() {
 //         | "(" expr ")"
 Node *primary() {
     Token *tok = ctok;
-
     bool is_func_call = consume(TK_IDENT, NULL) && consume(TK_RESERVED, "(");
     ctok = tok;
 
     if (is_func_call) {
-        return func_call();
+        return call();
     }
-
     if ((tok = consume(TK_IDENT, NULL))) {
-        Var *var = find_var(tok->str);
-        if (!var) {
+        VarScope *sc = find_var(tok->str);
+        if (!sc) {
             error_at(tok->loc, "'%s' undeclared", tok->str);
         }
+        Var *var = sc->var;
         return new_node_varref(var, tok);
     }
-
     if ((tok = peek(TK_NUM, NULL))) {
         tok = expect(TK_NUM, NULL);
         return new_node_num(tok->val, tok);
     }
-
     if ((tok = peek(TK_STR, NULL))) {
         tok = expect(TK_STR, NULL);
         return new_node_varref(new_strl(tok->str, tok), tok);
     }
-
     if ((tok = peek(TK_RESERVED, "("))) {
         bool is_stmt_expr = consume(TK_RESERVED, "(") && consume(TK_RESERVED, "{");
         ctok = tok;
         if (is_stmt_expr) {
             return stmt_expr();
-        } else {
-            expect(TK_RESERVED, "(");
-            Node *node = expr();
-            expect(TK_RESERVED, ")");
-            return node;
         }
+        expect(TK_RESERVED, "(");
+        Node *node = expr();
+        expect(TK_RESERVED, ")");
+        return node;
     }
-
     return NULL;
 }
 
 // Increment a node.
-Node *increment(Node *node, Token *tok) {
+Node *inc(Node *node, Token *tok) {
     return new_node_binop(ND_ASSIGN, node, new_node_binop(ND_ADD, node, new_node_num(1, tok), tok), tok);
 }
 
 // Decrement a node.
-Node *decrement(Node *node, Token *tok) {
+Node *dec(Node *node, Token *tok) {
     return new_node_binop(ND_ASSIGN, node, new_node_binop(ND_SUB, node, new_node_num(1, tok), tok), tok);
 }
 
 // param = T ident ("[" num "]")*
-Var *func_param() {
+Var *param() {
     Type *type = read_base_type();
     Token *tok = expect(TK_IDENT, NULL);
-    char *name = tok->str;
     type = read_type_postfix(type);
-    return new_lvar(type, name, tok);
+    return new_lvar(type, tok->str, tok);
 }
 
 // params = "(" (param ("," param)*)? ")"
-Vector *func_params() {
+Vector *params() {
     Vector *params = vec_create();
     expect(TK_RESERVED, "(");
     while (!consume(TK_RESERVED, ")")) {
         if (params->len > 0) {
             expect(TK_RESERVED, ",");
         }
-        vec_push(params, func_param());
+        vec_push(params, param());
     }
     return params;
 }
@@ -966,26 +939,26 @@ void func() {
 
     Scope *sc = enter_scope();
 
-    // Parse the arguments.
-    fn->args = func_params();
+    // Parse the parameters.
+    fn->params = params();
 
     // Check conflict.
     Func *fn_ = find_func(fn->name);
     if (fn_) {
         if (fn_->body) {
-            error_at(fn->tok->loc, "redefinition of '%s'", fn->tok->str);
+            error_at(fn->tok->loc, "redefinition of '%s'", fn->name);
         }
         if (!is_same_type(fn->rtype, fn_->rtype)) {
-            error_at(fn->tok->loc, "conflicting types for '%s'", fn->tok->str);
+            error_at(fn->tok->loc, "conflicting types for '%s'", fn->name);
         }
-        if (fn->args->len != fn_->args->len) {
-            error_at(fn->tok->loc, "conflicting types for '%s'", fn->tok->str);
+        if (fn->params->len != fn_->params->len) {
+            error_at(fn->tok->loc, "conflicting types for '%s'", fn->name);
         }
-        for (int i = 0; i < fn->args->len; i++) {
-            Var *x = vec_at(fn->args, i);
-            Var *y = vec_at(fn_->args, i);
-            if (!is_same_type(x->type, y->type)) {
-                error_at(fn->tok->loc, "conflicting types for '%s'", fn->tok->str);
+        for (int i = 0; i < fn->params->len; i++) {
+            Var *arg = vec_at(fn->params, i);
+            Var *arg_ = vec_at(fn_->params, i);
+            if (!is_same_type(arg->type, arg_->type)) {
+                error_at(fn->tok->loc, "conflicting types for '%s'", fn->name);
             }
         }
     }
@@ -1004,19 +977,18 @@ void func() {
 void gvar() {
     Type *type = read_base_type();
     Token *tok = expect(TK_IDENT, NULL);
-    char *name = tok->str;
     type = read_type_postfix(type);
     expect(TK_RESERVED, ";");
-    new_gvar(type, name, tok);
+    new_gvar(type, tok->str, tok);
 }
 
 // top-level = func | gvar
 void top_level() {
     Token *tok = ctok;
     read_base_type();
-    bool isfunc = consume(TK_IDENT, NULL) && consume(TK_RESERVED, "(");
+    bool is_func = consume(TK_IDENT, NULL) && consume(TK_RESERVED, "(");
     ctok = tok;
-    if (isfunc) {
+    if (is_func) {
         func();
     } else {
         gvar();

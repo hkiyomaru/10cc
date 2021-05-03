@@ -72,8 +72,8 @@ void gen_text(Prog *prog) {
         printf("  sub rsp, %d\n", offset);
 
         // Push arguments to the stack.
-        for (int i = 0; i < fn->args->len; i++) {
-            load_arg(vec_at(fn->args, i), i);
+        for (int i = 0; i < fn->params->len; i++) {
+            load_arg(vec_at(fn->params, i), i);
         }
 
         // Emit code.
@@ -130,7 +130,7 @@ void gen(Node *node) {
                 printf("  pop %s\n", argregs8[i]);
             }
             printf("  mov al, 0\n");
-            printf("  call %s\n", node->funcname);
+            printf("  call %s\n", node->func_name);
             printf("  push rax\n");
             if (node->type->kind == TY_VOID) {
                 printf("  pop rax\n");

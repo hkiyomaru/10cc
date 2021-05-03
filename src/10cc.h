@@ -95,8 +95,8 @@ struct Prog {
 struct Func {
     Type *rtype;
     char *name;
-    Vector *lvars;  // Vector<Var *>
-    Vector *args;   // Vector<Var *>
+    Vector *lvars;   // Vector<Var *>
+    Vector *params;  // Vector<Var *>
     Node *body;
     Token *tok;
 };
@@ -120,7 +120,7 @@ struct Node {
     Vector *stmts;
 
     // Function call
-    char *funcname;
+    char *func_name;
     Vector *args;
 
     // Variable reference
@@ -218,5 +218,4 @@ void debug(char *fmt, ...);
 void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);
 bool startswith(char *p, char *q);
-bool isalnumus(char c);
 void draw_ast(Prog *prog);

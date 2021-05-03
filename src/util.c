@@ -71,9 +71,6 @@ void error_at(char *loc, char *fmt, ...) {
 // Return true if the first string starts with the second string.
 bool startswith(char *p, char *q) { return memcmp(p, q, strlen(q)) == 0; }
 
-// Return true if a given character is an alphabet, number, or _.
-bool isalnumus(char c) { return isalnum(c) || c == '_'; }
-
 // Draw the abstract syntax tree of a node.
 void draw_node(Node *node, int depth, char *role) {
     if (node && node->kind != ND_NULL) {
@@ -180,7 +177,7 @@ void draw_node(Node *node, int depth, char *role) {
                 }
                 break;
             case ND_FUNC_CALL:
-                fprintf(stderr, "FUNC_CALL(name: %s)\n", node->funcname);
+                fprintf(stderr, "FUNC_CALL(name: %s)\n", node->func_name);
                 for (int i = 0; i < node->args->len; i++) {
                     char *prefix = format("arg%d", i);
                     draw_node(node->args->data[i], depth + 1, prefix);

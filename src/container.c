@@ -76,7 +76,7 @@ void *map_at(Map *map, char *key) {
         }
     }
     error("out of range");
-    return NULL;
+    return NULL;  // unreachable
 }
 
 // Check if there is an element with key.

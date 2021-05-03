@@ -2,9 +2,9 @@
 
 Token *ctok;
 
-bool is_bol;  // true if `cur` is at beginning of a line
+bool is_bol = true;  // true if `cur` is at beginning of a line
 
-// Return the current token if it satisfies given conditions. Otherwise, NULL will be returned.
+// Return the current token if it satisfies the given conditions. Otherwise, NULL will be returned.
 Token *peek(TokenKind kind, char *str) {
     if (ctok->kind != kind || (str && strcmp(ctok->str, str))) {
         return NULL;
@@ -12,19 +12,19 @@ Token *peek(TokenKind kind, char *str) {
     return ctok;
 }
 
-// Pop the current token if it satisfies given conditions. Otherwise, NULL will be returned.
+// Pop the current token if it satisfies the given conditions. Otherwise, NULL will be returned.
 Token *consume(TokenKind kind, char *str) {
-    Token *ret = peek(kind, str);
-    if (ret) {
+    Token *tok = peek(kind, str);
+    if (tok) {
         ctok = ctok->next;
     }
-    return ret;
+    return tok;
 }
 
-// Pop the current token if it satisfies given conditions. Otherwise, raise an error.
+// Pop the current token if it satisfies the given conditions. Otherwise, raise an error.
 Token *expect(TokenKind kind, char *str) {
-    Token *ret = peek(kind, str);
-    if (!ret) {
+    Token *tok = peek(kind, str);
+    if (!tok) {
         if (!str) {
             switch (kind) {
                 case TK_RESERVED:
@@ -50,7 +50,7 @@ Token *expect(TokenKind kind, char *str) {
         error_at(ctok->loc, "expected '%s' before '%s' token", str, ctok->str);
     }
     ctok = ctok->next;
-    return ret;
+    return tok;
 }
 
 // Return true if the kind of the current token is EOF.
@@ -58,20 +58,23 @@ bool at_eof() { return peek(TK_EOF, NULL); }
 
 // Read an reserved keyword.
 char *read_reserved(char *p) {
+    // Keywords.
     char *kws[] = {"return",  "if",     "else", "while", "for",  "break", "continue", "struct",
                    "typedef", "sizeof", "void", "_Bool", "char", "short", "int",      "long"};
     for (int i = 0; i < sizeof(kws) / sizeof(kws[0]); i++) {
         int len = strlen(kws[i]);
-        if (startswith(p, kws[i]) && !isalnumus(p[len])) {
+        if (startswith(p, kws[i]) && !(isalnum(p[len]) || p[len] == '_')) {
             return kws[i];
         }
     }
+    // Multi-character operations
     char *multi_ops[] = {"<=", ">=", "==", "!=", "++", "--", "+=", "-=", "*=", "/=", "->"};
     for (int i = 0; i < sizeof(multi_ops) / sizeof(multi_ops[0]); i++) {
         if (startswith(p, multi_ops[i])) {
             return multi_ops[i];
         }
     }
+    // Single-character operations
     char *single_ops[] = {"+", "-", "*", "/", "(", ")", "<", ">", "=", ";", "{",
                           "}", ",", "[", "]", "&", ".", ",", ":", "!", "?", "#"};
     for (int i = 0; i < sizeof(single_ops) / sizeof(single_ops[0]); i++) {
@@ -169,34 +172,6 @@ char *get_string_literal(char **p) {
     return buf;
 }
 
-// Get a string.
-char *get_str(TokenKind kind, char **p) {
-    int len;
-    switch (kind) {
-        case TK_STR:
-            return get_string_literal(p);
-        case TK_RESERVED: {
-            len = strlen(read_reserved(*p));
-            break;
-        }
-        case TK_IDENT: {
-            len = 1;  // the first character has been verified in tokenize().
-            while (isalnumus((*p)[len])) {
-                len++;
-            }
-            break;
-        }
-        default:
-            len = 0;
-            break;
-    }
-    char *buf = calloc(256, sizeof(char));
-    strncpy(buf, *p, len);
-    buf[len] = '\0';
-    *p += len;
-    return buf;
-}
-
 char get_char_literal(char **p) {
     char c;
     (*p)++;  // '
@@ -211,6 +186,34 @@ char get_char_literal(char **p) {
     }
     (*p)++;  // '
     return c;
+}
+
+// Get a string.
+char *get_str(TokenKind kind, char **p) {
+    int len;
+    switch (kind) {
+        case TK_STR:
+            return get_string_literal(p);
+        case TK_RESERVED: {
+            len = strlen(read_reserved(*p));
+            break;
+        }
+        case TK_IDENT: {
+            len = 1;  // the first character has been verified in tokenize().
+            while (isalnum((*p)[len]) || (*p)[len] == '_') {
+                len++;
+            }
+            break;
+        }
+        default:
+            len = 0;
+            break;
+    }
+    char *buf = calloc(256, sizeof(char));
+    strncpy(buf, *p, len);
+    buf[len] = '\0';
+    *p += len;
+    return buf;
 }
 
 // Get a value.
@@ -244,8 +247,6 @@ Token *tokenize() {
     Token *cur = &head;
 
     char *p = user_input;
-
-    is_bol = true;
 
     while (*p) {
         if (skip_line_comment(&p) || skip_block_comment(&p) || skip_newline(&p) || skip_space(&p)) {

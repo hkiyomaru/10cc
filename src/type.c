@@ -18,7 +18,7 @@ void ensure_int(Node *node);
 
 Node *scale_ptr(NodeKind kind, Node *base, Type *type);
 
-// Assign a type to a given node.
+// Assign a type to the given node.
 Node *do_walk(Node *node, bool decay) {
     switch (node->kind) {
         case ND_NULL:
@@ -181,7 +181,7 @@ Node *walk(Node *node) { return do_walk(node, true); }
 // Run do_walk with the decay property disabled.
 Node *walk_nodecay(Node *node) { return do_walk(node, false); }
 
-// Assign a type to each node in a given program.
+// Assign a type to each node in the given program.
 Prog *assign_type(Prog *prog) {
     for (int i = 0; i < prog->fns->len; i++) {
         Func *fn = vec_at(prog->fns->vals, i);
@@ -200,32 +200,32 @@ Type *new_type(TypeKind type, int size) {
     return ret;
 }
 
-// Create void type.
+// Create a void type.
 Type *void_type() { return new_type(TY_VOID, 1); }
 
-// Create bool type.
+// Create a bool type.
 Type *bool_type() { return new_type(TY_BOOL, 1); }
 
-// Create char type.
+// Create a char type.
 Type *char_type() { return new_type(TY_CHAR, 1); }
 
-// Create short type.
+// Create a short type.
 Type *short_type() { return new_type(TY_SHORT, 2); }
 
-// Create int type.
+// Create an int type.
 Type *int_type() { return new_type(TY_INT, 4); }
 
-// Create long type.
+// Create a long type.
 Type *long_type() { return new_type(TY_LONG, 8); }
 
-// Create pointer type.
+// Create a pointer type.
 Type *ptr_to(Type *base) {
     Type *type = new_type(TY_PTR, 8);
     type->base = base;
     return type;
 }
 
-// Create array type.
+// Create an array type.
 Type *ary_of(Type *base, int array_size) {
     Type *type = calloc(1, sizeof(Type));
     type->kind = TY_ARY;
@@ -244,7 +244,7 @@ Type *struct_type(Map *members) {
     return type;
 }
 
-// Decay a given node to an pointer if it is an array.
+// Decay the given node to an pointer when it is an array.
 Node *decay_array(Node *base) {
     if (base->type->kind != TY_ARY) {
         return base;
@@ -254,7 +254,7 @@ Node *decay_array(Node *base) {
     return node;
 }
 
-// Return true if given two types are the same.
+// Return true if the given two types are the same.
 bool is_same_type(Type *x, Type *y) {
     if (x->kind != y->kind) {
         return false;
@@ -269,7 +269,7 @@ bool is_same_type(Type *x, Type *y) {
     }
 }
 
-// Ensure that a given node is referable.
+// Ensure that the given node is referable.
 void ensure_referable(Node *node) {
     NodeKind kind = node->kind;
     if (kind != ND_VARREF && kind != ND_DEREF && kind != ND_MEMBER) {
@@ -277,7 +277,7 @@ void ensure_referable(Node *node) {
     }
 }
 
-// Ensure that a given node is an integer.
+// Ensure that the given node is an integer.
 void ensure_int(Node *node) {
     TypeKind kind = node->type->kind;
     if (kind != TY_INT && kind != TY_CHAR) {
@@ -285,7 +285,7 @@ void ensure_int(Node *node) {
     }
 }
 
-// Scale a number by the size of a given type.
+// Scale a number by the size of the given type.
 // Say kind = ND_MUL, base = ND_NUM(2), and type = TY_INT.
 // In this case, return ND_NUM(2 * 4), where 4 is the size of an integer.
 Node *scale_ptr(NodeKind kind, Node *base, Type *type) {
