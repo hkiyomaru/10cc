@@ -223,5 +223,11 @@ int main() {
     assert(2147483648, 2147483648, "2147483648");
     assert(8, sizeof(2147483648), "sizeof(2147483648)");
     assert(4, sizeof(2147483647), "sizeof(2147483647)");
+    assert(0, ({ enum { zero, one, two }; zero; }), "enum { zero, one, two }; zero;");
+    assert(1, ({ enum { zero, one, two }; one; }), "enum { zero, one, two }; one;");
+    assert(2, ({ enum { zero, one, two }; two; }), "enum { zero, one, two }; two;");
+    assert(5, ({ enum { five=5, six, seven }; five; }), "enum { five=5, six, seven }; five;");
+    assert(6, ({ enum { five=5, six, seven }; six; }), "enum { five=5, six, seven }; six;");
+    assert(4, ({ enum t { zero, one, two }; enum t y; sizeof(y); }), "enum t { zero, one, two }; enum t y; sizeof(y);");
     return 0;
 }

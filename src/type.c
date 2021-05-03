@@ -244,6 +244,9 @@ Type *struct_type(Map *members) {
     return type;
 }
 
+// Create an enum type.
+Type *enum_type() { return new_type(TY_ENUM, 4); }
+
 // Decay the given node to an pointer when it is an array.
 Node *decay_array(Node *base) {
     if (base->type->kind != TY_ARY) {

@@ -160,7 +160,7 @@ Node *new_node_uniop(NodeKind kind, Node *lhs, Token *tok);
 Node *new_node_num(long val, Token *tok);
 
 // type.c
-typedef enum { TY_VOID, TY_BOOL, TY_CHAR, TY_SHORT, TY_INT, TY_LONG, TY_PTR, TY_ARY, TY_STRUCT } TypeKind;
+typedef enum { TY_VOID, TY_BOOL, TY_CHAR, TY_SHORT, TY_INT, TY_LONG, TY_PTR, TY_ARY, TY_STRUCT, TY_ENUM } TypeKind;
 
 struct Type {
     TypeKind kind;
@@ -179,6 +179,7 @@ Type *short_type();
 Type *int_type();
 Type *long_type();
 Type *struct_type();
+Type *enum_type();
 Type *ptr_to(Type *base);
 Type *ary_of(Type *base, int len);
 bool is_same_type(Type *x, Type *y);

@@ -17,6 +17,8 @@ struct VarScope {
 
     Var *var;
     Type *type_def;
+    Type *enum_type;
+    int enum_val;
 };
 
 struct TagScope {
@@ -73,6 +75,7 @@ Node *new_node_varref(Var *var, Token *tok);
 Type *read_base_type();
 Type *read_type_postfix(Type *type);
 Type *struct_decl();
+Type *enum_specifier();
 Node *decl();
 
 InitVal *read_lvar_init_val(Type *type);
@@ -183,8 +186,8 @@ Var *push_var(char *name, Var *var) {
 VarScope *find_var(char *name) {
     for (VarScope *sc = var_scope; sc; sc = sc->next) {
         if (!strcmp(name, sc->name)) {
-            if (!sc->var) {
-                error_at(ctok->loc, "unexpected type name '%s'", name);
+            if (!sc->var && !sc->enum_type) {
+                error_at(ctok->loc, "unexpected variable name '%s'", name);
             }
             return sc;
         }
@@ -242,7 +245,7 @@ void leave_scope(Scope *sc) {
 
 // Return true if the kind of the current token is a type name.
 bool at_typename() {
-    char *typenames[] = {"void", "_Bool", "char", "short", "int", "long", "struct", "typedef"};
+    char *typenames[] = {"void", "_Bool", "char", "short", "int", "long", "struct", "typedef", "enum"};
     for (int i = 0; i < sizeof(typenames) / sizeof(typenames[0]); i++) {
         if (peek(TK_RESERVED, typenames[i])) {
             return true;
@@ -311,6 +314,8 @@ Type *read_base_type() {
         type = long_type();
     } else if (peek(TK_RESERVED, "struct")) {
         type = struct_decl();
+    } else if (peek(TK_RESERVED, "enum")) {
+        type = enum_specifier();
     } else {
         type = find_typedef(expect(TK_IDENT, NULL)->str);
     }
@@ -350,11 +355,11 @@ Member *struct_member() {
 Type *struct_decl() {
     expect(TK_RESERVED, "struct");
 
-    Token *tag = consume(TK_IDENT, NULL);
-    if (tag && !peek(TK_RESERVED, "{")) {
-        Type *type = find_tag(tag->str);
+    Token *tok = consume(TK_IDENT, NULL);
+    if (tok && !peek(TK_RESERVED, "{")) {
+        Type *type = find_tag(tok->str);
         if (!type) {
-            error_at(tag->loc, "undefined struct '%s'", tag->str);
+            error_at(tok->loc, "undefined struct '%s'", tok->str);
         }
         return type;
     }
@@ -374,8 +379,46 @@ Type *struct_decl() {
 
     Type *type = struct_type(members);
 
-    if (tag) {
-        push_tag(tag->str, type);
+    if (tok) {
+        push_tag(tok->str, type);
+    }
+
+    return type;
+}
+
+// enum-decl = "enum" ident
+//           | "enum" ident? "{" enum-list? "}"
+// enum-list = ident ("=" num)? ("," ident ("=" num)?)* ","?
+Type *enum_specifier() {
+    expect(TK_RESERVED, "enum");
+
+    Type *type = enum_type();
+
+    Token *tok = consume(TK_IDENT, NULL);
+    char *tag_name = tok ? tok->str : NULL;
+    if (tok && !peek(TK_RESERVED, "{")) {
+        type = find_tag(tag_name);
+        if (!type || type->kind != TY_ENUM) {
+            error_at(tok->loc, "undefined enum '%s'", tok->str);
+        }
+        return type;
+    }
+
+    int enum_val = 0;
+    expect(TK_RESERVED, "{");
+    while (!consume(TK_RESERVED, "}")) {
+        tok = consume(TK_IDENT, NULL);
+        if ((consume(TK_RESERVED, "="))) {
+            enum_val = expect(TK_NUM, NULL)->val;
+        }
+        VarScope *sc = push_var_scope(tok->str);
+        sc->enum_type = type;
+        sc->enum_val = enum_val++;
+        consume(TK_RESERVED, ",");
+    }
+
+    if (tag_name) {
+        push_tag_scope(tag_name)->type = type;
     }
 
     return type;
@@ -873,8 +916,12 @@ Node *primary() {
         if (!sc) {
             error_at(tok->loc, "'%s' undeclared", tok->str);
         }
-        Var *var = sc->var;
-        return new_node_varref(var, tok);
+        if (sc->var) {
+            return new_node_varref(sc->var, tok);
+        }
+        if (sc->enum_type) {
+            return new_node_num(sc->enum_val, tok);
+        }
     }
     if ((tok = peek(TK_NUM, NULL))) {
         tok = expect(TK_NUM, NULL);
