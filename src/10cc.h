@@ -19,7 +19,7 @@ typedef struct Vector Vector;
 typedef struct Map Map;
 
 // main.c
-extern char *filename;
+extern char *file_name;
 extern char *user_input;
 
 // tokenize.c

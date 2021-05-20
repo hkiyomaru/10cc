@@ -1,6 +1,6 @@
 #include "10cc.h"
 
-char *filename;
+char *file_name;
 char *user_input;
 
 void usage() { error("no input files"); }
@@ -39,8 +39,8 @@ int main(int argc, char **argv) {
     if (argc == 1) {
         usage();
     }
-    filename = argv[1];
-    user_input = read_file(filename);
+    file_name = argv[1];
+    user_input = read_file(file_name);
     ctok = tokenize();
     ctok = preprocess(ctok);
     Prog *prog = parse();

@@ -51,7 +51,7 @@ void error_at(char *loc, char *fmt, ...) {
     }
 
     // Report the line number with the file name.
-    int indent = fprintf(stderr, "%s:%d: ", filename, line_num);
+    int indent = fprintf(stderr, "%s:%d: ", file_name, line_num);
     fprintf(stderr, "%.*s\n", (int)(end - line), line);
 
     // Display a pointer to the error location.
