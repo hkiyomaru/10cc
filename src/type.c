@@ -123,6 +123,9 @@ Node *do_walk(Node *node, bool decay) {
         case ND_NOT:
             node->type = int_type();
             return node;
+        case ND_BITNOT:
+            node->type = node->lhs->type;
+            return node;
         case ND_ADDR:
             node->lhs = walk(node->lhs);
             ensure_referable(node->lhs);

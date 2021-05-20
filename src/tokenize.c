@@ -75,8 +75,8 @@ char *read_reserved(char *p) {
         }
     }
     // Single-character operations
-    char *single_ops[] = {"+", "-", "*", "/", "(", ")", "<", ">", "=", ";", "{",
-                          "}", ",", "[", "]", "&", ".", ",", ":", "!", "?", "#"};
+    char *single_ops[] = {"+", "-", "*", "/", "(", ")", "<", ">", "=", ";", "{", "}",
+                          ",", "[", "]", "&", ".", ",", ":", "!", "?", "~", "#"};
     for (int i = 0; i < sizeof(single_ops) / sizeof(single_ops[0]); i++) {
         if (startswith(p, single_ops[i])) {
             return single_ops[i];

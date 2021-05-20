@@ -122,6 +122,12 @@ void gen(Node *node) {
             printf("  movzx rax, al\n");
             printf("  push rax\n");
             return;
+        case ND_BITNOT:
+            gen(node->lhs);
+            printf("  pop rax\n");
+            printf("  not rax\n");
+            printf("  push rax\n");
+            return;
         case ND_FUNC_CALL:
             for (int i = 0; i < node->args->len; i++) {
                 gen(vec_at(node->args, i));

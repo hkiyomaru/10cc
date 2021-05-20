@@ -229,5 +229,9 @@ int main() {
     assert(5, ({ enum { five=5, six, seven }; five; }), "enum { five=5, six, seven }; five;");
     assert(6, ({ enum { five=5, six, seven }; six; }), "enum { five=5, six, seven }; six;");
     assert(4, ({ enum t { zero, one, two }; enum t y; sizeof(y); }), "enum t { zero, one, two }; enum t y; sizeof(y);");
+    assert(-2, ~1, "~1;");
+    assert(1, ~-2, "~-2;");
+    assert(0, ~-1, "~-1;");
+    assert(-1, ~0, "~0;");
     return 0;
 }

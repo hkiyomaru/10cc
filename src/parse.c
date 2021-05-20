@@ -802,6 +802,9 @@ Node *unary() {
     if ((tok = consume(TK_RESERVED, "!"))) {
         return new_node_uniop(ND_NOT, unary(), tok);
     }
+    if ((tok = consume(TK_RESERVED, "~"))) {
+        return new_node_uniop(ND_BITNOT, unary(), tok);
+    }
     if ((tok = consume(TK_RESERVED, "sizeof"))) {
         if (consume(TK_RESERVED, "(")) {
             if (at_typename()) {
