@@ -774,11 +774,10 @@ Node *mul() {
 }
 
 // unary = postfix
-//       | ("++" | "--") unary
 //       | unary-operator unary
 //       | "sizeof" unary
 //       | "sizeof" "(" type-name ")"
-// unary-operator = "+" | "-" | "&" | "*" | "!"
+// unary-operator = "++" | "--" | "+" | "-" | "&" | "*" | "!"
 Node *unary() {
     Token *tok;
     if ((tok = consume(TK_RESERVED, "++"))) {
@@ -826,8 +825,7 @@ Node *postfix() {
     Token *tok;
     for (;;) {
         if ((tok = consume(TK_RESERVED, "["))) {
-            Node *addr = new_node_binop(ND_ADD, node, expr(), tok);
-            node = new_node_uniop(ND_DEREF, addr, tok);
+            node = new_node_uniop(ND_DEREF, new_node_binop(ND_ADD, node, expr(), tok), tok);
             expect(TK_RESERVED, "]");
             continue;
         }
@@ -859,7 +857,7 @@ Vector *args() {
     Vector *args = vec_create();
     expect(TK_RESERVED, "(");
     while (!consume(TK_RESERVED, ")")) {
-        if (0 < args->len) {
+        if (args->len > 0) {
             expect(TK_RESERVED, ",");
         }
         vec_push(args, assign());
@@ -892,12 +890,26 @@ Node *stmt_expr() {
     if (node->stmts->len == 0) {
         error_at(node->tok->loc, "void value not ignored as it ought to be");
     }
-    Node *last = vec_back(node->stmts);
-    if (last->kind != ND_EXPR_STMT) {
-        error_at(last->tok->loc, "void value not ignored as it ought to be");
+    Node *back = vec_back(node->stmts);
+    if (back->kind != ND_EXPR_STMT) {
+        error_at(back->tok->loc, "void value not ignored as it ought to be");
     }
-    vec_set(node->stmts, node->stmts->len - 1, last->lhs);
+    vec_set(node->stmts, node->stmts->len - 1, back->lhs);
     return node;
+}
+
+bool at_call() {
+    Token *tok = ctok;
+    bool at_call = consume(TK_IDENT, NULL) && consume(TK_RESERVED, "(");
+    ctok = tok;
+    return at_call;
+}
+
+bool at_stmt_expr() {
+    Token *tok = ctok;
+    bool at_stmt_expr = consume(TK_RESERVED, "(") && consume(TK_RESERVED, "{");
+    ctok = tok;
+    return at_stmt_expr;
 }
 
 // primary = call
@@ -907,13 +919,10 @@ Node *stmt_expr() {
 //         | stmt-expr
 //         | "(" expr ")"
 Node *primary() {
-    Token *tok = ctok;
-    bool is_func_call = consume(TK_IDENT, NULL) && consume(TK_RESERVED, "(");
-    ctok = tok;
-
-    if (is_func_call) {
+    if (at_call()) {
         return call();
     }
+    Token *tok;
     if ((tok = consume(TK_IDENT, NULL))) {
         VarScope *sc = find_var(tok->str);
         if (!sc) {
@@ -926,21 +935,16 @@ Node *primary() {
             return new_node_num(sc->enum_val, tok);
         }
     }
-    if ((tok = peek(TK_NUM, NULL))) {
-        tok = expect(TK_NUM, NULL);
+    if ((tok = consume(TK_NUM, NULL))) {
         return new_node_num(tok->val, tok);
     }
-    if ((tok = peek(TK_STR, NULL))) {
-        tok = expect(TK_STR, NULL);
+    if ((tok = consume(TK_STR, NULL))) {
         return new_node_varref(new_strl(tok->str, tok), tok);
     }
-    if ((tok = peek(TK_RESERVED, "("))) {
-        bool is_stmt_expr = consume(TK_RESERVED, "(") && consume(TK_RESERVED, "{");
-        ctok = tok;
-        if (is_stmt_expr) {
-            return stmt_expr();
-        }
-        expect(TK_RESERVED, "(");
+    if (at_stmt_expr()) {
+        return stmt_expr();
+    }
+    if ((tok = consume(TK_RESERVED, "("))) {
         Node *node = expr();
         expect(TK_RESERVED, ")");
         return node;
@@ -981,18 +985,15 @@ Vector *params() {
 
 // func = T ident "(" params? ")" "{" stmt* "}"
 void func() {
+    Scope *sc = enter_scope();
+
     fn = calloc(1, sizeof(Func));
     fn->rtype = read_base_type();
     fn->tok = expect(TK_IDENT, NULL);
     fn->name = fn->tok->str;
     fn->lvars = vec_create();
-
-    Scope *sc = enter_scope();
-
-    // Parse the parameters.
     fn->params = params();
 
-    // Check conflict.
     Func *fn_ = find_func(fn->name);
     if (fn_) {
         if (fn_->body) {
@@ -1012,11 +1013,8 @@ void func() {
             }
         }
     }
-
-    // Register the function to the program.
     map_insert(prog->fns, fn->name, fn);
 
-    // Parse the body.
     if (!consume(TK_RESERVED, ";")) {
         fn->body = compound_stmt();
     }
@@ -1032,13 +1030,17 @@ void gvar() {
     new_gvar(type, tok->str, tok);
 }
 
-// top-level = func | gvar
-void top_level() {
+bool at_func() {
     Token *tok = ctok;
     read_base_type();
     bool is_func = consume(TK_IDENT, NULL) && consume(TK_RESERVED, "(");
     ctok = tok;
-    if (is_func) {
+    return is_func;
+}
+
+// top-level = func | gvar
+void top_level() {
+    if (at_func()) {
         func();
     } else {
         gvar();
